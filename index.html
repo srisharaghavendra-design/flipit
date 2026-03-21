@@ -145,7 +145,7 @@ footer a{color:var(--muted);text-decoration:none}
     <span class="nn">FlipIt</span>
     <span class="nt">beta</span>
   </div>
-  <a href="#app" class="nc">Get your rescue plan →</a>
+  <a href="/app" class="nc">Get your rescue plan →</a>
 </nav>
 
 <!-- HERO -->
@@ -153,7 +153,7 @@ footer a{color:var(--muted);text-decoration:none}
   <div class="hp"><div class="hpd"></div>AI-powered deal rescue</div>
   <h1>Your next best move<br/>when you're <span>losing the deal</span></h1>
   <p class="hs">Late in the deal. Price is higher. Competitor has the relationship. FlipIt gives you the exact kill shot, counter-moves, talk track and email — specific to your situation — in 60 seconds.</p>
-  <a href="#app" class="hb">Rescue my deal now →</a>
+  <a href="/app" class="hb">Rescue my deal now →</a>
   <div class="stats">
     <div class="stat"><div class="stn">68%</div><div class="stl">of B2B deals face direct competition</div></div>
     <div class="stat"><div class="stn">3.8/10</div><div class="stl">avg competitive preparedness of sales teams</div></div>
@@ -268,61 +268,21 @@ Can we do 20 minutes before Friday? I'll walk you through the numbers — if Pri
     </div>
     <div class="sample-cta">
       <p>This is what FlipIt generates for your actual deal — specific to your product, competitor, and situation.</p>
-      <a href="#app" class="hb" style="font-size:14px;padding:11px 24px">Generate my rescue plan →</a>
+      <a href="/app" class="hb" style="font-size:14px;padding:11px 24px">Generate my rescue plan →</a>
     </div>
   </div>
 </section>
 
 <hr class="dv" />
 
-<!-- APP -->
-<section id="app">
-  <div class="app-inner">
-    <div class="app-hdr">
-      <h2>Get your rescue plan</h2>
-      <p>Fill in your deal — your plan is ready in 60 seconds</p>
-    </div>
-    <div class="form-card">
-      <div class="grid2">
-        <div class="field"><label>Your product *</label><input type="text" id="product" placeholder="Your product or solution" autocomplete="off" /></div>
-        <div class="field"><label>Competitor *</label><input type="text" id="competitor" placeholder="Competitor name" autocomplete="off" /></div>
-      </div>
-      <div class="grid2">
-        <div class="field"><label>Your product / SKU <span style="font-weight:400;color:var(--muted2)">(optional)</span></label><input type="text" id="your_sku" placeholder="e.g. Enterprise plan, Video Bar Pro, HR + Payroll bundle" autocomplete="off" /></div>
-        <div class="field"><label>Competitor product / SKU <span style="font-weight:400;color:var(--muted2)">(optional)</span></label><input type="text" id="comp_sku" placeholder="e.g. Starter tier, Rally Bar Mini, Core module" autocomplete="off" /></div>
-      </div>
-      <div class="grid2">
-        <div class="field"><label>Deal stage *</label>
-          <select id="stage">
-            <option value="">Select stage</option>
-            <option>Qualification</option><option>Discovery</option>
-            <option>Demo / Evaluation</option><option>Proposal</option>
-            <option>Negotiation</option><option>Final Decision</option>
-          </select>
-        </div>
-        <div class="field"><label>Industry</label><input type="text" id="industry" placeholder="e.g. SaaS, Insurance, IT..." autocomplete="off" /></div>
-      </div>
-      <div style="margin-bottom:16px">
-        <div class="rl">Why are you losing? * (select all that apply)</div>
-        <div class="rw">
-          <button class="rtag" data-id="late">Entered deal late</button>
-          <button class="rtag" data-id="price">Pricing is higher</button>
-          <button class="rtag" data-id="discount">Limited discounts</button>
-          <button class="rtag" data-id="partner">Partner pushing competitor</button>
-          <button class="rtag" data-id="delivery">Slower delivery</button>
-          <button class="rtag" data-id="features">Competitor has better features</button>
-          <button class="rtag" data-id="incumbent">Competitor is incumbent</button>
-          <button class="rtag" data-id="relationship">Weaker exec relationship</button>
-        </div>
-      </div>
-      <div class="field" style="margin-bottom:18px">
-        <label>Additional context <span style="font-weight:400;color:var(--muted2)">(optional — improves output significantly)</span></label>
-        <textarea id="context" placeholder="Deal value, company size, key stakeholders, what the customer said, recent interactions..."></textarea>
-      </div>
-      <div id="err" class="err" style="display:none"></div>
-      <button class="cta-btn" id="flipBtn" onclick="handleFlip()">Flip this deal →</button>
-    </div>
-    <div id="output"></div>
+<!-- CTA -->
+<section style="padding:5rem 1.5rem;text-align:center">
+  <div style="max-width:600px;margin:0 auto">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace">Ready to flip your deal?</div>
+    <h2 style="font-size:clamp(28px,4vw,42px);font-weight:600;letter-spacing:-1.5px;margin-bottom:1rem">Your rescue plan is<br/>60 seconds away</h2>
+    <p style="font-size:16px;color:var(--muted);margin-bottom:2rem;line-height:1.7">Tell FlipIt your situation. Get your kill shot, counter-moves, talk track and email — specific to your competitor, your deal stage, your industry.</p>
+    <a href="/app" style="display:inline-block;padding:16px 40px;background:var(--red);border-radius:9px;color:#fff;font-size:17px;font-weight:600;text-decoration:none;margin-bottom:1rem">Get my rescue plan →</a>
+    <p style="font-size:13px;color:var(--muted2)">No signup required. Free to try.</p>
   </div>
 </section>
 
