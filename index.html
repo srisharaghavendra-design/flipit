@@ -284,8 +284,12 @@ Can we do 20 minutes before Friday? I'll walk you through the numbers — if Pri
     </div>
     <div class="form-card">
       <div class="grid2">
-        <div class="field"><label>Your product *</label><input type="text" id="product" placeholder="e.g. Keka HR" autocomplete="off" /></div>
-        <div class="field"><label>Competitor *</label><input type="text" id="competitor" placeholder="e.g. Darwinbox" autocomplete="off" /></div>
+        <div class="field"><label>Your product *</label><input type="text" id="product" placeholder="Your product or solution" autocomplete="off" /></div>
+        <div class="field"><label>Competitor *</label><input type="text" id="competitor" placeholder="Competitor name" autocomplete="off" /></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Your product / SKU <span style="font-weight:400;color:var(--muted2)">(optional)</span></label><input type="text" id="your_sku" placeholder="e.g. Enterprise plan, Video Bar Pro, HR + Payroll bundle" autocomplete="off" /></div>
+        <div class="field"><label>Competitor product / SKU <span style="font-weight:400;color:var(--muted2)">(optional)</span></label><input type="text" id="comp_sku" placeholder="e.g. Starter tier, Rally Bar Mini, Core module" autocomplete="off" /></div>
       </div>
       <div class="grid2">
         <div class="field"><label>Deal stage *</label>
@@ -296,7 +300,7 @@ Can we do 20 minutes before Friday? I'll walk you through the numbers — if Pri
             <option>Negotiation</option><option>Final Decision</option>
           </select>
         </div>
-        <div class="field"><label>Industry</label><input type="text" id="industry" placeholder="e.g. Financial Services" autocomplete="off" /></div>
+        <div class="field"><label>Industry</label><input type="text" id="industry" placeholder="e.g. SaaS, Insurance, IT..." autocomplete="off" /></div>
       </div>
       <div style="margin-bottom:16px">
         <div class="rl">Why are you losing? * (select all that apply)</div>
@@ -342,7 +346,7 @@ async function handleFlip(){
   btn.disabled=true;btn.textContent='Generating your rescue plan...';
   document.getElementById('output').innerHTML='';
   try{
-    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product,competitor,stage,industry,reasons,context})});
+    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product,competitor,stage,industry,reasons,context,your_sku:document.getElementById('your_sku').value.trim(),comp_sku:document.getElementById('comp_sku').value.trim()})});
     const data=await res.json();
     if(data.error)throw new Error(data.error);
     renderOutput(data,product,competitor);
