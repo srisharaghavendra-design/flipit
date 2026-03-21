@@ -1,3 +1,8 @@
+// FlipIt Deal Rescue API
+// Uses curated competitor knowledge base + live Firecrawl scraping as enrichment layer
+
+import { COMPETITOR_DB, getCompetitorIntel, formatIntelForPrompt } from '../lib/competitorDB.js';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -10,13 +15,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Step 1 — scrape competitor intelligence with safe error handling
-  let competitorIntel = '';
+  // Step 1 — knowledge base lookup (always reliable)
+  const dbIntel = getCompetitorIntel(competitor);
+  let intelText = dbIntel ? formatIntelForPrompt(dbIntel, reasons) : '';
+  let intelSource = dbIntel ? 'knowledge_base' : 'none';
 
+  // Step 2 — live scraping enrichment (best effort, never blocks)
   try {
-    const competitorSlug = competitor.toLowerCase().replace(/\s+/g, '');
-    const g2Slug = competitor.toLowerCase().replace(/\s+/g, '-');
-
     const safeScrape = async (url) => {
       try {
         const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
@@ -29,109 +34,114 @@ export default async function handler(req, res) {
             url,
             formats: ['markdown'],
             onlyMainContent: true,
-            waitFor: 1000
+            waitFor: 2000,
+            timeout: 15000
           })
         });
+        if (!r.ok) return '';
         const text = await r.text();
-        try {
-          const json = JSON.parse(text);
-          return json?.data?.markdown || json?.markdown || '';
-        } catch {
-          return '';
-        }
+        const json = JSON.parse(text);
+        const content = json?.data?.markdown || json?.markdown || '';
+        // sanity check — must be substantial content, not error page
+        return content.length > 500 ? content.slice(0, 1500) : '';
       } catch {
         return '';
       }
     };
 
-    const [websiteData, g2Data] = await Promise.all([
-      safeScrape(`https://www.${competitorSlug}.com`),
+    const competitorSlug = competitor.toLowerCase().replace(/\s+/g, '');
+    const g2Slug = competitor.toLowerCase().replace(/\s+/g, '-');
+
+    const [liveData] = await Promise.all([
       safeScrape(`https://www.g2.com/products/${g2Slug}/reviews`)
     ]);
 
-    if (websiteData) {
-      competitorIntel += `\n\nCOMPETITOR WEBSITE (${competitor}):\n${websiteData.slice(0, 2000)}`;
+    if (liveData && liveData.length > 500) {
+      intelText += `\n\nLIVE G2 REVIEW DATA (scraped today — use any NEW specific complaints found here):\n${liveData}`;
+      intelSource = 'knowledge_base_plus_live';
     }
-    if (g2Data) {
-      competitorIntel += `\n\nG2 CUSTOMER REVIEWS (${competitor}):\n${g2Data.slice(0, 2000)}`;
-    }
-  } catch (e) {
-    competitorIntel = '';
+  } catch {
+    // scraping failed silently — knowledge base is enough
   }
 
-  const hasIntel = competitorIntel.length > 100;
+  // Step 3 — generate rescue plan
+  const hasIntel = intelText.length > 100;
 
-  const prompt = `You are an elite enterprise sales strategist with 20+ years rescuing lost B2B deals.
+  const prompt = `You are an elite enterprise sales strategist. You have verified competitive intelligence about ${competitor}. Use it to generate a devastatingly specific deal rescue plan.
 
 DEAL SITUATION:
-- Product: ${product}
+- Product being sold: ${product}
 - Competitor: ${competitor}
 - Deal stage: ${stage}
 - Industry: ${industry || 'B2B Technology'}
-- Why losing: ${reasons}
-${context ? `- Context: ${context}` : ''}
-${hasIntel ? `
-LIVE COMPETITOR INTELLIGENCE (use specific details from this in your response):
-${competitorIntel}
+- Why we are losing: ${reasons}
+${context ? `- Additional context: ${context}` : ''}
 
-Mine this for: specific customer complaints, implementation issues, support problems, gaps between claims and reality. Reference these SPECIFICALLY in every output section.` : `Use your deep knowledge of ${competitor} to provide specific competitive intelligence.`}
+${hasIntel ? intelText : `Use your knowledge of ${competitor} to provide specific competitive intelligence.`}
 
-Respond ONLY with valid JSON — no markdown, no preamble, nothing outside the JSON object:
+CRITICAL RULES:
+1. Reference SPECIFIC facts from the intelligence above — not generic advice
+2. Every counter-move must name a specific action, not a category of action
+3. The kill shot must reference a specific known weakness — pricing opacity, implementation timeline, support gaps, mobile issues, etc.
+4. Talk track must use language an AE can say word-for-word in 10 minutes
+5. Email must be ready to send — not a template with [brackets] except for name/date
+
+Respond ONLY with valid JSON — no markdown, nothing outside the JSON:
 {
   "dealAssessment": {
     "winProbability": <integer 0-100>,
     "urgency": "High|Medium|Low",
-    "summary": "2-3 sentences referencing specific ${competitor} weaknesses"
+    "summary": "2-3 sentences — reference specific ${competitor} reality vs what they're claiming in the deal"
   },
   "competitorWeaknesses": [
-    "Specific weakness 1 with evidence",
-    "Specific weakness 2 with evidence",
-    "Specific weakness 3 with evidence"
+    "Specific weakness with evidence source e.g. 'Gartner reviews consistently cite...'",
+    "Second specific weakness with evidence",
+    "Third specific weakness with evidence"
   ],
-  "killShot": "One devastating question exposing a SPECIFIC known ${competitor} weakness — not generic",
+  "killShot": "One question or statement that uses a SPECIFIC known ${competitor} weakness — pricing opacity, implementation timeline, support gaps, mobile issues, product fit for this company size. Must be something the AE can say verbatim.",
   "counterMoves": [
     {
-      "move": "Short title max 5 words",
-      "action": "Specific tactic using real ${competitor} weakness — who to contact, exact words, what evidence to use",
+      "move": "Action title max 5 words",
+      "action": "Specific action — name who to call, what to send, exact words to use, what specific ${competitor} weakness to expose",
       "timing": "Today|Within 48 hours|Before next meeting|This week"
     },
     {
-      "move": "Short title max 5 words",
-      "action": "Specific tactic",
+      "move": "Action title max 5 words",
+      "action": "Specific action",
       "timing": "Today|Within 48 hours|Before next meeting|This week"
     },
     {
-      "move": "Short title max 5 words",
-      "action": "Specific tactic",
+      "move": "Action title max 5 words",
+      "action": "Specific action",
       "timing": "Today|Within 48 hours|Before next meeting|This week"
     },
     {
-      "move": "Short title max 5 words",
-      "action": "Specific tactic",
+      "move": "Action title max 5 words",
+      "action": "Specific action",
       "timing": "Today|Within 48 hours|Before next meeting|This week"
     }
   ],
   "talkTrack": {
-    "opening": "Exact opening line referencing something specific about ${competitor}",
+    "opening": "Exact opening words that reference something specific about ${competitor} — not generic",
     "keyMessages": [
-      "Message using specific ${competitor} customer complaint or known weakness",
-      "Message reframing evaluation criteria against ${competitor} known gaps",
-      "Message positioning ${product} strength against ${competitor} specific weakness"
+      "Specific message using a real ${competitor} weakness or customer complaint",
+      "Message reframing evaluation criteria based on ${competitor} known gaps",
+      "Message positioning ${product} strength directly against ${competitor} specific weakness"
     ],
     "objectionHandlers": [
       {
-        "objection": "Exact objection buyer will raise",
-        "response": "Word-for-word counter using specific ${competitor} intelligence"
+        "objection": "Exact objection the buyer will raise — specific to ${competitor}",
+        "response": "Word-for-word response using specific intelligence — conversational, not defensive"
       },
       {
         "objection": "Second specific objection",
-        "response": "Word-for-word counter with real data points"
+        "response": "Word-for-word response with specific evidence"
       }
     ]
   },
   "emailTemplate": {
-    "subject": "Specific subject line — not generic",
-    "body": "Complete email under 200 words referencing specific ${competitor} weakness, clear next step"
+    "subject": "Specific subject that references something real — not generic clickbait",
+    "body": "Complete email under 200 words. References a specific ${competitor} weakness or customer complaint. Clear single next step ask. Ready to send right now."
   }
 }`;
 
@@ -152,11 +162,8 @@ Respond ONLY with valid JSON — no markdown, no preamble, nothing outside the J
 
     const rawText = await response.text();
     let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      return res.status(500).json({ error: 'Invalid response from AI service' });
-    }
+    try { data = JSON.parse(rawText); }
+    catch { return res.status(500).json({ error: 'AI service response error — please try again' }); }
 
     if (data.error) return res.status(500).json({ error: data.error.message });
 
@@ -164,13 +171,10 @@ Respond ONLY with valid JSON — no markdown, no preamble, nothing outside the J
     const clean = text.replace(/```json|```/g, '').trim();
 
     let parsed;
-    try {
-      parsed = JSON.parse(clean);
-    } catch {
-      return res.status(500).json({ error: 'Could not parse AI response — please try again' });
-    }
+    try { parsed = JSON.parse(clean); }
+    catch { return res.status(500).json({ error: 'Could not parse response — please try again' }); }
 
-    parsed._intelUsed = hasIntel;
+    parsed._intelSource = intelSource;
     return res.status(200).json(parsed);
 
   } catch (err) {
