@@ -140,7 +140,107 @@ const COMPETITOR_DB = {
       features: "PeopleStrong talent management, employee experience, and analytics are behind both Darwinbox and Keka. If talent retention is a strategic priority, what is their specific committed roadmap and delivery timeline for those modules?",
       price: "PeopleStrong and Darwinbox are in the same price range. The question is product momentum — Darwinbox just raised $140M and is investing in AI and product. What is PeopleStrong recent funding and roadmap differentiation?"
     }
+  },
+  "coalition": {
+    fullName: "Coalition",
+    sweetSpot: "US-based SMBs and mid-market. Strong in tech companies. 160,000+ customers.",
+    pricing: "Competitive. Uses proprietary risk scoring to price — tech companies with good security posture get lower rates. No public pricing.",
+    implementationReality: "Fast quote and bind process. Strong broker portal. But US-market focused — Canadian market presence is growing but less mature than their US operation.",
+    weaknesses: [
+      "US-centric — Canadian market is a secondary focus. Canadian brokers report less local support and slower response times compared to their US counterparts.",
+      "Pure insurance play with cybersecurity tools bolted on — lacks the dedicated vCISO and breach response depth that BOXX includes as standard",
+      "At $5B valuation they are an enterprise-scale company — SMBs report feeling like a small account with limited personalization",
+      "Coalition's security scanning can flag issues at renewal and increase premiums significantly — customers report surprise premium jumps of 30-50% after a scan",
+      "Claims process can be slow — several broker reviews note Coalition's claims handling lacks the 24/7 immediacy of dedicated cyber incident response providers",
+      "No Virtual CISO service included — security guidance requires separate engagement",
+      "Coverage gaps in Tech E&O compared to dedicated tech insurance providers"
+    ],
+    killShots: {
+      features: "Coalition's cybersecurity tools are built to help them underwrite risk more accurately — not primarily to help you prevent incidents. When their security scanner finds an issue at renewal, your premium goes up. BOXX's vCISO and prevention tools are built to actually reduce your risk. Has Coalition shown you what happens to your premium if their scanner finds a vulnerability at renewal?",
+      price: "Coalition uses continuous security scanning and that data directly feeds their renewal pricing. Customers report 30-50% premium increases when scans flag issues. With BOXX, the prevention tools are designed to fix those issues before they affect your coverage — not just report them to underwriters.",
+      late: "Coalition is strong in the US but their Canadian operation is significantly smaller. Local broker support, claims response, and regulatory expertise in Canada are where BOXX has a genuine home-market advantage. Who handles Coalition claims in Canada at 2am on a Saturday?"
+    }
+  },
+  "at-bay": {
+    fullName: "At-Bay",
+    sweetSpot: "Tech companies and digitally-mature SMBs. Strong in US market.",
+    pricing: "Risk-based pricing using continuous monitoring. Generally competitive for low-risk tech companies but higher for traditional businesses.",
+    implementationReality: "Fast for tech-savvy buyers. Less smooth for traditional SMBs unfamiliar with security assessments.",
+    weaknesses: [
+      "Primarily US-focused — Canadian market presence is limited with less local regulatory expertise and broker support",
+      "Complex onboarding for non-tech businesses — security assessment requirements can slow down quoting for traditional SMBs",
+      "No Virtual CISO service — security guidance is not included, only monitoring and insurance",
+      "Continuous monitoring can feel invasive to SMBs — some customers report feeling surveilled rather than protected",
+      "Claims handling for Canadian regulatory requirements (PIPEDA, provincial privacy laws) is less experienced than Canadian-native providers",
+      "Product suite is narrower than BOXX — no home/personal cyber coverage for executives",
+      "Less broker-friendly than Coalition or BOXX — broker portal functionality is more limited"
+    ],
+    killShots: {
+      features: "At-Bay gives you monitoring that tells you when you have a problem. BOXX gives you a Virtual CISO who helps you fix it before it becomes a claim. For a Canadian SMB without internal IT security staff, which do you actually need — more alerts or someone to call?",
+      price: "At-Bay's continuous monitoring feeds their underwriting model. If their monitoring finds an issue, your renewal conversation changes. BOXX's model is built to help you remediate issues — your vCISO is incentivised to reduce your risk, not just document it for underwriting purposes.",
+      late: "At-Bay is a US company learning the Canadian market. BOXX is built in Canada, backed by Zurich since July 2025, with Lloyd's underwriting and dedicated Canadian regulatory expertise. For a Canadian business dealing with PIPEDA compliance and provincial privacy laws, that local depth matters when you have an incident."
+    }
+  },
+  "cowbell": {
+    fullName: "Cowbell",
+    sweetSpot: "US SMEs. AI-driven automated underwriting. Fast quote process.",
+    pricing: "Competitive for SMEs. AI underwriting keeps pricing tight. But US-focused pricing models.",
+    implementationReality: "Very fast — automated underwriting means quotes in minutes. But limited human support post-bind.",
+    weaknesses: [
+      "US-only product — Cowbell does not operate in Canada. If your prospect is a Canadian business, Cowbell is not a valid alternative.",
+      "Fully automated underwriting — no human underwriter relationship, which some brokers and clients find limiting for complex or unusual risks",
+      "No prevention services included — pure insurance product with limited security tooling",
+      "No Virtual CISO, no dedicated incident response team — just coverage",
+      "Limited broker support for complex claims — automated model breaks down when human judgment is needed",
+      "No personal/home cyber coverage — business only",
+      "Less coverage depth for tech E&O compared to specialists"
+    ],
+    killShots: {
+      features: "Cowbell is a US-only product. If your prospect is a Canadian business, this is not actually a competitor — Cowbell does not write Canadian risks. Is their team aware of that?",
+      price: "Cowbell's speed comes from full automation — AI underwrites, AI prices, AI manages. That is great for simple risks. But when you have a claim at 2am, you are dealing with an automated system. BOXX's Hackbusters gives you 24/7 human incident response included in the policy — not as an add-on."
+    }
+  },
+  "hiscox": {
+    fullName: "Hiscox",
+    sweetSpot: "SMBs and professional services. Traditional insurer with cyber product. Global brand.",
+    pricing: "Mid to premium tier. Traditional insurance pricing model. Cyber is one of many products.",
+    implementationReality: "Standard insurance process. Slower than insurtechs. Broker-dependent distribution.",
+    weaknesses: [
+      "Traditional insurer with cyber bolted on — no active prevention tools, no Virtual CISO, no continuous monitoring included",
+      "Hiscox cyber is an insurance product, not a cyber protection product — it pays after an incident, it does not help prevent one",
+      "Claims process is traditional insurance pace — not the 24/7 immediate response that cyber incidents require",
+      "No breach response team included — you need to find your own IR firm when an incident happens, then claim back",
+      "Underwriting is less sophisticated than cyber specialists — pricing does not reflect actual cyber risk posture",
+      "No broker portal with instant quote-and-bind capability compared to insurtechs",
+      "Coverage language is more traditional — less specific to modern cyber threats like ransomware, BEC, and supply chain attacks"
+    ],
+    killShots: {
+      features: "Hiscox is a great insurance company that has added a cyber product. BOXX is a cyber protection company that includes insurance. When your client has a ransomware attack at 11pm, Hiscox gives them a policy number to call on Monday. BOXX gives them Hackbusters — a 24/7 breach response team that picks up immediately. What does their prospect actually need at 11pm on a Friday?",
+      price: "Hiscox pricing is based on traditional insurance risk models. BOXX pricing reflects actual cyber risk posture because they are measuring and improving it continuously. Long term, a client that improves their security posture with BOXX's tools should see better renewal pricing than one sitting static with Hiscox.",
+      late: "Hiscox has brand recognition. BOXX has Zurich backing since July 2025, Lloyd's underwriting, and a purpose-built cyber protection model. For a broker recommending cyber coverage, which story is better — a big name with a generic cyber add-on, or a specialist with Zurich's balance sheet behind it?"
+    }
+  },
+  "beazley": {
+    fullName: "Beazley",
+    sweetSpot: "Mid to large enterprises. Complex risk profiles. Global specialty insurer.",
+    pricing: "Premium. Specialist pricing for complex cyber risks. Not competitive for SMBs.",
+    implementationReality: "Complex underwriting process. Not designed for fast SMB quote-and-bind.",
+    weaknesses: [
+      "Designed for enterprises with complex risk profiles — SMBs are not their target market and it shows in pricing and process",
+      "No active prevention tools or Virtual CISO — pure specialty insurance product",
+      "High minimum premiums make it uncompetitive for small businesses",
+      "Underwriting process is complex and slow for SMB accounts",
+      "Broker-heavy distribution model — less direct access for smaller clients",
+      "No tech-integrated risk management — traditional underwriting only",
+      "Breach response requires separate vendor engagement — not included as standard"
+    ],
+    killShots: {
+      features: "Beazley is an excellent product for a $50M+ revenue company with a complex risk profile. For an SMB, you are paying enterprise premiums for enterprise underwriting complexity. BOXX is built specifically for SMBs — the pricing, the process, the Virtual CISO, the Hackbusters response — everything is sized for your client's actual situation.",
+      price: "Beazley's minimum premiums typically start where BOXX's comprehensive SMB coverage ends. Unless your client has a genuinely complex risk profile that requires specialty underwriting, they would be overpaying for coverage they cannot fully use."
+    }
   }
+
+
 };
 
 function getCompetitorIntel(name) {
