@@ -238,7 +238,226 @@ const COMPETITOR_DB = {
       features: "Beazley is an excellent product for a $50M+ revenue company with a complex risk profile. For an SMB, you are paying enterprise premiums for enterprise underwriting complexity. BOXX is built specifically for SMBs — the pricing, the process, the Virtual CISO, the Hackbusters response — everything is sized for your client's actual situation.",
       price: "Beazley's minimum premiums typically start where BOXX's comprehensive SMB coverage ends. Unless your client has a genuinely complex risk profile that requires specialty underwriting, they would be overpaying for coverage they cannot fully use."
     }
+  },
+
+  // ── CRM ──────────────────────────────────────────────────────────────────
+  "salesforce": {
+    fullName: "Salesforce",
+    sweetSpot: "Mid to large enterprises. Complex sales processes. 1000+ employees. Strong in US market.",
+    pricing: "Premium. $25-300 PEPM depending on edition. Enterprise and Unlimited editions $150-300 PEPM. AppExchange add-ons add significant cost. Implementation partner fees often equal first-year license cost.",
+    implementationReality: "Average 17 days for simple deployments but complex enterprise implementations run 6-18 months with certified partners. Total cost of ownership is consistently underestimated.",
+    weaknesses: [
+      "Steep learning curve — requires dedicated Salesforce admin to manage. Companies without a certified admin see adoption rates collapse. G2 and Gartner reviews consistently cite complexity as #1 frustration.",
+      "Pricing escalates rapidly — base price is misleading. Add Sales Cloud, Service Cloud, Marketing Cloud, Einstein AI, and required AppExchange apps and costs triple. Customers report 40-60% higher actual spend vs initial quote.",
+      "Implementation requires certified partners — adds 30-50% to first-year cost. Gartner notes implementation costs often equal or exceed license fees.",
+      "Overkill for companies under 200 employees — 80% of features go unused by SMBs paying enterprise prices.",
+      "Customization creates tech debt — highly customized Salesforce orgs become unmaintainable. Upgrades break custom code. Companies get locked into expensive admin dependency.",
+      "Support is tiered and expensive — standard support is community-only. Premier support costs extra. Response times for critical issues are slow without paid support tiers.",
+      "Mobile app is consistently rated poorly — field sales teams report the mobile experience is significantly worse than the desktop version."
+    ],
+    killShots: {
+      features: "Salesforce's power comes from customization — but every customization creates admin dependency and upgrade risk. Who in your team holds the Salesforce admin certification, and what is your plan when they leave? Companies consistently report their Salesforce org becomes unmaintainable within 18 months without dedicated admin support.",
+      price: "Salesforce's base price is the beginning of the conversation, not the end. By the time you add the integrations you need, the Einstein AI tier, and the implementation partner fees, the real first-year cost is typically 2-3x the initial quote. Has their proposal shown total cost of ownership including implementation and first-year admin?",
+      late: "You are competing against Salesforce's brand — not their product. Most companies that choose Salesforce do so because it is familiar, not because it is the best fit. Shift the evaluation to total cost of ownership and time-to-value. Salesforce's average implementation is 17 days for simple orgs — ask them what their timeline is for your specific complexity.",
+      incumbent: "Migrating off Salesforce is notoriously painful — but companies do it every day when the cost-complexity ratio no longer makes sense. The question is not whether Salesforce works, it is whether it works for your size, your team, and your budget. What percentage of their Salesforce features does your prospect actually use today?"
+    }
+  },
+  "hubspot": {
+    fullName: "HubSpot",
+    sweetSpot: "SMBs and mid-market companies 10-500 employees. Strong in marketing-led growth companies. Inbound-focused teams.",
+    pricing: "Freemium entry but paid tiers escalate quickly. Professional: $500/month for Marketing Hub, $500/month for Sales Hub. Enterprise: $5000/month Marketing, $1200/month Sales. Contact-based pricing means costs scale unpredictably as database grows.",
+    implementationReality: "Fast for basic setup — 1-2 weeks. But full marketing automation and CRM integration takes 4-8 weeks. Contact database growth can dramatically increase costs at renewal.",
+    weaknesses: [
+      "Contact-based pricing is a hidden trap — costs scale with your database size, not your team size. Companies that grow fast report 200-300% cost increases at renewal as contacts accumulate.",
+      "Built as a marketing tool first, CRM second — sales teams with complex pipeline needs consistently find HubSpot's sales functionality shallow compared to Salesforce. Reddit users note: 'HubSpot for marketing, Salesforce for sales' as the standard split.",
+      "Reporting and analytics are limited — multi-touch attribution, advanced forecasting, and custom analytics require higher tiers or separate tools. G2 reviews cite reporting as the #1 weakness.",
+      "Limited customization for complex sales processes — companies with non-standard pipelines or complex deal structures find HubSpot's rigidity frustrating.",
+      "Enterprise tier is expensive but still less capable than Salesforce Enterprise for complex operations — companies pay enterprise prices for mid-market functionality.",
+      "Gartner 2024 Magic Quadrant cautioned on HubSpot's AI/ML strategy compared to Salesforce — AI features are less mature.",
+      "Customer support quality declines at lower tiers — free and starter users report slow and unhelpful support responses."
+    ],
+    killShots: {
+      features: "HubSpot was built as an inbound marketing platform that added CRM later. Salesforce built CRM first and added marketing after. If your team's primary need is outbound sales management with complex pipeline stages, you are buying the wrong product. Has their sales team actually mapped your pipeline requirements against HubSpot's deal stages, or just shown you the marketing automation features?",
+      price: "HubSpot's contact-based pricing means your costs grow every time your database grows — regardless of whether you use those contacts. Companies that run any outbound or event marketing see costs double or triple within 12 months as contacts accumulate. What is their estimate of your contact database size at renewal?",
+      late: "HubSpot's strength is inbound marketing automation. If your prospect needs a CRM that their outbound sales team will actually adopt and use daily, HubSpot's ease of use is a genuine advantage — but its sales depth is a genuine limitation. Ask them to show you the custom report that shows pipeline velocity by sales rep for the last 6 months."
+    }
+  },
+  "pipedrive": {
+    fullName: "Pipedrive",
+    sweetSpot: "Small sales teams under 50 people. Pipeline-focused AEs. Simple B2B sales processes.",
+    pricing: "Entry level. $14-99 PEPM depending on tier. Transparent pricing. Add-ons for LeadBooster, campaigns, and smart docs cost extra.",
+    implementationReality: "Fast — 1-2 weeks. Minimal admin needed. But limited scalability beyond 100 users.",
+    weaknesses: [
+      "Built for pipeline visualization only — lacks marketing automation, customer service, and advanced reporting that growing companies need",
+      "Limited customization — complex sales processes with multiple pipelines, custom objects, or non-standard workflows quickly hit limits",
+      "Reporting is basic — no advanced analytics, attribution modeling, or forecasting without third-party tools",
+      "No native marketing automation — requires integration with separate tools, creating data silos",
+      "Companies consistently outgrow Pipedrive at 50-100 employees and migrate to HubSpot or Salesforce",
+      "AI and automation features are significantly behind HubSpot and Salesforce",
+      "Customer support is limited — primarily self-serve documentation"
+    ],
+    killShots: {
+      features: "Pipedrive is an excellent pipeline visualization tool — but it is a pipeline tool, not a CRM platform. If your prospect needs marketing automation, customer success tracking, or any cross-functional workflow, Pipedrive will require 3-4 additional integrated tools to match what a modern CRM provides natively. What does their current tech stack look like beyond CRM?",
+      price: "Pipedrive's low entry price is real — but the total stack cost when you add the marketing tool, the email tool, the analytics tool, and the integrations to connect them often exceeds a single platform like HubSpot. What tools would Pipedrive replace vs what tools would they still need separately?"
+    }
+  },
+
+  // ── ITSM ─────────────────────────────────────────────────────────────────
+  "servicenow": {
+    fullName: "ServiceNow",
+    sweetSpot: "Large enterprises 5000+ employees. Complex multi-department workflows. Fortune 500 IT departments.",
+    pricing: "Premium and opaque. No public pricing. Estimated $100-300 PEPM for core ITSM. Enterprise licensing with annual true-ups. Implementation costs routinely equal first-year license. Total cost of ownership is consistently higher than initial quotes.",
+    implementationReality: "6-18 months for enterprise deployments. Requires certified ServiceNow partners. Steep learning curve — needs dedicated platform admin. Complex customization creates ongoing maintenance burden.",
+    weaknesses: [
+      "Price is the #1 objection — consistently 5-10x more expensive than mid-market alternatives like Freshservice for equivalent basic ITSM functionality",
+      "Steep learning curve — non-technical IT teams struggle with adoption. Gartner users cite the learning curve as the #1 frustration alongside cost.",
+      "Implementation complexity — 6-18 months is typical for enterprise deployments. Requires certified implementation partners at significant additional cost.",
+      "Overkill for companies under 2000 employees — 70-80% of ServiceNow features go unused by mid-market companies paying enterprise prices",
+      "Customization creates admin dependency — highly customized instances require dedicated certified admins to maintain. Upgrades frequently break custom workflows.",
+      "Licensing is opaque and negotiations are complex — customers report significant price variations and surprise true-up costs at renewal",
+      "Customer support quality at lower tiers is limited — critical issue response requires premium support contracts"
+    ],
+    killShots: {
+      price: "ServiceNow's licensing is deliberately opaque — every customer pays a different price depending on negotiation. The implementation cost on top of licensing typically equals or exceeds the first-year license fee. Has their proposal included a 3-year total cost of ownership including implementation partner, admin headcount, and annual increases?",
+      features: "ServiceNow is the right platform for a 10,000 employee enterprise running HR, IT, security, and legal workflows on one platform. For a company your size, you would be paying for and maintaining a platform where 70-80% of the capabilities go unused. What is the specific list of features that ServiceNow has that the alternatives do not — and which of those do you actually need in year one?",
+      late: "You are entering a ServiceNow evaluation late — but ServiceNow evaluations are long. 6-18 month implementations mean nothing is locked until the contract is signed. Use this window to introduce a total cost of ownership comparison. Freshservice at $19-99 PEPM with 2-4 week implementation vs ServiceNow at $100-300 PEPM with 6-18 month implementation — for the same core ITSM use case — is a conversation worth having."
+    }
+  },
+  "freshservice": {
+    fullName: "Freshservice",
+    sweetSpot: "SMBs and mid-market 100-2000 employees. IT teams wanting fast deployment. Budget-conscious ITSM buyers.",
+    pricing: "Transparent. Starter $19 PEPM, Growth $49 PEPM, Pro $95 PEPM. No hidden fees. Significantly cheaper than ServiceNow for equivalent headcount.",
+    implementationReality: "Fast — 2-4 weeks for standard deployment. No certified partner required. Self-service setup with good documentation.",
+    weaknesses: [
+      "Limited scalability beyond 2000 employees — complex enterprise workflows and cross-department ESM hit limits that ServiceNow handles natively",
+      "Reporting is limited without premium tiers — advanced analytics, custom dashboards, and executive reporting require Pro or Enterprise plan",
+      "Customization depth is less than ServiceNow — companies with very complex or non-standard ITSM workflows find Freshservice rigid",
+      "No native HR, legal, or security workflow modules — cross-functional ESM requires workarounds",
+      "Customer support quality is inconsistent — multiple G2 reviews cite uneven support response times",
+      "Integration challenges with legacy enterprise systems — ServiceNow's IntegrationHub is significantly more powerful",
+      "Freddy AI features are less mature than ServiceNow's AI platform"
+    ],
+    killShots: {
+      features: "Freshservice is excellent for core ITSM — incident, problem, change, and asset management. But if your prospect needs HR service delivery, security operations, or cross-department workflows beyond IT, Freshservice will hit its ceiling within 18 months. What are the top 3 non-IT workflows they need to automate in the next year?",
+      price: "Freshservice's transparent pricing is genuinely its strength for budget-conscious buyers. But the question is not just what they pay today — it is what they pay when they outgrow Freshservice and need to migrate to ServiceNow. Migration costs are real. Is the cheaper entry price worth the potential migration cost in 2-3 years?",
+      late: "Freshservice wins deals on speed and price — if you are late, you are competing on ServiceNow's weaknesses: price, complexity, and implementation timeline. Shift the evaluation back to total cost of ownership and ask: what does Freshservice cost vs ServiceNow over 3 years including implementation, admin headcount, and annual increases?"
+    }
+  },
+  "jira-service-management": {
+    fullName: "Jira Service Management",
+    sweetSpot: "Engineering and DevOps teams. Companies already on Atlassian stack. Tech-forward IT teams.",
+    pricing: "Competitive. Free for 3 agents. Standard $22 PEPM, Premium $47 PEPM. Cloud-first.",
+    implementationReality: "Fast for Atlassian users — 1-3 weeks. Slower and more complex for non-Atlassian environments.",
+    weaknesses: [
+      "Built for developer/engineering teams — non-technical IT teams find the interface complex and intimidating",
+      "Best value only if already on Atlassian stack — Jira, Confluence, Bitbucket integration is the core value prop. Standalone JSM is weak.",
+      "ITSM depth is less than ServiceNow and even Freshservice for traditional IT service desk use cases",
+      "Change management and CMDB capabilities are limited compared to dedicated ITSM platforms",
+      "Not designed for non-IT workflows — HR, facilities, legal service management is an afterthought",
+      "Reporting and analytics are basic without Atlassian Analytics add-on at additional cost"
+    ],
+    killShots: {
+      features: "Jira Service Management is excellent for DevOps teams that live in the Atlassian ecosystem. For a traditional IT service desk supporting non-technical end users, the interface and workflow are designed for engineers, not for HR or finance teams raising support tickets. Has their IT team assessed adoption risk with non-technical users?",
+      price: "JSM's price advantage disappears quickly once you add Confluence for knowledge base, Atlassian Analytics for reporting, and the add-ons needed for ITIL compliance. What is the total Atlassian stack cost they are comparing against, not just the JSM license?"
+    }
+  },
+
+  // ── Marketing Automation ─────────────────────────────────────────────────
+  "marketo": {
+    fullName: "Marketo (Adobe Marketo Engage)",
+    sweetSpot: "Large enterprises with dedicated marketing ops teams. B2B demand generation at scale. Companies with 1000+ employee marketing databases.",
+    pricing: "Premium. No public pricing. Estimated $1500-$15000+/month depending on database size and features. Adobe acquisition has increased prices significantly.",
+    implementationReality: "Complex. 3-6 months for full deployment. Requires certified Marketo specialists. Most companies need ongoing consultant support.",
+    weaknesses: [
+      "Complexity is legendary — Marketo requires dedicated marketing operations specialists to manage effectively. Non-technical marketers consistently struggle with adoption.",
+      "Adobe acquisition has made pricing less transparent and increased costs — customers report significant price increases post-Adobe acquisition",
+      "Implementation is slow and expensive — 3-6 months typical, often requiring certified Marketo consultants at $150-300/hour",
+      "UI is outdated — Marketo's interface has not kept pace with modern marketing platforms. Users consistently rate it lower for ease of use than HubSpot",
+      "Steep learning curve — the Marketo Certified Expert certification exists because the platform is genuinely complex to operate",
+      "Support quality has declined post-Adobe acquisition — multiple enterprise reviews cite slower response times and less knowledgeable support",
+      "Overkill for companies under 500 employees with basic nurture needs"
+    ],
+    killShots: {
+      price: "Marketo is priced for enterprises with dedicated marketing ops teams who can actually use its full capability. For a company your size, you would be paying enterprise prices for 20% utilization. What is their current marketing ops headcount, and do they have Marketo-certified staff to manage it?",
+      features: "Marketo is powerful for enterprise demand generation at scale. But its power comes from complexity — and that complexity requires dedicated specialists to unlock. HubSpot can do 80% of what Marketo does with 20% of the admin overhead. What specific Marketo feature is driving the evaluation that HubSpot cannot replicate?"
+    }
+  },
+  "pardot": {
+    fullName: "Salesforce Marketing Cloud Account Engagement (Pardot)",
+    sweetSpot: "Companies already on Salesforce CRM. B2B marketing automation tightly integrated with Salesforce Sales Cloud.",
+    pricing: "Growth $1250/month (up to 10K contacts), Plus $2500/month, Advanced $4000/month, Premium $15000/month. Requires Salesforce CRM license on top.",
+    implementationReality: "Fast if already on Salesforce — 4-8 weeks. Painful if not — requires Salesforce CRM first. Value proposition collapses without Salesforce.",
+    weaknesses: [
+      "Only makes sense if already on Salesforce — the entire value proposition is tight CRM integration. Without Salesforce, it is an expensive and limited standalone product.",
+      "Requires Salesforce CRM license on top of Pardot license — total cost is significantly higher than the Pardot price alone suggests",
+      "UI is outdated and clunky — consistently rated lower for ease of use than HubSpot and Marketo",
+      "Limited compared to HubSpot for inbound marketing — content management, social media, and SEO tools are weak",
+      "Rebranding to Marketing Cloud Account Engagement has created product confusion — documentation and support are inconsistent across old and new naming",
+      "Email sending limits and contact caps create unexpected overages at scale",
+      "Support quality is tied to Salesforce support tiers — standard support is slow"
+    ],
+    killShots: {
+      price: "Pardot's price assumes you are already paying for Salesforce CRM. If you add Salesforce CRM + Pardot + implementation, the total first-year cost is typically $40,000-$100,000+ for a mid-market company. HubSpot Marketing + Sales Hub covers both for a fraction of that cost. Has their proposal shown the total Salesforce ecosystem cost?",
+      features: "Pardot is a strong B2B marketing automation tool — but only for Salesforce shops. If they are not already committed to Salesforce as their CRM, choosing Pardot locks them into Salesforce whether they want it or not. Is their CRM decision settled before they choose Pardot?"
+    }
+  },
+
+  // ── Cloud Infrastructure ─────────────────────────────────────────────────
+  "aws": {
+    fullName: "Amazon Web Services (AWS)",
+    sweetSpot: "Enterprises and tech companies requiring deep services breadth. Companies with existing AWS expertise. Startups through Fortune 500.",
+    pricing: "Pay-as-you-go. Most comprehensive service catalog means costs are complex to predict and optimize. Average enterprise cloud bill exceeds estimates by 23% according to Gartner.",
+    implementationReality: "Fastest to start but complex to optimize. FinOps practice required to manage costs at scale. Migration projects routinely take 12-24 months for enterprise workloads.",
+    weaknesses: [
+      "Cost complexity and overruns — AWS billing is notoriously complex. Companies consistently overspend due to misconfigured resources, forgotten instances, and data transfer costs. Average enterprise exceeds cloud budget by 23%.",
+      "Steeper learning curve than Azure for Microsoft-centric enterprises — teams with Windows/.NET stack face higher retraining costs",
+      "Enterprise support is expensive — Business support starts at 10% of monthly spend. Enterprise support starts at 3% with $15K minimum.",
+      "Data egress costs are a hidden trap — moving data out of AWS is expensive and creates vendor lock-in",
+      "Partner ecosystem for enterprise integration is less mature than Azure for Microsoft shops",
+      "Compliance and sovereignty requirements in some regions favor Azure or Google's newer sovereign cloud offerings"
+    ],
+    killShots: {
+      price: "AWS is genuinely the most capable cloud platform — but it is also the easiest to overspend on. The average enterprise exceeds their AWS budget by 23% according to Gartner. Has their proposal included a FinOps resource or cost optimization plan, and what is their estimate vs actual spend for the last 12 months if they are already on AWS?",
+      features: "AWS has the deepest service catalog but that breadth requires the most expertise to leverage. For a Microsoft-centric enterprise, Azure's native integration with Active Directory, Office 365, and the .NET stack reduces migration complexity and ongoing operational overhead significantly. What percentage of their workloads are Microsoft-based?"
+    }
+  },
+  "azure": {
+    fullName: "Microsoft Azure",
+    sweetSpot: "Microsoft-centric enterprises. Windows/.NET workloads. Companies with existing Microsoft EA agreements. Hybrid cloud environments.",
+    pricing: "Competitive with AWS for most workloads. Microsoft EA agreements often include Azure credits. Hybrid benefits for Windows and SQL Server reduce costs significantly for Microsoft shops.",
+    implementationReality: "Fastest migration path for Microsoft-centric enterprises. Azure Arc enables hybrid management. Existing Active Directory integration reduces identity work.",
+    weaknesses: [
+      "Service breadth and innovation pace is behind AWS — Azure consistently lags AWS in new service launches and cutting-edge AI/ML capabilities",
+      "Azure outages have been more frequent and impactful than AWS — several high-profile global outages in 2023-2024 affected enterprise customers",
+      "Less strong for non-Microsoft technology stacks — Linux, open source, and cloud-native companies find AWS or GCP more natural",
+      "Azure portal UX is complex — multiple management interfaces create confusion for teams managing hybrid environments",
+      "Support quality varies significantly by region — APAC enterprise support response times are slower than US/EU",
+      "Documentation quality is inconsistent — Azure docs are frequently outdated or incomplete compared to AWS documentation"
+    ],
+    killShots: {
+      features: "Azure's strength is Microsoft integration — Active Directory, Office 365, Teams, and the .NET ecosystem work together natively. But Azure's innovation pace on AI, ML, and cloud-native services consistently lags AWS. For workloads that are not Microsoft-native, AWS or GCP provide more mature tooling. What percentage of their target workloads are Microsoft-stack vs cloud-native?",
+      price: "Azure's pricing advantage is real for Microsoft shops — Hybrid Benefit for Windows Server and SQL Server can reduce compute costs by 40-60%. But that advantage only applies to Microsoft workloads. What is the actual workload mix, and has the pricing comparison been done workload-by-workload rather than headline rate comparison?"
+    }
+  },
+  "gcp": {
+    fullName: "Google Cloud Platform (GCP)",
+    sweetSpot: "Data analytics, ML/AI workloads, cloud-native applications. Companies using Google Workspace. Organizations prioritizing BigQuery and Vertex AI.",
+    pricing: "Competitive. Sustained use discounts apply automatically. Committed use contracts provide 20-57% discounts. Generally competitive with AWS for compute.",
+    implementationReality: "Fastest for data and ML workloads. Steeper learning curve for traditional enterprise IT teams. Partner ecosystem is smaller than AWS and Azure.",
+    weaknesses: [
+      "Smallest partner ecosystem — fewer certified implementation partners and ISV integrations than AWS or Azure, particularly outside North America",
+      "Enterprise sales and support maturity is behind AWS and Azure — Google's consumer reputation creates enterprise trust concerns",
+      "Product discontinuation history creates risk — Google has a well-documented track record of killing products. Enterprise IT teams cite this as a genuine risk factor.",
+      "Market share significantly behind AWS and Azure — 11% vs AWS 31% and Azure 24% — fewer enterprises means less community knowledge and fewer reference customers",
+      "Hybrid and multi-cloud story is less mature than Azure Arc — enterprises with on-premise requirements find GCP more limited",
+      "Strong for data/ML but weaker for traditional enterprise workloads like SAP, Oracle, and legacy applications"
+    ],
+    killShots: {
+      features: "GCP is genuinely world-class for data analytics and ML workloads — BigQuery and Vertex AI are legitimately the best in class. But Google's enterprise product discontinuation track record is a real risk that enterprise IT procurement teams consistently raise. How does their risk assessment account for Google's history of killing enterprise products?",
+      price: "GCP's pricing is competitive and the sustained use discounts are a genuine advantage. But the smaller partner ecosystem means higher implementation costs and longer time-to-value for workloads outside of data and ML. What is the workload type — and has the implementation cost differential been factored into the total cost comparison?"
+    }
   }
+
 
 
 };
@@ -278,7 +497,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { product, competitor, stage, industry, reasons, context } = req.body;
+  const { product, competitor, stage, industry, reasons, context, your_sku, comp_sku } = req.body;
   if (!product || !competitor || !stage || !reasons) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -301,7 +520,8 @@ module.exports = async function handler(req, res) {
     }
   } catch(e) {}
 
-  const prompt = 'You are an elite B2B sales strategist. You have verified competitive intelligence. Use SPECIFIC facts — not generic advice.\n\nDEAL:\n- Product: ' + product + '\n- Competitor: ' + competitor + '\n- Stage: ' + stage + '\n- Industry: ' + (industry || 'B2B Technology') + '\n- Why losing: ' + reasons + '\n' + (context ? '- Context: ' + context + '\n' : '') + '\n' + (intelText || 'Use your knowledge of ' + competitor + ' for specific competitive intelligence.') + '\n\nRULES: Reference specific facts. Name exact actions. Use real evidence. Every word must be usable by an AE in 10 minutes.\n\nRespond ONLY with valid JSON:\n{\n  "dealAssessment": {\n    "winProbability": <0-100>,\n    "urgency": "High|Medium|Low",\n    "summary": "2-3 sentences referencing specific ' + competitor + ' reality vs their claims"\n  },\n  "competitorWeaknesses": [\n    "Specific weakness with evidence",\n    "Second specific weakness",\n    "Third specific weakness"\n  ],\n  "killShot": "Verbatim question using a SPECIFIC known ' + competitor + ' weakness",\n  "counterMoves": [\n    { "move": "Title max 5 words", "action": "Specific action with exact words and evidence", "timing": "Today|Within 48 hours|Before next meeting|This week" },\n    { "move": "Title max 5 words", "action": "Specific action", "timing": "Today|Within 48 hours|Before next meeting|This week" },\n    { "move": "Title max 5 words", "action": "Specific action", "timing": "Today|Within 48 hours|Before next meeting|This week" },\n    { "move": "Title max 5 words", "action": "Specific action", "timing": "Today|Within 48 hours|Before next meeting|This week" }\n  ],\n  "talkTrack": {\n    "opening": "Exact opening words referencing something specific about ' + competitor + '",\n    "keyMessages": [\n      "Message using real ' + competitor + ' weakness or customer complaint",\n      "Message reframing evaluation based on ' + competitor + ' known gaps",\n      "Message positioning ' + product + ' strength against ' + competitor + ' weakness"\n    ],\n    "objectionHandlers": [\n      { "objection": "Exact objection buyer will raise", "response": "Word-for-word counter using specific evidence" },\n      { "objection": "Second specific objection", "response": "Word-for-word counter with real data" }\n    ]\n  },\n  "emailTemplate": {\n    "subject": "Specific subject referencing real ' + competitor + ' issue",\n    "body": "Complete email under 200 words. References specific ' + competitor + ' weakness. Single clear next step. Ready to send."\n  }\n}';
+  const skuContext = (your_sku || comp_sku) ? '\n- Your specific product/SKU: ' + (your_sku || 'not specified') + '\n- Competitor specific product/SKU: ' + (comp_sku || 'not specified') : '';
+  const prompt = 'You are an elite B2B sales strategist. You have verified competitive intelligence. Use SPECIFIC facts — not generic advice.\n\nDEAL:\n- Product: ' + product + '\n- Competitor: ' + competitor + '\n- Stage: ' + stage + '\n- Industry: ' + (industry || 'B2B Technology') + '\n- Why losing: ' + reasons + '\n' + (context ? '- Context: ' + context + '\n' : '') + skuContext + '\n' + (intelText || 'Use your knowledge of ' + competitor + ' for specific competitive intelligence.') + '\n\nRULES: Reference specific facts. Name exact actions. Use real evidence. Every word must be usable by an AE in 10 minutes.\n\nRespond ONLY with valid JSON:\n{\n  "dealAssessment": {\n    "winProbability": <0-100>,\n    "urgency": "High|Medium|Low",\n    "summary": "2-3 sentences referencing specific ' + competitor + ' reality vs their claims"\n  },\n  "competitorWeaknesses": [\n    "Specific weakness with evidence",\n    "Second specific weakness",\n    "Third specific weakness"\n  ],\n  "killShot": "Verbatim question using a SPECIFIC known ' + competitor + ' weakness",\n  "counterMoves": [\n    { "move": "Title max 5 words", "action": "Specific action with exact words and evidence", "timing": "Today|Within 48 hours|Before next meeting|This week" },\n    { "move": "Title max 5 words", "action": "Specific action", "timing": "Today|Within 48 hours|Before next meeting|This week" },\n    { "move": "Title max 5 words", "action": "Specific action", "timing": "Today|Within 48 hours|Before next meeting|This week" },\n    { "move": "Title max 5 words", "action": "Specific action", "timing": "Today|Within 48 hours|Before next meeting|This week" }\n  ],\n  "talkTrack": {\n    "opening": "Exact opening words referencing something specific about ' + competitor + '",\n    "keyMessages": [\n      "Message using real ' + competitor + ' weakness or customer complaint",\n      "Message reframing evaluation based on ' + competitor + ' known gaps",\n      "Message positioning ' + product + ' strength against ' + competitor + ' weakness"\n    ],\n    "objectionHandlers": [\n      { "objection": "Exact objection buyer will raise", "response": "Word-for-word counter using specific evidence" },\n      { "objection": "Second specific objection", "response": "Word-for-word counter with real data" }\n    ]\n  },\n  "emailTemplate": {\n    "subject": "Specific subject referencing real ' + competitor + ' issue",\n    "body": "Complete email under 200 words. References specific ' + competitor + ' weakness. Single clear next step. Ready to send."\n  }\n}';
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
