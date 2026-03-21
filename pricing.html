@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FlipIt Pricing — Deal Rescue for B2B Sales Teams</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#080808;--surface:#111111;--surface2:#181818;--border:#222222;--border2:#2e2e2e;--text:#f0f0f0;--muted:#777777;--muted2:#444444;--red:#e5484d;--red-dim:#c03a3e;--red-bg:#180a0a;--red-border:#2e1010;--green:#30a46c;--green-bg:#0a1a10;--amber:#e5a00d}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:56px;background:rgba(8,8,8,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nl{display:flex;align-items:center;gap:8px}
+.nm{width:28px;height:28px;border-radius:7px;background:var(--red);display:flex;align-items:center;justify-content:center}
+.nn{font-size:16px;font-weight:600;letter-spacing:-0.3px}
+.nt{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--surface2);border:1px solid var(--border2);color:var(--muted);font-family:'DM Mono',monospace}
+.nb{padding:7px 16px;border-radius:7px;background:var(--red);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none}
+.page{max-width:900px;margin:0 auto;padding:110px 1.5rem 5rem;text-align:center}
+.page h1{font-size:clamp(32px,5vw,52px);font-weight:600;letter-spacing:-2px;margin-bottom:1rem}
+.page .sub{font-size:17px;color:var(--muted);margin-bottom:3.5rem;line-height:1.6}
+.beta-banner{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:20px;border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);font-size:13px;font-weight:500;margin-bottom:1.5rem;font-family:'DM Mono',monospace}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.25rem;margin-bottom:3rem;text-align:left}
+.plan{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem}
+.plan.featured{border:2px solid var(--red);position:relative}
+.plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:11px;font-weight:600;padding:3px 12px;border-radius:10px;font-family:'DM Mono',monospace;white-space:nowrap}
+.plan-name{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'DM Mono',monospace;margin-bottom:.75rem}
+.plan-price{font-size:42px;font-weight:600;letter-spacing:-2px;line-height:1;margin-bottom:4px}
+.plan-period{font-size:13px;color:var(--muted);margin-bottom:1.25rem}
+.plan-desc{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.feature{display:flex;gap:8px;font-size:13px;line-height:1.5;margin-bottom:8px;color:var(--muted)}
+.fck{color:var(--green);flex-shrink:0;margin-top:2px;font-size:12px}
+.plan-btn{display:block;width:100%;padding:10px;border-radius:8px;font-size:14px;font-weight:600;text-align:center;text-decoration:none;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:1.25rem;border:1.5px solid var(--border2);background:transparent;color:var(--text)}
+.plan-btn:hover{border-color:var(--border);background:var(--surface2)}
+.plan-btn.primary{background:var(--red);border-color:var(--red);color:#fff}
+.plan-btn.primary:hover{background:var(--red-dim)}
+.coming-soon{font-size:12px;color:var(--muted2);text-align:center;margin-top:6px;font-family:'DM Mono',monospace}
+.faq{max-width:600px;margin:0 auto;text-align:left}
+.faq h2{font-size:22px;font-weight:600;letter-spacing:-0.5px;margin-bottom:1.5rem;text-align:center}
+.faq-item{border-bottom:1px solid var(--border);padding:1rem 0}
+.faq-q{font-size:15px;font-weight:500;margin-bottom:6px}
+.faq-a{font-size:14px;color:var(--muted);line-height:1.65}
+@media(max-width:600px){nav{padding:0 1rem}.page{padding:90px 1rem 4rem}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="nl" style="text-decoration:none">
+    <div class="nm"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5L12.5 11.5H1.5L7 1.5Z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/></svg></div>
+    <span class="nn">FlipIt</span>
+    <span class="nt">beta</span>
+  </a>
+  <a href="/app" class="nb">Get rescue plan →</a>
+</nav>
+
+<div class="page">
+  <div class="beta-banner">Currently in beta — free to use</div>
+  <h1>Simple pricing.<br/>No surprises.</h1>
+  <p class="sub">FlipIt is free during beta. Paid plans launch soon.<br/>Sign up now to lock in early access pricing.</p>
+
+  <div class="plans">
+    <div class="plan">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">$0</div>
+      <div class="plan-period">free forever</div>
+      <div class="plan-desc">For individual AEs testing the waters</div>
+      <div class="feature"><span class="fck">✓</span><span>5 rescue plans per month</span></div>
+      <div class="feature"><span class="fck">✓</span><span>All industries and competitors</span></div>
+      <div class="feature"><span class="fck">✓</span><span>Kill shot + counter-moves</span></div>
+      <div class="feature"><span class="fck">✓</span><span>Talk track + email template</span></div>
+      <a href="/app" class="plan-btn">Start free →</a>
+    </div>
+
+    <div class="plan featured">
+      <div class="plan-badge">Most popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">$49</div>
+      <div class="plan-period">per user / month</div>
+      <div class="plan-desc">For AEs who can't afford to lose competitive deals</div>
+      <div class="feature"><span class="fck">✓</span><span>Unlimited rescue plans</span></div>
+      <div class="feature"><span class="fck">✓</span><span>All industries and competitors</span></div>
+      <div class="feature"><span class="fck">✓</span><span>SKU-level competitive intel</span></div>
+      <div class="feature"><span class="fck">✓</span><span>Deal history and saved plans</span></div>
+      <div class="feature"><span class="fck">✓</span><span>Priority support</span></div>
+      <a href="/app" class="plan-btn primary">Coming soon</a>
+      <div class="coming-soon">Join waitlist → early@flipit.fyi</div>
+    </div>
+
+    <div class="plan">
+      <div class="plan-name">Team</div>
+      <div class="plan-price">$299</div>
+      <div class="plan-period">per team / month</div>
+      <div class="plan-desc">For VP Sales who wants the whole team prepared</div>
+      <div class="feature"><span class="fck">✓</span><span>Up to 20 users</span></div>
+      <div class="feature"><span class="fck">✓</span><span>Unlimited rescue plans</span></div>
+      <div class="feature"><span class="fck">✓</span><span>Team win/loss analytics</span></div>
+      <div class="feature"><span class="fck">✓</span><span>Custom competitor database</span></div>
+      <div class="feature"><span class="fck">✓</span><span>Slack integration</span></div>
+      <a href="/app" class="plan-btn">Coming soon</a>
+      <div class="coming-soon">Join waitlist → early@flipit.fyi</div>
+    </div>
+  </div>
+
+  <div class="faq">
+    <h2>Common questions</h2>
+    <div class="faq-item">
+      <div class="faq-q">What industries does FlipIt cover?</div>
+      <div class="faq-a">HR Tech, CRM, ITSM, Cyber Insurance, Marketing Automation, and Cloud Infrastructure. More industries added weekly. If your competitor isn't in the database yet, FlipIt still generates a plan using AI — it just gets sharper with curated intel.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How is this different from Crayon or Klue?</div>
+      <div class="faq-a">Crayon and Klue track what competitors are doing. FlipIt tells you what to do right now in a deal you're losing. It's deal-moment intelligence, not general competitive monitoring. And it costs a fraction of the price.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Is my deal data stored anywhere?</div>
+      <div class="faq-a">During beta, no deal data is stored. Your inputs go directly to Claude AI and are not saved on our servers. Full privacy policy coming with paid plans.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can I add my own competitors?</div>
+      <div class="faq-a">Custom competitor databases are coming in the Team plan. In the meantime, email us at early@flipit.fyi and we'll add your specific competitors manually.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
