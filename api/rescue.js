@@ -17,7 +17,7 @@ RULES: Be specific to the products mentioned. Win probability min 40%. Only conf
 Respond ONLY valid JSON no markdown:
 {"dealAssessment":{"winProbability":<40-100>,"urgency":"high|medium|low","summary":"2 specific sentences about this deal"},"killShot":"specific differentiator based on the products mentioned","competitorWeaknesses":["specific weakness","specific weakness","specific weakness"],"counterMoves":[{"move":"title","timing":"when","action":"specific action"},{"move":"title","timing":"when","action":"specific action"},{"move":"title","timing":"when","action":"specific action"},{"move":"title","timing":"when","action":"specific action"}],"talkTrack":{"opening":"specific opening line","keyMessages":["specific","specific","specific"],"objectionHandlers":[{"objection":"real objection","response":"specific response"},{"objection":"real objection","response":"specific response"},{"objection":"real objection","response":"specific response"}]},"emailTemplate":{"subject":"specific subject","body":"150 words ready to send only placeholder [Name]"}}`;
     try {
-      const response = await anthropic.messages.create({ model: "claude-haiku-4-5", max_tokens: 2500, messages: [{ role: "user", content: nlPrompt }] });
+      const response = await anthropic.messages.create({ model: "claude-haiku-4-5", max_tokens: 4096, messages: [{ role: "user", content: nlPrompt }] });
       const clean = response.content[0].text.trim().replace(/```json|```/g, "").trim();
       return res.status(200).json(JSON.parse(clean));
     } catch(err) {
@@ -90,7 +90,7 @@ Respond ONLY valid JSON no markdown:
   try {
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5",
-      max_tokens: 2500,
+      max_tokens: 4096,
       messages: [{ role: "user", content: prompt }]
     });
     const clean = response.content[0].text.trim().replace(/```json|```/g, "").trim();
