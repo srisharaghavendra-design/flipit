@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     (company_size==="smb"||company_size==="mid"?',"sizeRecommendation":"product fit check alternative SKU"':"")+
     '}';
   try {
-    const response = await anthropic.messages.create({ model: "claude-haiku-4-5", max_tokens: 1500, messages: [{ role: "user", content: prompt }] });
+    const response = await anthropic.messages.create({ model: "claude-haiku-4-5", max_tokens: 2500, messages: [{ role: "user", content: prompt }] });
     const clean = response.content[0].text.trim().replace(/```json|```/g,"").trim();
     return res.status(200).json(JSON.parse(clean));
   } catch(err) {
