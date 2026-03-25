@@ -4,29 +4,27 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   const { product, competitor, stage, industry, reasons, context, your_sku, comp_sku, your_pid, comp_pid, company_size, deal_size, partner, audience, geography, meddic_status, depth = "2", flip_mode = false } = req.body;
   if (!product || !competitor || !stage || !reasons) return res.status(400).json({ error: "Missing required fields" });
-  const DEPTH = {
-    "1": "Business value and ROI only. Executive audience. Zero technical jargon.",
-    "2": "Specific features, real specs, actual capability differences. Name exact model numbers and feature names.",
-    "3": "Architecture: cloud vs on-premise, API limits, data processing, latency, scalability. How are they built differently?",
-    "4": "Cost and integration: TCO breakdown, hidden fees, implementation time, licensing traps, admin overhead.",
-    "5": "Proof and evidence: G2 stats, Gartner ratings, analyst findings, customer case studies, benchmarks."
-  };
-  const depths = String(depth).split(",").map(d => d.trim()).filter(d => DEPTH[d]);
-  const depthReq = depths.map(d => DEPTH[d]).join(" AND ");
-  const isFlip = flip_mode === true || flip_mode === "true";
-  const lines = [
-    isFlip ? "You are a " + competitor + " sales rep showing how " + competitor + " attacks " + product + " in deals." : "You are an elite B2B sales strategist.",
-    "DEAL: " + product + (your_pid ? " PID:" + your_pid : "") + " vs " + competitor + (comp_pid ? " PID:" + comp_pid : "") + " | " + stage + " | " + (industry || "B2B") + " | Losing: " + reasons + (company_size ? " | " + company_size : "") + (deal_size ? " | " + deal_size : "") + (partner ? " | Partner:" + partner : "") + (meddic_status ? " | MEDDIC:" + meddic_status : "") + (context ? " | " + context : ""),
-    "DEPTH REQUIRED: " + (depthReq || DEPTH["2"]) + (audience ? " | Audience:" + audience : "") + (geography ? " | Geo:" + geography : ""),
-    "RULES: Every point specific to " + (your_sku || product) + " vs " + (comp_sku || competitor) + ". Real feature names and specs. Win prob min 40%. Only confirmed weaknesses. No fake stats.",
-    'Return JSON only: {"dealAssessment":{"winProbability":65,"urgency":"high","summary":"specific 2 sentences"},"killShot":"specific differentiator with real feature names","competitorWeaknesses":["real specific weakness","real specific weakness","real specific weakness"],"counterMoves":[{"move":"title","timing":"when","action":"specific with real data"},{"move":"title","timing":"when","action":"specific"},{"move":"title","timing":"when","action":"specific"},{"move":"title","timing":"when","action":"specific"}],"talkTrack":{"opening":"specific opening","keyMessages":["specific","specific","specific"],"objectionHandlers":[{"objection":"real objection","response":"specific"},{"objection":"real","response":"specific"},{"objection":"real","response":"specific"}]},"emailTemplate":{"subject":"specific","body":"150 words ready to send [Name] only"}' + (partner ? ',"partnerIntel":"' + partner + ' OEM portfolio and co-sell strategy"' : "") + (company_size === "smb" || company_size === "mid" ? ',"sizeRecommendation":"right-size with alternative SKU"' : "") + "}"
-  ];
-  const prompt = lines.join("\n");
+  const depthMap = {"1":"Business value and ROI only. Zero jargon.","2":"Specific product features, real specs, version differences. Name actual capabilities.","3":"Architecture differences: cloud vs on-premise, API limits, data models, security design.","4":"TCO breakdown: implementation costs, hidden licensing, admin overhead, migration complexity.","5":"Evidence-backed: G2 stats, Gartner data, analyst reports, real benchmarks."};
+  const depths = String(depth).split(",").map(d=>d.trim()).filter(d=>depthMap[d]);
+  const depthText = depths.length ? depths.map(d=>"DEPTH "+d+": "+depthMap[d]).join(" | ") : "DEPTH 2: "+depthMap["2"];
+  const isFlip = flip_mode===true||flip_mode==="true";
+  const geo = {apac:"APAC data sovereignty and local compliance.",india:"India: data localization, MeitY, BIS certification.",emea:"EMEA: GDPR, EU AI Act.",na:"NA: FedRAMP, SOC2.",me:"ME: data residency, Arabic support."};
+  const aud = {tdm:"deep technical specs",bdm:"business outcomes ROI",cio:"security compliance risk",cto:"architecture APIs roadmap",cfo:"TCO hidden costs payback",vp_sales:"win rates revenue",end_user:"ease of use adoption",procurement:"licensing SLAs terms"};
+  const sys = isFlip
+    ? "You are a "+competitor+" sales rep. Show exactly how "+competitor+" attacks "+product+" - name real "+product+" weaknesses and limitations."
+    : "You are an elite B2B sales strategist. Be brutally specific - name real product specs, real prices, real feature gaps.";
+  const user = "DEAL: "+product+(your_pid?" PID:"+your_pid:"")+" vs "+competitor+(comp_pid?" PID:"+comp_pid:"")+" | Stage:"+stage+" | Industry:"+(industry||"B2B")+" | Losing:"+reasons+(company_size?" | Size:"+company_size:"")+(deal_size?" | Deal:"+deal_size:"")+(partner?" | Partner:"+partner:"")+(meddic_status?" | MEDDIC:"+meddic_status:"")+(context?" | Context:"+context:"")+(audience&&aud[audience]?" | Audience:"+aud[audience]:"")+(geography&&geo[geography]?" | Geo:"+geo[geography]:"")+
+    "\n"+depthText+
+    "\nRULES: Every point specific to "+(your_sku||product)+" vs "+(comp_sku||competitor)+". Min win prob 40%. Only confirmed weaknesses. No fake stats."+
+    '\nJSON only: {"dealAssessment":{"winProbability":<40-100>,"urgency":"high|medium|low","summary":"<2 specific sentences>"},"killShot":"<real spec or price differentiator>","competitorWeaknesses":["<specific>","<specific>","<specific>"],"counterMoves":[{"move":"<t>","timing":"<w>","action":"<specific real data>"},{"move":"<t>","timing":"<w>","action":"<specific>"},{"move":"<t>","timing":"<w>","action":"<specific>"},{"move":"<t>","timing":"<w>","action":"<specific>"}],"talkTrack":{"opening":"<specific>","keyMessages":["<specific>","<specific>","<specific>"],"objectionHandlers":[{"objection":"<real>","response":"<specific>"},{"objection":"<real>","response":"<specific>"},{"objection":"<real>","response":"<specific>"}]},"emailTemplate":{"subject":"<specific>","body":"<150w ready to send>"}'+
+    (partner?',"partnerIntel":"<'+partner+' OEM portfolio and co-sell strategy>"':'')+
+    (company_size==="smb"||company_size==="mid"?',"sizeRecommendation":"<product fit check and alternative SKU>"':'')+
+    '}';
   try {
-    const r = await anthropic.messages.create({ model: "claude-haiku-4-5", max_tokens: 2048, messages: [{ role: "user", content: prompt }] });
-    const clean = r.content[0].text.trim().replace(/```json|```/g, "").trim();
+    const r = await anthropic.messages.create({model:"claude-haiku-4-5",max_tokens:2048,system:sys,messages:[{role:"user",content:user}]});
+    const clean = r.content[0].text.trim().replace(/```json|```/g,"").trim();
     return res.status(200).json(JSON.parse(clean));
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch(err) {
+    return res.status(500).json({error:err.message});
   }
 }
