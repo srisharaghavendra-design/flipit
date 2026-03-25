@@ -207,17 +207,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           <label>TCO Model</label>
           <select id="tco_model"><option value="">Select model</option><option value="3yr">3-Year Total Cost</option><option value="perseat">Per-Seat All-In</option><option value="hidden">Hidden Cost Exposure</option><option value="migration">Migration Cost</option><option value="roi">ROI / Payback Period</option></select>
         </div>
-        <div style="margin-bottom:12px">
-          <div class="rl">Technical depth (select one or more)</div>
-          <div class="rw">
-            <button class="dtag" data-depth="1">Business Value</button>
-            <button class="dtag on" data-depth="2">Technical Specs</button>
-            <button class="dtag" data-depth="3">Architecture</button>
-            <button class="dtag" data-depth="4">Cost &amp; Integration</button>
-            <button class="dtag" data-depth="5">Proof &amp; Evidence</button>
-            <button class="dtag" data-depth="all">All Depths</button>
-          </div>
-        </div>
+
         <div style="margin-bottom:12px">
           <div class="rl">MEDDPICC status <span style="color:var(--muted2);font-weight:400">(check what you have confirmed)</span></div>
           <div class="rw">
@@ -234,6 +224,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       </div>
     </div>
 
+    <div style="margin-bottom:12px">
+      <div class="rl">Output depth (select one or more)</div>
+      <div class="rw">
+        <button class="dtag" data-depth="1">Business Value</button>
+        <button class="dtag on" data-depth="2">Technical Specs</button>
+        <button class="dtag" data-depth="3">Architecture</button>
+        <button class="dtag" data-depth="4">Cost &amp; Integration</button>
+        <button class="dtag" data-depth="5">Proof &amp; Evidence</button>
+        <button class="dtag" data-depth="all">All Depths</button>
+      </div>
+    </div>
     <div class="field" style="margin-bottom:12px;margin-top:8px">
       <label>Additional context <span style="font-weight:400;color:var(--muted2)">(optional)</span></label>
       <textarea id="context" placeholder="Key stakeholders, what the customer said, budget situation..."></textarea>
@@ -508,8 +509,25 @@ async function handleFlip(flipMode=false){
   }finally{btn.disabled=false;btn.textContent='Flip this deal ->';}
 }
 function uc(u){if(!u)return'um';const v=u.toLowerCase();return v==='high'?'uh':v==='low'?'ul':'um';}
+function normalize(d){
+  // Handle both old key names and new shorter key names
+  return {
+    dealAssessment: d.dealAssessment || {winProbability: d.score?.winProbability||d.score?.win||55, urgency: d.score?.urgency||'medium', summary: d.score?.why||d.score?.summary||''},
+    killShot: d.killShot || d.kill || '',
+    competitorWeaknesses: d.competitorWeaknesses || d.theirWeaknesses || [],
+    counterMoves: (d.counterMoves || d.moves || []).map(m=>({move:m.move||m.what||'',timing:m.timing||m.when||'',action:m.action||m.how||''})),
+    talkTrack: {
+      opening: d.talkTrack?.opening || d.talk?.open || '',
+      keyMessages: d.talkTrack?.keyMessages || d.talk?.msgs || [],
+      objectionHandlers: (d.talkTrack?.objectionHandlers || d.talk?.objections || []).map(o=>({objection:o.objection||o.q||'',response:o.response||o.a||''}))
+    },
+    emailTemplate: {subject: d.emailTemplate?.subject||d.email?.sub||'', body: d.emailTemplate?.body||d.email?.body||''},
+    partnerIntel: d.partnerIntel || d.partner || null,
+    sizeRecommendation: d.sizeRecommendation || null
+  };
+}
 function wc(p){return p>=60?'#30a46c':p>=35?'#e5a00d':'#e5484d';}
-function renderOutput(d,product,competitor,flipMode){
+function renderOutput(raw,product,competitor,flipMode){const d=normalize(raw);
   const a=d.dealAssessment,wp=Number(a.winProbability);
   const mvs=(d.counterMoves||[]).map((m,i)=>'<div class="mv"><div class="mvn">'+(i+1)+'</div><div class="mvb"><div class="mvh"><span class="mvt">'+m.move+'</span><span class="mvtime">'+m.timing+'</span></div><div class="mva">'+m.action+'</div></div></div>').join('');
   const msgs=(d.talkTrack.keyMessages||[]).map(m=>'<div class="kmsg"><span class="ck">&#10003;</span><span>'+m+'</span></div>').join('');
