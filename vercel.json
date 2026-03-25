@@ -1,16 +1,7 @@
 {
-  "outputDirectory": ".",
   "functions": {
-    "api/rescue.js": {
-      "memory": 256,
-      "maxDuration": 30
+    "api/*.js": {
+      "maxDuration": 60
     }
-  },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/app", "dest": "/app.html" },
-    { "src": "/pricing", "dest": "/pricing.html" },
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  }
 }
