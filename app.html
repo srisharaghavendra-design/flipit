@@ -129,7 +129,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <div class="nl-input-wrap">
       <textarea class="nl-input" id="nlInput" placeholder="Describe your situation... e.g. &quot;I'm losing a Cisco Room Bar Pro deal to Poly Studio X50 at proposal stage, pricing objection, partner is Westcon&quot;" rows="2"></textarea>
       <button class="nl-send" onclick="handleNLInput()" title="Parse and fill form">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:12px;font-weight:700;letter-spacing:-0.3px">FlipIt</span>
       </button>
     </div>
     <div class="divider">or fill the form</div>
@@ -183,7 +183,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <!-- ADVANCED OPTIONS TOGGLE -->
     <div class="advanced-toggle" id="advToggle" onclick="toggleAdvanced()">
       <span class="arrow">&#9658;</span>
-      <span>Advanced options (depth, audience, geography, MEDDIC, partner, TCO)</span>
+      <span>Advanced options (depth, audience, geography, MEDDPICC, partner, TCO)</span>
     </div>
     <div class="advanced-section" id="advSection">
       <div style="padding-top:12px">
@@ -219,14 +219,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
           </div>
         </div>
         <div style="margin-bottom:12px">
-          <div class="rl">MEDDIC status <span style="color:var(--muted2);font-weight:400">(check what you have)</span></div>
+          <div class="rl">MEDDPICC status <span style="color:var(--muted2);font-weight:400">(check what you have confirmed)</span></div>
           <div class="rw">
             <button class="rtag" data-id="M" style="font-family:'DM Mono',monospace">M Metrics</button>
             <button class="rtag" data-id="E" style="font-family:'DM Mono',monospace">E Econ Buyer</button>
-            <button class="rtag" data-id="D" style="font-family:'DM Mono',monospace">D Decision</button>
-            <button class="rtag" data-id="Dp" style="font-family:'DM Mono',monospace">Dp Dec Process</button>
+            <button class="rtag" data-id="D" style="font-family:'DM Mono',monospace">D Decision Criteria</button>
+            <button class="rtag" data-id="Dp" style="font-family:'DM Mono',monospace">Dp Decision Process</button>
+            <button class="rtag" data-id="P" style="font-family:'DM Mono',monospace">P Paper Process</button>
             <button class="rtag" data-id="I" style="font-family:'DM Mono',monospace">I Identify Pain</button>
-            <button class="rtag" data-id="C" style="font-family:'DM Mono',monospace">C Champion</button>
+            <button class="rtag" data-id="Ch" style="font-family:'DM Mono',monospace">Ch Champion</button>
+            <button class="rtag" data-id="Co" style="font-family:'DM Mono',monospace">Co Competition</button>
           </div>
         </div>
       </div>
@@ -360,7 +362,7 @@ const PRODUCT_DB = {
 const SMB_WARN={"Room Bar Pro":"Room Bar Pro is large-room optimized. For SMB consider Room Bar or Room Kit Mini.","Board Pro 75":"Board Pro 75 is enterprise-sized. For SMB consider Board Pro 55 or Desk Pro.","Codec Pro":"Codec Pro is broadcast-grade. For SMB consider Room Kit or Room Bar.","Nexus 9000":"Nexus 9000 is data center grade. For SMB consider Catalyst 9200 or Meraki MS.","Sales Cloud Unlimited":"Sales Cloud Unlimited is enterprise-priced. SMB should consider Professional tier."};
 const selected=new Set();
 const selectedDepths=new Set([2]);
-const RL={late:'Entered the deal late - competitor has the head start',price:'Pricing is higher than competitor',discount:'Limited discount flexibility',partner:'Partner is actively pushing competitor',features:'Competitor has better or more features',incumbent:'Competitor is the incumbent solution',relationship:'Weaker executive or champion relationship',technical:'Lost the technical evaluation or POC',greenfield:'No budget allocated / greenfield evaluation',M:'Metrics identified',E:'Economic buyer engaged',D:'Decision criteria defined',Dp:'Decision process mapped',I:'Pain identified',C:'Champion identified'};
+const RL={late:'Entered the deal late - competitor has the head start',price:'Pricing is higher than competitor',discount:'Limited discount flexibility',partner:'Partner is actively pushing competitor',features:'Competitor has better or more features',incumbent:'Competitor is the incumbent solution',relationship:'Weaker executive or champion relationship',technical:'Lost the technical evaluation or POC',greenfield:'No budget allocated / greenfield evaluation',M:'Metrics identified',E:'Economic buyer engaged',D:'Decision criteria defined',Dp:'Decision process mapped',P:'Paper process understood',I:'Pain identified',Ch:'Champion identified',Co:'Competition mapped'};
 
 function initDropdowns(){
   const cos=Object.keys(PRODUCT_DB).sort();
@@ -439,19 +441,21 @@ async function handleNLInput(){
   if(!text)return;
   const btn=document.querySelector('.nl-send');
   btn.style.opacity='0.5';
+  const errEl=document.getElementById('err');
+  errEl.style.display='none';
+  document.getElementById('output').innerHTML='<div class="out-section" style="text-align:center;padding:2rem"><div style="font-size:13px;color:var(--muted);margin-bottom:16px">Generating your rescue plan...</div><div style="display:flex;justify-content:center;gap:6px"><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite"></span><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .2s"></span><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .4s"></span></div></div><style>@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>';
+  document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
   try{
-    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product:'parse',competitor:'parse',stage:'parse',reasons:'parse',nl_input:text,parse_only:true})});
-    const d=await res.json();
-    if(d.parsed){
-      if(d.parsed.your_company){document.getElementById('your_company').value=d.parsed.your_company;updateCats('your');}
-      if(d.parsed.your_sku){setTimeout(()=>{document.getElementById('your_sku').value=d.parsed.your_sku;},300);}
-      if(d.parsed.comp_company){document.getElementById('comp_company').value=d.parsed.comp_company;updateCats('comp');}
-      if(d.parsed.comp_sku){setTimeout(()=>{document.getElementById('comp_sku').value=d.parsed.comp_sku;},300);}
-      if(d.parsed.stage)document.getElementById('stage').value=d.parsed.stage;
-      if(d.parsed.partner)document.getElementById('partner').value=d.parsed.partner;
-    }
-  }catch(e){console.log('NL parse failed, continuing normally');}
-  btn.style.opacity='1';
+    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product:'described in context',competitor:'described in context',stage:'Discovery',reasons:'Described in natural language input',nl_input:text,context:text,depth:'2',use_nl:true})});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    window._flipInput={product:'Natural Language Input',competitor:'Competitor',deal_stage:'Discovery',losing_reason:text,industry:''};
+    renderOutput(data,'Your Product','Competitor',false);
+    document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){
+    errEl.textContent='Error: '+e.message;errEl.style.display='block';
+    document.getElementById('output').innerHTML='';
+  }finally{btn.style.opacity='1';}
 }
 async function handleFlip(flipMode=false){
   const yourCo=document.getElementById('your_company').value;
@@ -467,8 +471,8 @@ async function handleFlip(flipMode=false){
   errEl.style.display='none';
   const product=yourCo+' '+yourSku;
   const competitor=compCo+' '+compSku;
-  const reasons=[...selected].filter(id=>RL[id]&&!['M','E','D','Dp','I','C'].includes(id)).map(id=>RL[id]).join('; ');
-  const meddic=[...selected].filter(id=>['M','E','D','Dp','I','C'].includes(id)).map(id=>RL[id]).join(', ');
+  const reasons=[...selected].filter(id=>RL[id]&&!['M','E','D','Dp','P','I','Ch','Co'].includes(id)).map(id=>RL[id]).join('; ');
+  const meddic=[...selected].filter(id=>['M','E','D','Dp','P','I','Ch','Co'].includes(id)).map(id=>RL[id]).join(', ');
   const depthList=[...selectedDepths].sort().join(',');
   const btn=document.getElementById('flipBtn');
   btn.disabled=true;btn.textContent=flipMode?'Analyzing their playbook...':'Generating your rescue plan...';
