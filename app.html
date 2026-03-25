@@ -127,7 +127,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   <div class="form-card">
     <!-- NATURAL LANGUAGE INPUT -->
     <div class="nl-input-wrap">
-      <textarea class="nl-input" id="nlInput" placeholder="Or just describe your situation... e.g. &quot;I'm losing a Cisco Room Bar Pro deal to Poly Studio X50 at proposal stage because of pricing, partner is Westcon&quot;" rows="2"></textarea>
+      <textarea class="nl-input" id="nlInput" placeholder="Describe your situation... e.g. &quot;I'm losing a Cisco Room Bar Pro deal to Poly Studio X50 at proposal stage, pricing objection, partner is Westcon&quot;" rows="2"></textarea>
       <button class="nl-send" onclick="handleNLInput()" title="Parse and fill form">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
@@ -473,11 +473,11 @@ async function handleFlip(flipMode=false){
   const btn=document.getElementById('flipBtn');
   btn.disabled=true;btn.textContent=flipMode?'Analyzing their playbook...':'Generating your rescue plan...';
   document.getElementById('output').innerHTML='';
-  // Show streaming placeholder
-  document.getElementById('output').innerHTML='<div class="out-section" style="text-align:center;padding:2rem"><div style="font-size:13px;color:var(--muted);margin-bottom:12px">Generating your rescue plan...</div><div id="streamDots" style="display:flex;justify-content:center;gap:6px"><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite"></span><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .2s"></span><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .4s"></span></div></div><style>@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>';
+  // Show loading animation immediately
+  document.getElementById('output').innerHTML='<div class="out-section" style="text-align:center;padding:2rem"><div style="font-size:13px;color:var(--muted);margin-bottom:16px">'+(flipMode?'Analyzing their playbook...':'Generating your rescue plan...')+'</div><div style="display:flex;justify-content:center;gap:6px"><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite"></span><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .2s"></span><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .4s"></span></div></div><style>@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>';
   document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
   try{
-    const payload={product,competitor,stage,
+    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product,competitor,stage,
       industry:document.getElementById('industry').value,
       reasons,context:document.getElementById('context').value.trim(),
       your_sku:yourSku,comp_sku:compSku,
@@ -492,32 +492,12 @@ async function handleFlip(flipMode=false){
       tco_model:document.getElementById('tco_model').value,
       prospect_company:document.getElementById('prospect_company').value.trim(),
       meddic_status:meddic,
-      depth:depthList,flip_mode:flipMode};
-    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const reader=res.body.getReader();
-    const decoder=new TextDecoder();
-    let fullText='';
-    while(true){
-      const{done,value}=await reader.read();
-      if(done)break;
-      const chunk=decoder.decode(value);
-      const lines=chunk.split('\n');
-      for(const line of lines){
-        if(!line.startsWith('data:'))continue;
-        try{
-          const d=JSON.parse(line.slice(5).trim());
-          if(d.error)throw new Error(d.error);
-          if(d.chunk)fullText+=d.chunk;
-          if(d.done){
-            const clean=fullText.trim().replace(/```json|```/g,'').trim();
-            const data=JSON.parse(clean);
-            window._flipInput={product,competitor,deal_stage:stage,losing_reason:reasons,industry:document.getElementById('industry').value};
-            renderOutput(data,product,competitor,flipMode);
-            document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
-          }
-        }catch(parseErr){if(parseErr.message!=='Unexpected end of JSON input')console.log('stream parse:',parseErr.message);}
-      }
-    }
+      depth:depthList,flip_mode:flipMode})});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    window._flipInput={product,competitor,deal_stage:stage,losing_reason:reasons,industry:document.getElementById('industry').value};
+    renderOutput(data,product,competitor,flipMode);
+    document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){
     errEl.textContent='Error: '+e.message;errEl.style.display='block';
     document.getElementById('output').innerHTML='';
