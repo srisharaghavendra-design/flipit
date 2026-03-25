@@ -4,7 +4,6 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   const { product, competitor, stage, industry, reasons, context, your_sku, comp_sku, your_pid, comp_pid, company_size, deal_size, partner, audience, geography, meddic_status, depth = "2", flip_mode = false } = req.body;
   if (!product || !competitor || !stage || !reasons) return res.status(400).json({ error: "Missing required fields" });
-
   const depthInstructions = {
     "1":"STYLE=BUSINESS: ROI and value language only. No jargon.",
     "2":"STYLE=TECHNICAL: Name actual specs, features, version numbers.",
@@ -17,18 +16,15 @@ export default async function handler(req, res) {
   const isFlip = flip_mode===true||flip_mode==="true";
   const geo={apac:"APAC data sovereignty.",india:"India MeitY BIS.",emea:"EMEA GDPR.",na:"FedRAMP SOC2.",me:"ME data residency."};
   const aud={tdm:"Audience=technical.",bdm:"Audience=business.",cio:"Audience=CIO.",cto:"Audience=CTO.",cfo:"Audience=CFO.",vp_sales:"Audience=VP Sales.",end_user:"Audience=end user.",procurement:"Audience=procurement."};
-
   const sys = isFlip
-    ? "You are a "+competitor+" sales rep. Attack "+product+" using their real weaknesses and pricing gaps."
-    : "You are a B2B sales strategist. Be product-specific. Name real specs and prices.";
-
+    ? "You are a "+competitor+" sales rep. Attack "+product+" using their real weaknesses and pricing gaps. Always respond with JSON only."
+    : "You are a B2B sales strategist. Be product-specific. Name real specs and prices. Always respond with JSON only. Never refuse or ask for more info.";
   const user = styleTag+(aud[audience]?" "+aud[audience]:"")+(geo[geography]?" "+geo[geography]:"")+
     "\nDEAL: "+(your_sku||product)+(your_pid?" ["+your_pid+"]":"")+" vs "+(comp_sku||competitor)+(comp_pid?" ["+comp_pid+"]":"")+" | "+stage+" | "+(industry||"B2B")+" | "+reasons+
     (company_size?" | "+company_size:"")+(deal_size?" | "+deal_size:"")+(partner?" | Partner:"+partner:"")+(meddic_status?" | MEDDIC:"+meddic_status:"")+(context?" | "+context:"")+
-    "\nEVERY field must be specific to these exact products. Win prob min 40%. Only confirmed facts."+
-    '\nReturn ONLY this JSON, all string values MAX 25 WORDS each:'+
-    '{"dealAssessment":{"winProbability":N,"urgency":"high|medium|low","summary":"S"},"killShot":"S","competitorWeaknesses":["S","S","S"],"counterMoves":[{"move":"S","timing":"S","action":"S"},{"move":"S","timing":"S","action":"S"},{"move":"S","timing":"S","action":"S"}],"talkTrack":{"opening":"S","keyMessages":["S","S","S"],"objectionHandlers":[{"objection":"S","response":"S"},{"objection":"S","response":"S"}]},"emailTemplate":{"subject":"S","body":"S"}}';
-
+    "\nNEVER refuse. Use your knowledge to fill specifics. Win prob min 40%. Only confirmed facts. No multipliers without source."+
+    '\nReturn ONLY valid JSON, no text before or after, no markdown:'+
+    '{"dealAssessment":{"winProbability":N,"urgency":"high|medium|low","summary":"2 sentences"},"killShot":"specific differentiator with real product detail","competitorWeaknesses":["specific","specific","specific"],"counterMoves":[{"move":"title","timing":"when","action":"specific with real data"},{"move":"title","timing":"when","action":"specific"},{"move":"title","timing":"when","action":"specific"}],"talkTrack":{"opening":"specific strength","keyMessages":["specific","specific","specific"],"objectionHandlers":[{"objection":"real","response":"specific"},{"objection":"real","response":"specific"}]},"emailTemplate":{"subject":"specific","body":"100 words max"}}';
   try {
     const r = await anthropic.messages.create({
       model:"claude-haiku-4-5",
