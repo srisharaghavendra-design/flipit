@@ -12,7 +12,7 @@ Depth: ${depthLabel}. SKU-level specifics only. Win probability min 40%. Only co
 Respond ONLY in this exact JSON format:
 {"dealAssessment":{"winProbability":65,"urgency":"high","summary":"2 specific sentences"},"killShot":"one specific differentiator","competitorWeaknesses":["specific weakness 1","specific weakness 2","specific weakness 3"],"counterMoves":[{"move":"title","timing":"when","action":"specific action"},{"move":"title","timing":"when","action":"specific action"},{"move":"title","timing":"when","action":"specific action"}],"talkTrack":{"opening":"specific opening line","keyMessages":["message 1","message 2","message 3"],"objectionHandlers":[{"objection":"objection 1","response":"response 1"},{"objection":"objection 2","response":"response 2"}]},"emailTemplate":{"subject":"subject line","body":"150 word email body ready to send"}${partner?',"partnerIntel":"partner analysis"':""}}`;
   try {
-    const response = await anthropic.messages.create({ model: "claude-haiku-4-5", max_tokens: 2500, messages: [{ role: "user", content: prompt }] });
+    const response = await anthropic.messages.create({ model: "claude-sonnet-4-5", max_tokens: 4096, messages: [{ role: "user", content: prompt }] });
     const clean = response.content[0].text.trim().replace(/```json|```/g, "").trim();
     return res.status(200).json(JSON.parse(clean));
   } catch(err) {
