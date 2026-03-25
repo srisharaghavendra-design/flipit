@@ -1,53 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>FlipIt — Get Your Deal Rescue Plan</title>
-<meta name="description" content="Enter your competitive deal situation and get an AI-powered rescue plan in 60 seconds." />
+<meta name="description" content="Enter your competitive deal situation and get an AI-powered rescue plan in 60 seconds."/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
 :root{--bg:#080808;--surface:#111111;--surface2:#181818;--border:#222222;--border2:#2e2e2e;--text:#f0f0f0;--muted:#777777;--muted2:#444444;--red:#e5484d;--red-dim:#c03a3e;--red-bg:#180a0a;--red-border:#2e1010;--green:#30a46c;--green-bg:#0a1a10;--amber:#e5a00d;--amber-bg:#1a1200;--blue:#6366f1;--blue-bg:#0f0f1a;--blue-border:#1e1e3a;--purple:#a855f7;--purple-bg:#100a1a;--purple-border:#2e1a3a}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased}
 nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:56px;background:rgba(8,8,8,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
-.nl{display:flex;align-items:center;gap:8px}
+.nl{display:flex;align-items:center;gap:8px;text-decoration:none}
 .nm{width:28px;height:28px;border-radius:7px;background:var(--red);display:flex;align-items:center;justify-content:center}
 .nn{font-size:16px;font-weight:600;letter-spacing:-0.3px}
 .nt{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--surface2);border:1px solid var(--border2);color:var(--muted);font-family:'DM Mono',monospace}
 .nb{padding:7px 16px;border-radius:7px;background:transparent;border:1px solid var(--border2);color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none}
-.nb:hover{color:var(--text);border-color:var(--border)}
-.page{max-width:760px;margin:0 auto;padding:90px 1.5rem 4rem}
+.page{max-width:700px;margin:0 auto;padding:90px 1.5rem 4rem}
 .page-hdr{text-align:center;margin-bottom:2rem}
 .page-hdr h1{font-size:clamp(24px,4vw,34px);font-weight:600;letter-spacing:-1px;margin-bottom:8px}
 .page-hdr p{font-size:15px;color:var(--muted)}
-.industries{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-bottom:1.5rem}
-.ind-tag{font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-family:'DM Mono',monospace}
 .form-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+.nl-input-wrap{position:relative;margin-bottom:14px}
+.nl-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:12px 48px 12px 14px;outline:none;resize:none;min-height:56px;max-height:120px;transition:border-color .15s}
+.nl-input:focus{border-color:#3a3a3a}
+.nl-input::placeholder{color:var(--muted)}
+.nl-send{position:absolute;right:10px;bottom:10px;width:32px;height:32px;background:var(--red);border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.nl-send:hover{background:var(--red-dim)}
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted2);font-size:12px;font-family:'DM Mono',monospace}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .sec-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:10px;font-family:'DM Mono',monospace;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12px;color:var(--muted);font-weight:500}
 .field input,.field select,.field textarea{background:var(--surface2);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;outline:none;transition:border-color .15s;width:100%}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:#3a3a3a}
+.field input:focus,.field select:focus{border-color:#3a3a3a}
 .field select{appearance:none;cursor:pointer}
 .field select:disabled{opacity:.4;cursor:not-allowed}
 .field textarea{resize:vertical;min-height:64px}
-.pid-badge{font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;margin-top:3px;padding:2px 8px;background:var(--surface2);border-radius:4px;display:inline-block}
+.advanced-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--muted);font-size:13px;margin:12px 0 4px;user-select:none}
+.advanced-toggle:hover{color:var(--text)}
+.advanced-toggle .arrow{font-size:10px;transition:transform .2s}
+.advanced-toggle.open .arrow{transform:rotate(90deg)}
+.advanced-section{display:none}
+.advanced-section.open{display:block}
 .rl{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:7px}
 .rw{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
 .rtag{padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
 .rtag:hover{border-color:#3a3a3a;color:var(--text)}
 .rtag.on{border-color:var(--red);background:var(--red-bg);color:var(--red)}
-.dtag{padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;font-family:'DM Mono',monospace}
-.dtag:hover{border-color:#3a3a3a;color:var(--text)}
+.dtag{padding:5px 11px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;font-family:'DM Mono',monospace}
 .dtag.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
-.cta-row{display:flex;gap:10px;margin-top:4px}
+.cta-row{display:flex;gap:10px;margin-top:12px}
 .cta-btn{flex:1;padding:13px;background:var(--red);border:none;border-radius:9px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s}
 .cta-btn:hover{background:var(--red-dim)}
 .cta-btn:disabled{opacity:.45;cursor:not-allowed}
-.flip-cta{flex:0 0 auto;padding:13px 18px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:9px;color:var(--purple);font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.flip-cta{flex:0 0 auto;padding:13px 16px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:9px;color:var(--purple);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .15s}
 .flip-cta:hover{background:#180a2a;border-color:var(--purple)}
 .err{font-size:13px;color:var(--red);background:var(--red-bg);border:1px solid var(--red-border);border-radius:8px;padding:10px 13px;margin-bottom:10px}
 .size-warn{font-size:13px;color:var(--amber);background:var(--amber-bg);border:1px solid #2e2000;border-radius:8px;padding:10px 13px;margin-bottom:10px;display:none}
@@ -88,24 +97,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .es{font-size:14px;font-weight:600;padding-bottom:11px;border-bottom:1px solid var(--border);margin-bottom:11px}
 .eb{font-size:13px;color:var(--muted);line-height:1.8;white-space:pre-line}
 .act-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
-.abt{flex:1;min-width:110px;padding:9px 13px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;text-align:center}
+.abt{flex:1;min-width:100px;padding:9px 13px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;text-align:center}
 .abt:hover{border-color:#3a3a3a;color:var(--text)}
 .abt.ok{color:var(--green);border-color:var(--green)}
 .abt.share-btn{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)}
-.abt.share-btn:hover{border-color:var(--blue)}
 .wl-row{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
 .wl-label{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
 .share-result{display:none;margin-top:8px;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:8px;padding:9px 13px;align-items:center;gap:10px;flex-wrap:wrap}
 .share-result.visible{display:flex}
 .share-url-text{flex:1;font-size:11px;color:var(--blue);font-family:'DM Mono',monospace;word-break:break-all}
-.copy-link-btn{padding:4px 11px;border-radius:6px;background:var(--surface);border:1px solid var(--blue-border);color:var(--blue);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.copy-link-btn{padding:4px 11px;border-radius:6px;background:var(--surface);border:1px solid var(--blue-border);color:var(--blue);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
 .copy-link-btn.ok{color:var(--green);border-color:var(--green)}
 @media(max-width:600px){nav{padding:0 1rem}.page{padding:72px 1rem 3rem}.grid2{grid-template-columns:1fr;gap:10px}.grid3{grid-template-columns:1fr;gap:10px}.form-card{padding:1rem}.cta-row{flex-direction:column}.arow{flex-direction:column;gap:8px}.wp{font-size:44px}.act-row{flex-direction:column}.abt{min-width:unset;width:100%}.share-result{flex-direction:column}}
 </style>
 </head>
 <body>
 <nav>
-  <a href="/" class="nl" style="text-decoration:none">
+  <a href="/" class="nl">
     <div class="nm"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5L12.5 11.5H1.5L7 1.5Z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/></svg></div>
     <span class="nn">FlipIt</span><span class="nt">beta</span>
   </a>
@@ -116,56 +124,54 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <h1>Get your deal rescue plan</h1>
     <p>Fill in your situation &mdash; your plan is ready in 60 seconds</p>
   </div>
-  <div class="industries">
-    <span class="ind-tag">Collaboration</span><span class="ind-tag">CCaaS</span><span class="ind-tag">CRM</span>
-    <span class="ind-tag">ITSM</span><span class="ind-tag">Cyber Security</span><span class="ind-tag">Cloud</span>
-    <span class="ind-tag">HR Tech</span><span class="ind-tag">Any B2B vertical</span>
-  </div>
   <div class="form-card">
+    <!-- NATURAL LANGUAGE INPUT -->
+    <div class="nl-input-wrap">
+      <textarea class="nl-input" id="nlInput" placeholder="Or just describe your situation... e.g. &quot;I'm losing a Cisco Room Bar Pro deal to Poly Studio X50 at proposal stage because of pricing, partner is Westcon&quot;" rows="2"></textarea>
+      <button class="nl-send" onclick="handleNLInput()" title="Parse and fill form">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="divider">or fill the form</div>
+
+    <!-- REQUIRED: YOUR PRODUCT -->
     <div class="sec-label">Your Product</div>
     <div class="grid3">
       <div class="field"><label>Company *</label><select id="your_company" onchange="updateCats('your')"><option value="">Select company</option></select></div>
       <div class="field"><label>Category *</label><select id="your_category" onchange="updateSKUs('your')" disabled><option value="">Select category</option></select></div>
       <div class="field"><label>Product / SKU *</label><select id="your_sku" onchange="onSKUChange('your')" disabled><option value="">Select product</option></select></div>
     </div>
-    <div class="grid2" style="margin-bottom:14px">
-      <div class="field"><label>PID / Part Number</label><input type="text" id="your_pid" placeholder="Auto-filled or enter manually" autocomplete="off"/></div>
-      <div class="field"><label>Deal Type *</label><select id="deal_type"><option value="">Select type</option><option value="new">New Logo</option><option value="existing">Existing Customer - Expand</option><option value="renewal">Renewal / Retention</option><option value="displacement">Competitive Displacement</option></select></div>
+    <div class="grid2">
+      <div class="field"><label>PID / Part Number <span style="color:var(--muted2);font-weight:400">(auto-filled)</span></label><input type="text" id="your_pid" placeholder="e.g. CS-RMBARPRO-K9=" autocomplete="off"/></div>
+      <div class="field"><label>Deal Type</label><select id="deal_type"><option value="">Select</option><option value="new">New Logo</option><option value="existing">Existing - Expand</option><option value="renewal">Renewal / Retention</option><option value="displacement">Competitive Displacement</option></select></div>
     </div>
-    <div class="sec-label" style="margin-top:4px">Competitor</div>
+
+    <!-- REQUIRED: COMPETITOR -->
+    <div class="sec-label" style="margin-top:8px">Competitor</div>
     <div class="grid3">
       <div class="field"><label>Company *</label><select id="comp_company" onchange="updateCats('comp')"><option value="">Select company</option></select></div>
       <div class="field"><label>Category *</label><select id="comp_category" onchange="updateSKUs('comp')" disabled><option value="">Select category</option></select></div>
       <div class="field"><label>Product / SKU *</label><select id="comp_sku" onchange="onSKUChange('comp')" disabled><option value="">Select product</option></select></div>
     </div>
-    <div class="grid2" style="margin-bottom:14px">
-      <div class="field"><label>Competitor PID / Part Number</label><input type="text" id="comp_pid" placeholder="Auto-filled or enter manually" autocomplete="off"/></div>
-      <div class="field"><label>Channel / Incumbent Partner</label><input type="text" id="partner" placeholder="e.g. Westcon, CDW, Ingram Micro..." autocomplete="off"/></div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Competitor PID <span style="color:var(--muted2);font-weight:400">(auto-filled)</span></label>
+      <input type="text" id="comp_pid" placeholder="e.g. 7200-85830-001" autocomplete="off"/>
     </div>
-    <div class="sec-label" style="margin-top:4px">Deal Context</div>
-    <div class="grid3">
+
+    <!-- REQUIRED: DEAL STAGE -->
+    <div class="grid2" style="margin-bottom:12px">
       <div class="field"><label>Deal stage *</label><select id="stage"><option value="">Select stage</option><option>Qualification</option><option>Discovery</option><option>Demo / Evaluation</option><option>Proposal</option><option>Negotiation</option><option>Final Decision</option></select></div>
-      <div class="field"><label>Industry *</label><select id="industry"><option value="">Select industry</option><option>SaaS / Software</option><option>Financial Services / Banking</option><option>Healthcare / Life Sciences</option><option>Retail / eCommerce</option><option>Manufacturing</option><option>Government / Public Sector</option><option>Telecommunications</option><option>Education</option><option>Energy / Utilities</option><option>Professional Services</option><option>Media / Entertainment</option><option>Transportation / Logistics</option><option>Real Estate</option><option>Insurance</option><option>Other B2B</option></select></div>
-      <div class="field"><label>Geography</label><select id="geography"><option value="">Select region</option><option value="apac">APAC</option><option value="india">India</option><option value="anz">ANZ</option><option value="sea">Southeast Asia</option><option value="emea">EMEA</option><option value="europe">Europe</option><option value="me">Middle East</option><option value="na">North America</option><option value="latam">Latin America</option></select></div>
+      <div class="field"><label>Industry</label><select id="industry"><option value="">Select industry</option><option>SaaS / Software</option><option>Financial Services</option><option>Healthcare / Life Sciences</option><option>Retail / eCommerce</option><option>Manufacturing</option><option>Government / Public Sector</option><option>Telecommunications</option><option>Education</option><option>Energy / Utilities</option><option>Professional Services</option><option>Media / Entertainment</option><option>Transportation / Logistics</option><option>Real Estate</option><option>Insurance</option><option>Other B2B</option></select></div>
     </div>
-    <div class="grid3">
-      <div class="field"><label>Company size</label><select id="company_size" onchange="checkSizeMismatch()"><option value="">Select size</option><option value="smb">SMB (1-100)</option><option value="mid">Mid-market (100-1000)</option><option value="enterprise">Enterprise (1000+)</option><option value="global">Global (10,000+)</option></select></div>
-      <div class="field"><label>Approx deal size</label><select id="deal_size"><option value="">Select range</option><option value="small">Under $10k</option><option value="mid">$10k - $50k</option><option value="large">$50k - $200k</option><option value="enterprise">$200k - $1M</option><option value="strategic">$1M+</option></select></div>
-      <div class="field"><label>Audience / Stakeholder</label><select id="audience"><option value="">Select audience</option><option value="tdm">TDM - Technical Decision Maker</option><option value="bdm">BDM - Business Decision Maker</option><option value="cio">CIO</option><option value="cto">CTO</option><option value="cfo">CFO / Finance</option><option value="vp_sales">VP Sales</option><option value="end_user">End User / Champion</option><option value="procurement">Procurement</option></select></div>
-    </div>
-    <div class="grid2" style="margin-bottom:14px">
-      <div class="field"><label>Prospect company (for ESG/priority lookup)</label><input type="text" id="prospect_company" placeholder="e.g. Infosys, Accenture, HDFC..." autocomplete="off"/></div>
-      <div class="field"><label>TCO Model</label><select id="tco_model"><option value="">Select model</option><option value="3yr">3-Year Total Cost</option><option value="perseat">Per-Seat All-In</option><option value="hidden">Hidden Cost Exposure</option><option value="migration">Migration Cost</option><option value="roi">ROI / Payback Period</option></select></div>
-    </div>
-    <div id="sizeWarn" class="size-warn"></div>
-    <div style="margin-bottom:14px">
+
+    <!-- LOSS REASONS -->
+    <div style="margin-bottom:12px">
       <div class="rl">Why are you losing? * (select all that apply)</div>
       <div class="rw">
         <button class="rtag" data-id="late">Entered deal late</button>
         <button class="rtag" data-id="price">Pricing is higher</button>
         <button class="rtag" data-id="discount">Limited discounts</button>
         <button class="rtag" data-id="partner">Partner pushing competitor</button>
-        <button class="rtag" data-id="delivery">Slower delivery</button>
         <button class="rtag" data-id="features">Competitor has better features</button>
         <button class="rtag" data-id="incumbent">Competitor is incumbent</button>
         <button class="rtag" data-id="relationship">Weaker exec relationship</button>
@@ -173,306 +179,367 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
         <button class="rtag" data-id="greenfield">No budget / greenfield</button>
       </div>
     </div>
-    <div style="margin-bottom:14px">
-      <div class="rl">Technical depth (select one or more)</div>
-      <div class="rw">
-        <button class="dtag" data-depth="1">L1 Business</button>
-        <button class="dtag on" data-depth="2">L2 Technical</button>
-        <button class="dtag" data-depth="3">L3 Architecture</button>
-        <button class="dtag" data-depth="4">L4 Integration</button>
-        <button class="dtag" data-depth="5">L5 Evidence</button>
-        <button class="dtag" data-depth="all">All Levels</button>
+
+    <!-- ADVANCED OPTIONS TOGGLE -->
+    <div class="advanced-toggle" id="advToggle" onclick="toggleAdvanced()">
+      <span class="arrow">&#9658;</span>
+      <span>Advanced options (depth, audience, geography, MEDDIC, partner, TCO)</span>
+    </div>
+    <div class="advanced-section" id="advSection">
+      <div style="padding-top:12px">
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>Geography</label><select id="geography"><option value="">Select region</option><option value="apac">APAC</option><option value="india">India</option><option value="anz">ANZ</option><option value="sea">Southeast Asia</option><option value="emea">EMEA</option><option value="europe">Europe</option><option value="me">Middle East</option><option value="na">North America</option><option value="latam">Latin America</option></select></div>
+          <div class="field"><label>Audience / Stakeholder</label><select id="audience"><option value="">Select audience</option><option value="tdm">TDM - Technical</option><option value="bdm">BDM - Business</option><option value="cio">CIO</option><option value="cto">CTO</option><option value="cfo">CFO / Finance</option><option value="vp_sales">VP Sales</option><option value="end_user">End User / Champion</option><option value="procurement">Procurement</option></select></div>
+        </div>
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>Company size</label><select id="company_size" onchange="checkSizeMismatch()"><option value="">Select size</option><option value="smb">SMB (1-100)</option><option value="mid">Mid-market (100-1000)</option><option value="enterprise">Enterprise (1000+)</option><option value="global">Global (10,000+)</option></select></div>
+          <div class="field"><label>Approx deal size</label><select id="deal_size"><option value="">Select range</option><option value="small">Under $10k</option><option value="mid">$10k - $50k</option><option value="large">$50k - $200k</option><option value="enterprise">$200k - $1M</option><option value="strategic">$1M+</option></select></div>
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label>Channel / Incumbent Partner</label>
+          <input type="text" id="partner" placeholder="e.g. Westcon, CDW, Ingram Micro..." autocomplete="off"/>
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label>Prospect company <span style="color:var(--muted2);font-weight:400">(for ESG/priority lookup)</span></label>
+          <input type="text" id="prospect_company" placeholder="e.g. Infosys, Accenture, HDFC..." autocomplete="off"/>
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label>TCO Model</label>
+          <select id="tco_model"><option value="">Select model</option><option value="3yr">3-Year Total Cost</option><option value="perseat">Per-Seat All-In</option><option value="hidden">Hidden Cost Exposure</option><option value="migration">Migration Cost</option><option value="roi">ROI / Payback Period</option></select>
+        </div>
+        <div style="margin-bottom:12px">
+          <div class="rl">Technical depth (select one or more)</div>
+          <div class="rw">
+            <button class="dtag" data-depth="1">Business Value</button>
+            <button class="dtag on" data-depth="2">Technical Specs</button>
+            <button class="dtag" data-depth="3">Architecture</button>
+            <button class="dtag" data-depth="4">Cost &amp; Integration</button>
+            <button class="dtag" data-depth="5">Proof &amp; Evidence</button>
+            <button class="dtag" data-depth="all">All Depths</button>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div class="rl">MEDDIC status <span style="color:var(--muted2);font-weight:400">(check what you have)</span></div>
+          <div class="rw">
+            <button class="rtag" data-id="M" style="font-family:'DM Mono',monospace">M Metrics</button>
+            <button class="rtag" data-id="E" style="font-family:'DM Mono',monospace">E Econ Buyer</button>
+            <button class="rtag" data-id="D" style="font-family:'DM Mono',monospace">D Decision</button>
+            <button class="rtag" data-id="Dp" style="font-family:'DM Mono',monospace">Dp Dec Process</button>
+            <button class="rtag" data-id="I" style="font-family:'DM Mono',monospace">I Identify Pain</button>
+            <button class="rtag" data-id="C" style="font-family:'DM Mono',monospace">C Champion</button>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="field" style="margin-bottom:14px">
-      <label>Additional context <span style="font-weight:400;color:var(--muted2)">(optional &mdash; significantly improves output)</span></label>
-      <textarea id="context" placeholder="Key stakeholders, what the customer said, previous meetings, budget situation, MEDDIC status..."></textarea>
+
+    <div class="field" style="margin-bottom:12px;margin-top:8px">
+      <label>Additional context <span style="font-weight:400;color:var(--muted2)">(optional)</span></label>
+      <textarea id="context" placeholder="Key stakeholders, what the customer said, budget situation..."></textarea>
     </div>
+    <div id="sizeWarn" class="size-warn"></div>
     <div id="err" class="err" style="display:none"></div>
     <div class="cta-row">
       <button class="cta-btn" id="flipBtn" onclick="handleFlip(false)">Flip this deal &#8594;</button>
-      <button class="flip-cta" onclick="handleFlip(true)">&#128260; See their pitch against you</button>
+      <button class="flip-cta" onclick="handleFlip(true)">&#128260; See their pitch</button>
     </div>
   </div>
   <div id="output"></div>
 </div>
 <script>
 const PRODUCT_DB = {
-  "Cisco": {
-    "Video Conferencing": {
-      skus: ["Room Bar","Room Bar Pro","Room Kit","Room Kit Mini","Room Kit EQ","Board Pro 55","Board Pro 75","Desk Pro","Desk Mini","Room Huddle","Codec Plus","Codec Pro","Room Panorama"],
-      pids: {"Room Bar":"CS-ROOMBAR-K9=","Room Bar Pro":"CS-RMBARPRO-K9=","Room Kit":"CS-ROOMKIT-K9=","Room Kit Mini":"CS-ROOMKITMINI-K9=","Board Pro 55":"CS-BOARD-PRO-55=","Board Pro 75":"CS-BOARD-PRO-75=","Desk Pro":"CS-DESKPRO-K9=","Desk Mini":"CS-DESKMINI-K9=","Room Huddle":"CS-ROOMHUDDLE-K9=","Codec Plus":"CS-CODECPLUS-K9=","Codec Pro":"CS-CODECPRO-K9="}
-    },
-    "Contact Center": {
-      skus: ["Webex Contact Center","Webex Contact Center Enterprise","UCCX","UCCE","PCCE"],
-      pids: {"Webex Contact Center":"WCC-STE-ENT-S1","Webex Contact Center Enterprise":"WCC-ENT-K9=","UCCX":"UCCX-90-LIC-K9=","UCCE":"UCCE-K9="}
-    },
-    "Calling": {
-      skus: ["Webex Calling","Unified Communications Manager (UCM)","Cisco BroadWorks","Webex Go"],
-      pids: {"Webex Calling":"WC-STD-S1","Unified Communications Manager (UCM)":"UCM-14-K9="}
-    },
-    "Networking - Enterprise": {
-      skus: ["Catalyst 9200","Catalyst 9300","Catalyst 9400","Catalyst 9500","Catalyst 9600","Nexus 9000","Catalyst Center"],
-      pids: {"Catalyst 9200":"C9200-24P-E","Catalyst 9300":"C9300-48P-E","Catalyst 9400":"C9400-SUP-1XL","Catalyst 9500":"C9500-40X-E","Nexus 9000":"N9K-C93180YC-EX"}
-    },
-    "Networking - SMB / Meraki": {
-      skus: ["Meraki MS Switches","Meraki MR Access Points","Meraki MX Security","Meraki MV Cameras","Meraki MT Sensors"],
-      pids: {"Meraki MS Switches":"MS355-48X2-HW","Meraki MR Access Points":"MR57-HW","Meraki MX Security":"MX250-HW"}
-    },
-    "Networking - Industrial": {
-      skus: ["Catalyst IE3100","Catalyst IE3200","Catalyst IE3300","Catalyst IE3400","Cisco IR1101","Cisco Cyber Vision"],
-      pids: {"Catalyst IE3100":"IE-3100-8T2C-E","Catalyst IE3200":"IE-3200-8T2S-E","Cisco IR1101":"IR1101-K9"}
-    },
-    "Security - Firewall": {
-      skus: ["Secure Firewall 1000","Secure Firewall 2100","Secure Firewall 3100","Secure Firewall 4200","Firepower Management Center"],
-      pids: {"Secure Firewall 1000":"FPR1010-NGFW-K9","Secure Firewall 2100":"FPR2110-NGFW-K9","Secure Firewall 3100":"FPR3105-NGFW-K9","Secure Firewall 4200":"FPR4215-NGFW-K9"}
-    },
-    "Security - Zero Trust": {
-      skus: ["Cisco Duo","Cisco Secure Access","Cisco Umbrella","Cisco ISE","Cisco Secure Endpoint"],
-      pids: {"Cisco Duo":"DUO-MFA-USR","Cisco Umbrella":"UMBR-DNS-ESS-1Y","Cisco ISE":"ISE-PLS-USRLIC="}
-    },
-    "Security - XDR": {
-      skus: ["Cisco XDR","Cisco Talos","Splunk SIEM","Splunk SOAR"],
-      pids: {"Splunk SIEM":"SPLUNK-ENT-LIC","Cisco XDR":"XDR-ENT-K9"}
-    },
-    "Cloud & Infrastructure": {
-      skus: ["Cisco Intersight","HyperFlex","UCS B-Series","UCS C-Series","AppDynamics","ThousandEyes"],
-      pids: {"Cisco Intersight":"ISIGHT-OP-1Y","HyperFlex":"HX-SP-220M5SX","AppDynamics":"APPDYN-APM-ENT"}
-    },
-    "AI & Meetings": {
-      skus: ["Webex AI Agent","Cisco AI Assistant","Webex Meetings","Webex Events","Webex Webinars"],
-      pids: {"Webex Meetings":"WBX-MTG-ENT-K9","Webex AI Agent":"WBX-AIAGENT-K9"}
-    }
+  "Cisco":{
+    "Video Conferencing":{skus:["Room Bar","Room Bar Pro","Room Kit","Room Kit Mini","Room Kit EQ","Board Pro 55","Board Pro 75","Desk Pro","Desk Mini","Room Huddle","Codec Plus","Codec Pro","Room Panorama"],pids:{"Room Bar":"CS-ROOMBAR-K9=","Room Bar Pro":"CS-RMBARPRO-K9=","Room Kit":"CS-ROOMKIT-K9=","Room Kit Mini":"CS-ROOMKITMINI-K9=","Board Pro 55":"CS-BOARD-PRO-55=","Board Pro 75":"CS-BOARD-PRO-75=","Desk Pro":"CS-DESKPRO-K9=","Desk Mini":"CS-DESKMINI-K9=","Room Huddle":"CS-ROOMHUDDLE-K9=","Codec Pro":"CS-CODECPRO-K9="}},
+    "Contact Center":{skus:["Webex Contact Center","Webex Contact Center Enterprise","UCCX","UCCE","PCCE"],pids:{"Webex Contact Center":"WCC-STE-ENT-S1","UCCX":"UCCX-90-LIC-K9=","UCCE":"UCCE-K9="}},
+    "Calling":{skus:["Webex Calling","Unified Communications Manager (UCM)","Cisco BroadWorks","Webex Go"],pids:{"Webex Calling":"WC-STD-S1","Unified Communications Manager (UCM)":"UCM-14-K9="}},
+    "Networking - Enterprise":{skus:["Catalyst 9200","Catalyst 9300","Catalyst 9400","Catalyst 9500","Catalyst 9600","Nexus 9000","Catalyst Center"],pids:{"Catalyst 9200":"C9200-24P-E","Catalyst 9300":"C9300-48P-E","Catalyst 9500":"C9500-40X-E","Nexus 9000":"N9K-C93180YC-EX"}},
+    "Networking - SMB / Meraki":{skus:["Meraki MS Switches","Meraki MR Access Points","Meraki MX Security","Meraki MV Cameras","Meraki MT Sensors"],pids:{"Meraki MS Switches":"MS355-48X2-HW","Meraki MR Access Points":"MR57-HW","Meraki MX Security":"MX250-HW"}},
+    "Networking - Industrial":{skus:["Catalyst IE3100","Catalyst IE3200","Catalyst IE3300","Catalyst IE3400","Cisco IR1101","Cisco Cyber Vision"],pids:{"Catalyst IE3100":"IE-3100-8T2C-E","Cisco IR1101":"IR1101-K9"}},
+    "Security - Firewall":{skus:["Secure Firewall 1000","Secure Firewall 2100","Secure Firewall 3100","Secure Firewall 4200"],pids:{"Secure Firewall 1000":"FPR1010-NGFW-K9","Secure Firewall 2100":"FPR2110-NGFW-K9","Secure Firewall 3100":"FPR3105-NGFW-K9"}},
+    "Security - Zero Trust":{skus:["Cisco Duo","Cisco Secure Access","Cisco Umbrella","Cisco ISE","Cisco Secure Endpoint"],pids:{"Cisco Duo":"DUO-MFA-USR","Cisco Umbrella":"UMBR-DNS-ESS-1Y","Cisco ISE":"ISE-PLS-USRLIC="}},
+    "Security - XDR":{skus:["Cisco XDR","Cisco Talos","Splunk SIEM","Splunk SOAR"],pids:{"Cisco XDR":"XDR-ENT-K9","Splunk SIEM":"SPLUNK-ENT-LIC"}},
+    "Cloud & Infrastructure":{skus:["Cisco Intersight","HyperFlex","UCS B-Series","UCS C-Series","AppDynamics","ThousandEyes"],pids:{"Cisco Intersight":"ISIGHT-OP-1Y","AppDynamics":"APPDYN-APM-ENT"}},
+    "AI & Meetings":{skus:["Webex AI Agent","Cisco AI Assistant","Webex Meetings","Webex Events"],pids:{"Webex Meetings":"WBX-MTG-ENT-K9","Webex AI Agent":"WBX-AIAGENT-K9"}}
   },
-  "Microsoft": {
-    "Video Conferencing": {skus:["Teams Rooms on Windows","Teams Rooms on Android","Surface Hub 2S","Surface Hub 3","Teams Panel","Teams Display"],pids:{"Surface Hub 2S":"9NM2V8CP7L8W","Surface Hub 3":"Teams-Hub3-85"}},
-    "Contact Center": {skus:["Dynamics 365 Contact Center","Teams Phone","Azure Communication Services"],pids:{"Dynamics 365 Contact Center":"DYN365-CS-ENT"}},
-    "Productivity": {skus:["Microsoft 365 Business Basic","Microsoft 365 Business Standard","Microsoft 365 E3","Microsoft 365 E5"],pids:{"Microsoft 365 E3":"SPE_E3","Microsoft 365 E5":"SPE_E5"}},
-    "Security": {skus:["Microsoft Defender for Endpoint","Microsoft Sentinel","Microsoft Entra ID","Microsoft Purview"],pids:{"Microsoft Defender for Endpoint":"MDATP","Microsoft Sentinel":"SENTINEL-ENT"}},
-    "Cloud": {skus:["Azure Virtual Machines","Azure Kubernetes Service","Azure OpenAI","Microsoft Fabric","Copilot for Microsoft 365"],pids:{"Copilot for Microsoft 365":"COPLIOT-M365"}}
+  "Microsoft":{
+    "Video Conferencing":{skus:["Teams Rooms on Windows","Teams Rooms on Android","Surface Hub 2S","Surface Hub 3","Teams Panel"],pids:{"Surface Hub 2S":"9NM2V8CP7L8W","Surface Hub 3":"Teams-Hub3-85"}},
+    "Contact Center":{skus:["Dynamics 365 Contact Center","Teams Phone","Azure Communication Services"],pids:{"Dynamics 365 Contact Center":"DYN365-CS-ENT"}},
+    "Productivity":{skus:["Microsoft 365 Business Basic","Microsoft 365 Business Standard","Microsoft 365 E3","Microsoft 365 E5","Copilot for Microsoft 365"],pids:{"Microsoft 365 E3":"SPE_E3","Microsoft 365 E5":"SPE_E5","Copilot for Microsoft 365":"COPLIOT-M365"}},
+    "Security":{skus:["Microsoft Defender for Endpoint","Microsoft Sentinel","Microsoft Entra ID","Microsoft Purview"],pids:{"Microsoft Defender for Endpoint":"MDATP","Microsoft Sentinel":"SENTINEL-ENT"}},
+    "Cloud":{skus:["Azure Virtual Machines","Azure Kubernetes Service","Azure OpenAI","Microsoft Fabric"],pids:{"Azure OpenAI":"AZ-OAI-ENT","Microsoft Fabric":"MSF-ENT"}}
   },
-  "Zoom": {
-    "Video Conferencing": {skus:["Zoom Rooms","Zoom Bar","Zoom Board","Zoom Room Kit"],pids:{"Zoom Bar":"ZR-CSBAR","Zoom Board":"ZR-BRDG2"}},
-    "Contact Center": {skus:["Zoom Contact Center","Zoom Virtual Agent","Zoom Workforce Management"],pids:{"Zoom Contact Center":"ZCC-ENT"}},
-    "Calling": {skus:["Zoom Phone Pro","Zoom Phone Business","Zoom Phone Enterprise"],pids:{"Zoom Phone Enterprise":"ZP-ENT"}},
-    "Events": {skus:["Zoom Webinars","Zoom Events","Zoom Sessions"],pids:{"Zoom Webinars":"ZW-1000"}}
+  "Zoom":{
+    "Video Conferencing":{skus:["Zoom Rooms","Zoom Bar","Zoom Board","Zoom Room Kit"],pids:{"Zoom Bar":"ZR-CSBAR","Zoom Board":"ZR-BRDG2"}},
+    "Contact Center":{skus:["Zoom Contact Center","Zoom Virtual Agent","Zoom Workforce Management"],pids:{"Zoom Contact Center":"ZCC-ENT"}},
+    "Calling":{skus:["Zoom Phone Pro","Zoom Phone Business","Zoom Phone Enterprise"],pids:{"Zoom Phone Enterprise":"ZP-ENT"}},
+    "Events":{skus:["Zoom Webinars","Zoom Events","Zoom Sessions"],pids:{"Zoom Webinars":"ZW-1000"}}
   },
-  "Poly / HP": {
-    "Video Conferencing": {skus:["Studio X30","Studio X50","Studio X70","Studio E70","G7500","G10-T","Poly Lens"],pids:{"Studio X30":"7200-84990-001","Studio X50":"7200-85830-001","Studio X70":"7200-85740-001","G7500":"7200-85860-001","Studio E70":"7200-87340-001"}},
-    "Audio": {skus:["Sync 20","Sync 40","Sync 60","Trio 8500","Trio 8800"],pids:{"Sync 20":"2200-84000-001","Sync 40":"2200-84080-001","Trio 8500":"2200-18061-001"}},
-    "Headsets": {skus:["Voyager Focus 2","Voyager 4300","Blackwire 5200","Savi 8200"],pids:{"Voyager Focus 2":"7Y8L6AA","Savi 8200":"2200-19143-001"}}
+  "Poly / HP":{
+    "Video Conferencing":{skus:["Studio X30","Studio X50","Studio X70","Studio E70","G7500","G10-T"],pids:{"Studio X30":"7200-84990-001","Studio X50":"7200-85830-001","Studio X70":"7200-85740-001","G7500":"7200-85860-001","Studio E70":"7200-87340-001"}},
+    "Audio":{skus:["Sync 20","Sync 40","Sync 60","Trio 8500","Trio 8800"],pids:{"Sync 20":"2200-84000-001","Sync 40":"2200-84080-001","Trio 8500":"2200-18061-001"}},
+    "Headsets":{skus:["Voyager Focus 2","Voyager 4300","Blackwire 5200","Savi 8200"],pids:{"Voyager Focus 2":"7Y8L6AA","Savi 8200":"2200-19143-001"}}
   },
-  "Logitech": {
-    "Video Conferencing": {skus:["Rally Bar","Rally Bar Mini","Rally Bar Huddle","MeetUp","Rally Camera","Sight","Scribe"],pids:{"Rally Bar":"960-001308","Rally Bar Mini":"960-001340","Rally Bar Huddle":"960-001485","MeetUp":"960-001101","Sight":"960-001510","Scribe":"960-001484"}},
-    "Personal Devices": {skus:["Zone Wireless 2","Zone True Wireless","Brio 4K","StreamCam","MX Brio"],pids:{"Brio 4K":"960-001105","MX Brio":"960-001559","Zone Wireless 2":"981-001124"}}
+  "Logitech":{
+    "Video Conferencing":{skus:["Rally Bar","Rally Bar Mini","Rally Bar Huddle","MeetUp","Sight","Scribe"],pids:{"Rally Bar":"960-001308","Rally Bar Mini":"960-001340","Rally Bar Huddle":"960-001485","MeetUp":"960-001101","Sight":"960-001510","Scribe":"960-001484"}},
+    "Personal Devices":{skus:["Zone Wireless 2","Brio 4K","MX Brio","StreamCam"],pids:{"Brio 4K":"960-001105","MX Brio":"960-001559","Zone Wireless 2":"981-001124"}}
   },
-  "Yealink": {
-    "Video Conferencing": {skus:["MVC960","MVC840","MVC640","MVC320","MVC S90","MVC S40"],pids:{"MVC960":"MVC960-C2-000","MVC840":"MVC840-C2-000","MVC640":"MVC640-C2-000","MVC S90":"MVC-S90-C2-000"}},
-    "Phones": {skus:["T58A","T56A","VP59","CP960"],pids:{"T58A":"T58A","VP59":"VP59","CP960":"CP960"}}
+  "Yealink":{
+    "Video Conferencing":{skus:["MVC960","MVC840","MVC640","MVC320","MVC S90","MVC S40"],pids:{"MVC960":"MVC960-C2-000","MVC840":"MVC840-C2-000","MVC S90":"MVC-S90-C2-000"}},
+    "Phones":{skus:["T58A","T56A","VP59","CP960"],pids:{"T58A":"T58A","VP59":"VP59","CP960":"CP960"}}
   },
-  "Genesys": {
-    "Contact Center": {skus:["Genesys Cloud CX 1","Genesys Cloud CX 2","Genesys Cloud CX 3","Genesys Multicloud CX","Genesys DX"],pids:{"Genesys Cloud CX 1":"GCX1","Genesys Cloud CX 2":"GCX2","Genesys Cloud CX 3":"GCX3"}},
-    "AI & WEM": {skus:["Genesys AI","Genesys Predictive Engagement","Genesys Voicebots","Genesys Workforce Engagement"],pids:{"Genesys AI":"GAI-ENT","Genesys Workforce Engagement":"GWEM-ENT"}}
+  "Genesys":{
+    "Contact Center":{skus:["Genesys Cloud CX 1","Genesys Cloud CX 2","Genesys Cloud CX 3","Genesys Multicloud CX","Genesys DX"],pids:{"Genesys Cloud CX 1":"GCX1","Genesys Cloud CX 2":"GCX2","Genesys Cloud CX 3":"GCX3"}},
+    "AI & WEM":{skus:["Genesys AI","Genesys Predictive Engagement","Genesys Voicebots","Genesys Workforce Engagement"],pids:{"Genesys AI":"GAI-ENT","Genesys Workforce Engagement":"GWEM-ENT"}}
   },
-  "NICE": {
-    "Contact Center": {skus:["CXone Core","CXone Essential","CXone Advanced","CXone Expert"],pids:{"CXone Core":"CXONE-CORE","CXone Advanced":"CXONE-ADV","CXone Expert":"CXONE-EXP"}},
-    "Workforce": {skus:["NICE Workforce Management","NICE Quality Management","NICE Enlighten AI"],pids:{"NICE Workforce Management":"NWM-ENT","NICE Enlighten AI":"NEA-ENT"}}
+  "NICE":{
+    "Contact Center":{skus:["CXone Core","CXone Essential","CXone Advanced","CXone Expert"],pids:{"CXone Core":"CXONE-CORE","CXone Advanced":"CXONE-ADV","CXone Expert":"CXONE-EXP"}},
+    "Workforce":{skus:["NICE Workforce Management","NICE Quality Management","NICE Enlighten AI"],pids:{"NICE Workforce Management":"NWM-ENT","NICE Enlighten AI":"NEA-ENT"}}
   },
-  "Avaya": {
-    "Contact Center": {skus:["Avaya Experience Platform","Avaya OneCloud CCaaS","Avaya Aura Contact Center"],pids:{"Avaya Experience Platform":"AEP-ENT"}},
-    "Communications": {skus:["Avaya OneCloud UCaaS","Avaya IP Office","Avaya Aura Platform"],pids:{"Avaya IP Office":"IPO-ENT","Avaya Aura Platform":"AAP-ENT"}}
+  "Avaya":{
+    "Contact Center":{skus:["Avaya Experience Platform","Avaya OneCloud CCaaS","Avaya Aura Contact Center"],pids:{"Avaya Experience Platform":"AEP-ENT"}},
+    "Communications":{skus:["Avaya OneCloud UCaaS","Avaya IP Office","Avaya Aura Platform"],pids:{"Avaya IP Office":"IPO-ENT"}}
   },
-  "Five9": {"Contact Center": {skus:["Five9 Cloud Contact Center","Five9 Digital Engagement","Five9 Workforce Optimization","Five9 Genius AI"],pids:{"Five9 Cloud Contact Center":"F9-CC-ENT"}}},
-  "Amazon Connect": {"Contact Center": {skus:["Amazon Connect Voice","Amazon Connect Chat","Amazon Connect Tasks","Amazon Q in Connect","Amazon Lex"],pids:{"Amazon Connect Voice":"ACS-VOICE","Amazon Q in Connect":"AQC-ENT"}}},
-  "Salesforce": {
-    "CRM": {skus:["Sales Cloud Starter","Sales Cloud Professional","Sales Cloud Enterprise","Sales Cloud Unlimited","Revenue Cloud"],pids:{"Sales Cloud Enterprise":"SF-SC-ENT","Sales Cloud Unlimited":"SF-SC-UNL","Revenue Cloud":"SF-RC-ENT"}},
-    "Service": {skus:["Service Cloud Professional","Service Cloud Enterprise","Service Cloud Unlimited","Field Service"],pids:{"Service Cloud Enterprise":"SF-SVC-ENT"}},
-    "Platform": {skus:["Slack Pro","Slack Business+","Slack Enterprise","MuleSoft","Tableau"],pids:{"Slack Enterprise":"SLACK-ENT","MuleSoft":"MSF-ENT","Tableau":"TAB-ENT"}},
-    "AI": {skus:["Einstein GPT","Agentforce","Einstein Analytics","Einstein Copilot"],pids:{"Agentforce":"SF-AF-ENT","Einstein Analytics":"SF-EA-ENT"}}
+  "Five9":{"Contact Center":{skus:["Five9 Cloud Contact Center","Five9 Digital Engagement","Five9 Workforce Optimization","Five9 Genius AI"],pids:{"Five9 Cloud Contact Center":"F9-CC-ENT"}}},
+  "Amazon Connect":{"Contact Center":{skus:["Amazon Connect Voice","Amazon Connect Chat","Amazon Q in Connect","Amazon Lex"],pids:{"Amazon Connect Voice":"ACS-VOICE","Amazon Q in Connect":"AQC-ENT"}}},
+  "Salesforce":{
+    "CRM":{skus:["Sales Cloud Starter","Sales Cloud Professional","Sales Cloud Enterprise","Sales Cloud Unlimited","Revenue Cloud"],pids:{"Sales Cloud Enterprise":"SF-SC-ENT","Sales Cloud Unlimited":"SF-SC-UNL"}},
+    "Service":{skus:["Service Cloud Professional","Service Cloud Enterprise","Service Cloud Unlimited","Field Service"],pids:{"Service Cloud Enterprise":"SF-SVC-ENT"}},
+    "Platform":{skus:["Slack Pro","Slack Business+","Slack Enterprise","MuleSoft","Tableau"],pids:{"Slack Enterprise":"SLACK-ENT","MuleSoft":"MSF-ENT"}},
+    "AI":{skus:["Einstein GPT","Agentforce","Einstein Analytics"],pids:{"Agentforce":"SF-AF-ENT"}}
   },
-  "HubSpot": {
-    "CRM & Sales": {skus:["Free CRM","Sales Hub Starter","Sales Hub Professional","Sales Hub Enterprise"],pids:{"Sales Hub Professional":"HS-SH-PRO","Sales Hub Enterprise":"HS-SH-ENT"}},
-    "Marketing": {skus:["Marketing Hub Starter","Marketing Hub Professional","Marketing Hub Enterprise"],pids:{"Marketing Hub Enterprise":"HS-MH-ENT"}},
-    "Service": {skus:["Service Hub Starter","Service Hub Professional","Service Hub Enterprise"],pids:{"Service Hub Enterprise":"HS-SVCH-ENT"}}
+  "HubSpot":{
+    "CRM & Sales":{skus:["Free CRM","Sales Hub Starter","Sales Hub Professional","Sales Hub Enterprise"],pids:{"Sales Hub Professional":"HS-SH-PRO","Sales Hub Enterprise":"HS-SH-ENT"}},
+    "Marketing":{skus:["Marketing Hub Starter","Marketing Hub Professional","Marketing Hub Enterprise"],pids:{"Marketing Hub Enterprise":"HS-MH-ENT"}},
+    "Service":{skus:["Service Hub Starter","Service Hub Professional","Service Hub Enterprise"],pids:{"Service Hub Enterprise":"HS-SVCH-ENT"}}
   },
-  "Gong": {"Revenue Intelligence": {skus:["Gong Engage","Gong Deal Intelligence","Gong Forecast","Gong Coaching","Gong Collective"],pids:{"Gong Engage":"GONG-ENG","Gong Forecast":"GONG-FCST"}}},
-  "Outreach": {"Sales Engagement": {skus:["Outreach Engage","Outreach Guide","Outreach Commit","Outreach Kaia"],pids:{"Outreach Engage":"OTR-ENG","Outreach Kaia":"OTR-KAIA"}}},
-  "Clari": {"Revenue Operations": {skus:["Clari Forecast","Clari Align","Clari Groove","Clari Copilot"],pids:{"Clari Forecast":"CL-FCST","Clari Copilot":"CL-CP"}}},
-  "CrowdStrike": {"Security": {skus:["Falcon Go","Falcon Pro","Falcon Enterprise","Falcon Elite","Falcon Complete"],pids:{"Falcon Enterprise":"CS-FALC-ENT","Falcon Elite":"CS-FALC-ELITE","Falcon Complete":"CS-FALC-COM"}}},
-  "Palo Alto Networks": {"Security": {skus:["Prisma Cloud","Cortex XDR","Cortex XSOAR","Prisma Access","Panorama"],pids:{"Prisma Cloud":"PAN-PC-ENT","Cortex XDR":"PAN-XDR-ENT","Prisma Access":"PAN-PA-ENT"}}},
-  "ServiceNow": {"ITSM": {skus:["IT Service Management","IT Operations Management","Strategic Portfolio Management","Customer Service Management","HR Service Delivery"],pids:{"IT Service Management":"SN-ITSM-ENT","Customer Service Management":"SN-CSM-ENT"}}},
-  "Workday": {"HR": {skus:["Workday HCM","Workday Payroll","Workday Recruiting","Workday Learning","Workday Planning"],pids:{"Workday HCM":"WD-HCM-ENT","Workday Planning":"WD-PLAN-ENT"}}},
-  "AWS": {"Cloud": {skus:["EC2","S3","RDS","Lambda","EKS","Amazon Connect","AWS Security Hub"],pids:{"EC2":"AZ-EC2-ENT","EKS":"AZ-EKS-ENT"}}},
-  "Google": {
-    "Workspace": {skus:["Google Workspace Business Starter","Business Standard","Business Plus","Enterprise Standard","Enterprise Plus"],pids:{"Enterprise Standard":"GWS-ENT-STD","Enterprise Plus":"GWS-ENT-PLUS"}},
-    "Cloud": {skus:["Google Cloud Compute","GKE","BigQuery","Vertex AI","Google Meet Hardware"],pids:{"BigQuery":"GCP-BQ-ENT","Vertex AI":"GCP-VAI-ENT"}}
+  "Gong":{"Revenue Intelligence":{skus:["Gong Engage","Gong Deal Intelligence","Gong Forecast","Gong Coaching"],pids:{"Gong Engage":"GONG-ENG","Gong Forecast":"GONG-FCST"}}},
+  "Outreach":{"Sales Engagement":{skus:["Outreach Engage","Outreach Guide","Outreach Commit","Outreach Kaia"],pids:{"Outreach Engage":"OTR-ENG"}}},
+  "Clari":{"Revenue Operations":{skus:["Clari Forecast","Clari Align","Clari Groove","Clari Copilot"],pids:{"Clari Forecast":"CL-FCST"}}},
+  "CrowdStrike":{"Security":{skus:["Falcon Go","Falcon Pro","Falcon Enterprise","Falcon Elite","Falcon Complete"],pids:{"Falcon Enterprise":"CS-FALC-ENT","Falcon Elite":"CS-FALC-ELITE"}}},
+  "Palo Alto Networks":{"Security":{skus:["Prisma Cloud","Cortex XDR","Cortex XSOAR","Prisma Access","Panorama"],pids:{"Prisma Cloud":"PAN-PC-ENT","Cortex XDR":"PAN-XDR-ENT"}}},
+  "ServiceNow":{"ITSM":{skus:["IT Service Management","IT Operations Management","Strategic Portfolio Management","Customer Service Management","HR Service Delivery"],pids:{"IT Service Management":"SN-ITSM-ENT","Customer Service Management":"SN-CSM-ENT"}}},
+  "Workday":{"HR":{skus:["Workday HCM","Workday Payroll","Workday Recruiting","Workday Learning","Workday Planning"],pids:{"Workday HCM":"WD-HCM-ENT"}}},
+  "AWS":{"Cloud":{skus:["EC2","S3","RDS","Lambda","EKS","Amazon Connect","AWS Security Hub"],pids:{"EC2":"AZ-EC2-ENT","EKS":"AZ-EKS-ENT"}}},
+  "Google":{
+    "Workspace":{skus:["Google Workspace Business Starter","Business Standard","Business Plus","Enterprise Standard","Enterprise Plus"],pids:{"Enterprise Standard":"GWS-ENT-STD","Enterprise Plus":"GWS-ENT-PLUS"}},
+    "Cloud":{skus:["Google Cloud Compute","GKE","BigQuery","Vertex AI","Google Meet Hardware"],pids:{"Vertex AI":"GCP-VAI-ENT","BigQuery":"GCP-BQ-ENT"}}
   },
-  "None - Greenfield": {"New Evaluation": {skus:["No incumbent - first deployment","Moving from manual process","Replacing legacy on-premise","Consolidating multiple vendors"],pids:{}}}
+  "Autodesk":{
+    "Design & Engineering":{skus:["AutoCAD","Revit","Inventor","Fusion 360","Civil 3D","Navisworks"],pids:{"AutoCAD":"ACDIST","Revit":"REVIT","Inventor":"INVNTOR","Fusion 360":"FUSION360","Navisworks":"NAVSM"}},
+    "Construction":{skus:["BIM 360","Autodesk Build","Autodesk Docs","Takeoff","Cost Management"],pids:{"BIM 360":"BIM360","Autodesk Build":"ACS-BUILD"}},
+    "Media & Entertainment":{skus:["Maya","3ds Max","Arnold","Flame","ShotGrid"],pids:{"Maya":"MAYA","3ds Max":"3DSMAX","Arnold":"ARNOLD"}},
+    "Product Lifecycle":{skus:["Vault","Upchain","Manage"],pids:{"Vault":"VAULT","Upchain":"UPCHAIN"}}
+  },
+  "Boxx Technologies":{
+    "Workstations":{skus:["APEXX S Series","APEXX T Series","APEXX W Series","APEXX X Series","BOXX RAXX"],pids:{"APEXX S Series":"APEXX-S3","APEXX T Series":"APEXX-T4","APEXX W Series":"APEXX-W4"}},
+    "Rendering":{skus:["RENDERBOXX","BOXX Cloud Rendering","BOXX Farm Manager"],pids:{"RENDERBOXX":"RDRBOXX"}},
+    "Mobile Workstations":{skus:["GoBOXX MXL","GoBOXX SLM","GoBOXX Pro"],pids:{"GoBOXX MXL":"GOBOXX-MXL"}}
+  },
+  "HP / Z Workstations":{
+    "Workstations":{skus:["Z2 Mini G9","Z4 G5","Z6 G5","Z8 Fury G5","ZBook Studio G10","ZBook Fury G10"],pids:{"Z4 G5":"5E8P8EA","Z6 G5":"6B8P3EA","Z8 Fury G5":"6B8R1EA","ZBook Studio G10":"7CG67PA"}},
+    "Displays":{skus:["Z27k G3","Z32k G3","Z43 4K","DreamColor Z27xs G3"],pids:{"Z27k G3":"1B9S0A4","Z32k G3":"1AA85A4"}}
+  },
+  "Dell":{
+    "Workstations":{skus:["Precision 3680","Precision 5690","Precision 7780","Precision 7960 Rack","OptiPlex 7010"],pids:{"Precision 3680":"3680-WS","Precision 5690":"5690-WS","Precision 7780":"7780-WS"}},
+    "Laptops":{skus:["Latitude 5540","Latitude 7440","XPS 15","XPS 17"],pids:{"Latitude 7440":"LAT7440","XPS 15":"XPS9530"}}
+  },
+  "Darktrace":{
+    "Cyber AI":{skus:["Darktrace PREVENT","Darktrace DETECT","Darktrace RESPOND","Darktrace HEAL","Darktrace Email"],pids:{"Darktrace DETECT":"DT-DETECT","Darktrace RESPOND":"DT-RESPOND","Darktrace Email":"DT-EMAIL"}}
+  },
+  "Chubb":{
+    "Cyber Insurance":{skus:["CyberEdge","Chubb Cyber Enterprise Risk Management","Chubb ProFin Express","Chubb Multinational Cyber"],pids:{"CyberEdge":"CHUBB-CE","Chubb Cyber ERM":"CHUBB-ERM"}}
+  },
+  "AIG":{
+    "Cyber Insurance":{skus:["CyberEdge by AIG","AIG CyberMaturity","AIG Network & Information Security"],pids:{"CyberEdge by AIG":"AIG-CE"}}
+  },
+  "Coalition":{
+    "Cyber Insurance":{skus:["Coalition Active Cyber Insurance","Coalition Control","Coalition Incident Response"],pids:{"Coalition Active Cyber":"COAL-ACI"}}
+  },
+  "None - Greenfield":{"New Evaluation":{skus:["No incumbent - first deployment","Moving from manual process","Replacing legacy on-premise","Consolidating multiple vendors"],pids:{}}}
 };
 
-const SMB_WARN = {"Room Bar Pro":"Room Bar Pro is large-room optimized. For SMB consider Room Bar or Room Kit Mini.","Board Pro 75":"Board Pro 75 is enterprise-sized. For SMB consider Board Pro 55 or Desk Pro.","Codec Pro":"Codec Pro is broadcast-grade. For SMB consider Room Kit or Room Bar.","Nexus 9000":"Nexus 9000 is data center grade. For SMB consider Catalyst 9200 or Meraki MS.","Sales Cloud Unlimited":"Sales Cloud Unlimited is enterprise-priced. SMB should consider Professional tier or HubSpot."};
+const SMB_WARN={"Room Bar Pro":"Room Bar Pro is large-room optimized. For SMB consider Room Bar or Room Kit Mini.","Board Pro 75":"Board Pro 75 is enterprise-sized. For SMB consider Board Pro 55 or Desk Pro.","Codec Pro":"Codec Pro is broadcast-grade. For SMB consider Room Kit or Room Bar.","Nexus 9000":"Nexus 9000 is data center grade. For SMB consider Catalyst 9200 or Meraki MS.","Sales Cloud Unlimited":"Sales Cloud Unlimited is enterprise-priced. SMB should consider Professional tier."};
+const selected=new Set();
+const selectedDepths=new Set([2]);
+const RL={late:'Entered the deal late - competitor has the head start',price:'Pricing is higher than competitor',discount:'Limited discount flexibility',partner:'Partner is actively pushing competitor',features:'Competitor has better or more features',incumbent:'Competitor is the incumbent solution',relationship:'Weaker executive or champion relationship',technical:'Lost the technical evaluation or POC',greenfield:'No budget allocated / greenfield evaluation',M:'Metrics identified',E:'Economic buyer engaged',D:'Decision criteria defined',Dp:'Decision process mapped',I:'Pain identified',C:'Champion identified'};
 
-const selected = new Set();
-const selectedDepths = new Set([2]);
-
-const RL = {late:'Entered the deal late - competitor has the head start',price:'Pricing is higher than competitor',discount:'Limited discount flexibility',partner:'Partner is actively pushing competitor',delivery:'Slower product delivery or roadmap',features:'Competitor has better or more features',incumbent:'Competitor is the incumbent solution',relationship:'Weaker executive or champion relationship',technical:'Lost the technical evaluation or POC',greenfield:'No budget allocated / greenfield evaluation'};
-const DEPTH_LABELS = {1:'L1 Business',2:'L2 Technical',3:'L3 Architecture',4:'L4 Integration',5:'L5 Evidence'};
-
-function initDropdowns() {
-  const cos = Object.keys(PRODUCT_DB).sort();
-  ['your_company','comp_company'].forEach(id => {
-    const s = document.getElementById(id);
-    cos.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; s.appendChild(o); });
+function initDropdowns(){
+  const cos=Object.keys(PRODUCT_DB).sort();
+  ['your_company','comp_company'].forEach(id=>{
+    const s=document.getElementById(id);
+    cos.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;s.appendChild(o);});
   });
 }
-
-function updateCats(side) {
-  const co = document.getElementById(side+'_company').value;
-  const cat = document.getElementById(side+'_category');
-  const sku = document.getElementById(side+'_sku');
-  cat.innerHTML = '<option value="">Select category</option>';
-  sku.innerHTML = '<option value="">Select product</option>';
-  sku.disabled = true;
-  if (!co) { cat.disabled = true; return; }
-  cat.disabled = false;
-  Object.keys(PRODUCT_DB[co]).forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cat.appendChild(o); });
+function updateCats(side){
+  const co=document.getElementById(side+'_company').value;
+  const cat=document.getElementById(side+'_category');
+  const sku=document.getElementById(side+'_sku');
+  cat.innerHTML='<option value="">Select category</option>';
+  sku.innerHTML='<option value="">Select product</option>';
+  sku.disabled=true;
+  if(!co){cat.disabled=true;return;}
+  cat.disabled=false;
+  Object.keys(PRODUCT_DB[co]).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;cat.appendChild(o);});
 }
-
-function updateSKUs(side) {
-  const co = document.getElementById(side+'_company').value;
-  const cat = document.getElementById(side+'_category').value;
-  const sku = document.getElementById(side+'_sku');
-  sku.innerHTML = '<option value="">Select product</option>';
-  if (!co || !cat) { sku.disabled = true; return; }
-  sku.disabled = false;
-  (PRODUCT_DB[co][cat]?.skus || []).forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sku.appendChild(o); });
+function updateSKUs(side){
+  const co=document.getElementById(side+'_company').value;
+  const cat=document.getElementById(side+'_category').value;
+  const sku=document.getElementById(side+'_sku');
+  sku.innerHTML='<option value="">Select product</option>';
+  if(!co||!cat){sku.disabled=true;return;}
+  sku.disabled=false;
+  (PRODUCT_DB[co][cat]?.skus||[]).forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sku.appendChild(o);});
 }
-
-function onSKUChange(side) {
-  const co = document.getElementById(side+'_company').value;
-  const cat = document.getElementById(side+'_category').value;
-  const skuVal = document.getElementById(side+'_sku').value;
-  const pidEl = document.getElementById(side+'_pid');
-  if (co && cat && skuVal) {
-    const pid = PRODUCT_DB[co]?.[cat]?.pids?.[skuVal] || '';
-    if (pid) pidEl.value = pid;
-  }
+function onSKUChange(side){
+  const co=document.getElementById(side+'_company').value;
+  const cat=document.getElementById(side+'_category').value;
+  const skuVal=document.getElementById(side+'_sku').value;
+  const pidEl=document.getElementById(side+'_pid');
+  if(co&&cat&&skuVal){const pid=PRODUCT_DB[co]?.[cat]?.pids?.[skuVal]||'';if(pid)pidEl.value=pid;}
   checkSizeMismatch();
 }
-
-function checkSizeMismatch() {
-  const sku = document.getElementById('your_sku').value;
-  const size = document.getElementById('company_size').value;
-  const warn = document.getElementById('sizeWarn');
-  if (sku && size === 'smb' && SMB_WARN[sku]) {
-    warn.textContent = '\u26a0\ufe0f Product-fit alert: ' + SMB_WARN[sku];
-    warn.classList.add('visible');
-  } else { warn.classList.remove('visible'); }
+function checkSizeMismatch(){
+  const sku=document.getElementById('your_sku').value;
+  const size=document.getElementById('company_size').value;
+  const warn=document.getElementById('sizeWarn');
+  if(sku&&size==='smb'&&SMB_WARN[sku]){warn.textContent='\u26a0\ufe0f '+SMB_WARN[sku];warn.classList.add('visible');}
+  else warn.classList.remove('visible');
 }
-
-document.querySelectorAll('.rtag').forEach(b => {
-  b.onclick = () => {
-    const id = b.dataset.id;
-    if (selected.has(id)) { selected.delete(id); b.classList.remove('on'); }
-    else { selected.add(id); b.classList.add('on'); }
+function toggleAdvanced(){
+  const toggle=document.getElementById('advToggle');
+  const section=document.getElementById('advSection');
+  toggle.classList.toggle('open');
+  section.classList.toggle('open');
+}
+document.querySelectorAll('.rtag').forEach(b=>{
+  b.onclick=()=>{
+    const id=b.dataset.id;
+    if(selected.has(id)){selected.delete(id);b.classList.remove('on');}
+    else{selected.add(id);b.classList.add('on');}
   };
 });
-
-document.querySelectorAll('.dtag').forEach(b => {
-  b.onclick = () => {
-    const d = b.dataset.depth;
-    if (d === 'all') {
-      const allOn = [1,2,3,4,5].every(x => selectedDepths.has(x));
-      if (allOn) { selectedDepths.clear(); document.querySelectorAll('.dtag').forEach(x => x.classList.remove('on')); }
-      else { selectedDepths.clear(); [1,2,3,4,5].forEach(x => selectedDepths.add(x)); document.querySelectorAll('.dtag').forEach(x => x.classList.add('on')); }
-    } else {
-      const n = parseInt(d);
-      if (selectedDepths.has(n)) { selectedDepths.delete(n); b.classList.remove('on'); }
-      else { selectedDepths.add(n); b.classList.add('on'); }
-      const allBtn = document.querySelector('.dtag[data-depth="all"]');
-      if ([1,2,3,4,5].every(x => selectedDepths.has(x))) allBtn.classList.add('on');
+document.querySelectorAll('.dtag').forEach(b=>{
+  b.onclick=()=>{
+    const d=b.dataset.depth;
+    if(d==='all'){
+      const allOn=[1,2,3,4,5].every(x=>selectedDepths.has(x));
+      if(allOn){selectedDepths.clear();document.querySelectorAll('.dtag').forEach(x=>x.classList.remove('on'));}
+      else{selectedDepths.clear();[1,2,3,4,5].forEach(x=>selectedDepths.add(x));document.querySelectorAll('.dtag').forEach(x=>x.classList.add('on'));}
+    }else{
+      const n=parseInt(d);
+      if(selectedDepths.has(n)){selectedDepths.delete(n);b.classList.remove('on');}
+      else{selectedDepths.add(n);b.classList.add('on');}
+      const allBtn=document.querySelector('.dtag[data-depth="all"]');
+      if([1,2,3,4,5].every(x=>selectedDepths.has(x)))allBtn.classList.add('on');
       else allBtn.classList.remove('on');
     }
   };
 });
-
-document.getElementById('company_size').addEventListener('change', checkSizeMismatch);
-
-async function handleFlip(flipMode = false) {
-  const yourCo = document.getElementById('your_company').value;
-  const yourSku = document.getElementById('your_sku').value;
-  const compCo = document.getElementById('comp_company').value;
-  const compSku = document.getElementById('comp_sku').value;
-  const stage = document.getElementById('stage').value;
-  const industry = document.getElementById('industry').value;
-  const geo = document.getElementById('geography').value;
-  const audience = document.getElementById('audience').value;
-  const companySize = document.getElementById('company_size').value;
-  const dealSize = document.getElementById('deal_size').value;
-  const partner = document.getElementById('partner').value.trim();
-  const context = document.getElementById('context').value.trim();
-  const yourPid = document.getElementById('your_pid').value.trim();
-  const compPid = document.getElementById('comp_pid').value.trim();
-  const prospectCo = document.getElementById('prospect_company').value.trim();
-  const dealType = document.getElementById('deal_type').value;
-  const tcoModel = document.getElementById('tco_model').value;
-  const errEl = document.getElementById('err');
-
-  if (!yourCo || !yourSku || !compCo || !compSku || !stage || selected.size === 0) {
-    errEl.textContent = 'Please select your product, competitor product, deal stage and at least one loss reason.';
-    errEl.style.display = 'block'; return;
-  }
-  errEl.style.display = 'none';
-
-  const product = yourCo + ' ' + yourSku;
-  const competitor = compCo + ' ' + compSku;
-  const reasons = [...selected].map(id => RL[id]).join('; ');
-  const depthList = [...selectedDepths].sort().map(d => DEPTH_LABELS[d]).join(', ');
-  const btn = document.getElementById('flipBtn');
-  btn.disabled = true;
-  btn.textContent = flipMode ? 'Analyzing their playbook...' : 'Generating your rescue plan...';
-  document.getElementById('output').innerHTML = '';
-
-  try {
-    const res = await fetch('/api/rescue', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ product, competitor, stage, industry, reasons, context, your_sku: yourSku, comp_sku: compSku, your_company: yourCo, comp_company: compCo, your_pid: yourPid, comp_pid: compPid, company_size: companySize, deal_size: dealSize, partner, audience, geography: geo, deal_type: dealType, tco_model: tcoModel, prospect_company: prospectCo, depth: [...selectedDepths].sort().join(','), depth_label: depthList, flip_mode: flipMode })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    window._flipInput = { product, competitor, deal_stage: stage, losing_reason: reasons, industry };
-    renderOutput(data, product, competitor, flipMode);
-    document.getElementById('output').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch(e) {
-    errEl.textContent = 'Error: ' + e.message;
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Flip this deal ->';
-  }
+async function handleNLInput(){
+  const text=document.getElementById('nlInput').value.trim();
+  if(!text)return;
+  const btn=document.querySelector('.nl-send');
+  btn.style.opacity='0.5';
+  try{
+    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product:'parse',competitor:'parse',stage:'parse',reasons:'parse',nl_input:text,parse_only:true})});
+    const d=await res.json();
+    if(d.parsed){
+      if(d.parsed.your_company){document.getElementById('your_company').value=d.parsed.your_company;updateCats('your');}
+      if(d.parsed.your_sku){setTimeout(()=>{document.getElementById('your_sku').value=d.parsed.your_sku;},300);}
+      if(d.parsed.comp_company){document.getElementById('comp_company').value=d.parsed.comp_company;updateCats('comp');}
+      if(d.parsed.comp_sku){setTimeout(()=>{document.getElementById('comp_sku').value=d.parsed.comp_sku;},300);}
+      if(d.parsed.stage)document.getElementById('stage').value=d.parsed.stage;
+      if(d.parsed.partner)document.getElementById('partner').value=d.parsed.partner;
+    }
+  }catch(e){console.log('NL parse failed, continuing normally');}
+  btn.style.opacity='1';
 }
-
-function uc(u) { if (!u) return 'um'; const v = u.toLowerCase(); return v==='high'?'uh':v==='low'?'ul':'um'; }
-function wc(p) { return p >= 60 ? '#30a46c' : p >= 35 ? '#e5a00d' : '#e5484d'; }
-
-function renderOutput(d, product, competitor, flipMode) {
-  const a = d.dealAssessment, wp = Number(a.winProbability);
-  const mvs = (d.counterMoves||[]).map((m,i) => '<div class="mv"><div class="mvn">'+(i+1)+'</div><div class="mvb"><div class="mvh"><span class="mvt">'+m.move+'</span><span class="mvtime">'+m.timing+'</span></div><div class="mva">'+m.action+'</div></div></div>').join('');
-  const msgs = (d.talkTrack.keyMessages||[]).map(m => '<div class="kmsg"><span class="ck">&#10003;</span><span>'+m+'</span></div>').join('');
-  const objs = (d.talkTrack.objectionHandlers||[]).map(o => '<div class="obi"><div class="obq">"'+o.objection+'"</div><div class="oba">'+o.response+'</div></div>').join('');
-  const weaks = (d.competitorWeaknesses||[]).map(w => '<div class="kmsg"><span style="color:var(--red);flex-shrink:0;font-size:13px">&#10005;</span><span style="font-size:13px;color:var(--muted)">'+w+'</span></div>').join('');
-  const headerBg = flipMode ? 'var(--purple-bg)' : 'var(--surface)';
-  const headerBorder = flipMode ? 'var(--purple-border)' : 'var(--border)';
-  const headerLabel = flipMode ? ('&#128260; ' + competitor + ' playbook against ' + product) : ('Deal assessment &#8212; ' + product + ' vs ' + competitor);
-  const partnerHtml = d.partnerIntel ? '<div class="pcard"><div class="pl">&#128101; Partner Intelligence</div><div style="font-size:13px;color:var(--muted);line-height:1.7">'+d.partnerIntel+'</div></div>' : '';
-  const sizeHtml = d.sizeRecommendation ? '<div style="background:var(--amber-bg);border:1px solid #2e2000;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;font-family:DM Mono,monospace">&#9888; Product Fit Advisory</div><div style="font-size:13px;color:var(--muted);line-height:1.7">'+d.sizeRecommendation+'</div></div>' : '';
-
-  document.getElementById('output').innerHTML =
-    '<div class="out-section" style="background:'+headerBg+';border-color:'+headerBorder+'"><div class="sl">'+headerLabel+'</div>'+
+async function handleFlip(flipMode=false){
+  const yourCo=document.getElementById('your_company').value;
+  const yourSku=document.getElementById('your_sku').value;
+  const compCo=document.getElementById('comp_company').value;
+  const compSku=document.getElementById('comp_sku').value;
+  const stage=document.getElementById('stage').value;
+  const errEl=document.getElementById('err');
+  if(!yourCo||!yourSku||!compCo||!compSku||!stage||selected.size===0){
+    errEl.textContent='Please select your product, competitor product, deal stage and at least one loss reason.';
+    errEl.style.display='block';return;
+  }
+  errEl.style.display='none';
+  const product=yourCo+' '+yourSku;
+  const competitor=compCo+' '+compSku;
+  const reasons=[...selected].filter(id=>RL[id]&&!['M','E','D','Dp','I','C'].includes(id)).map(id=>RL[id]).join('; ');
+  const meddic=[...selected].filter(id=>['M','E','D','Dp','I','C'].includes(id)).map(id=>RL[id]).join(', ');
+  const depthList=[...selectedDepths].sort().join(',');
+  const btn=document.getElementById('flipBtn');
+  btn.disabled=true;btn.textContent=flipMode?'Analyzing their playbook...':'Generating your rescue plan...';
+  document.getElementById('output').innerHTML='';
+  // Show streaming placeholder
+  document.getElementById('output').innerHTML='<div class="out-section" style="text-align:center;padding:2rem"><div style="font-size:13px;color:var(--muted);margin-bottom:12px">Generating your rescue plan...</div><div id="streamDots" style="display:flex;justify-content:center;gap:6px"><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite"></span><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .2s"></span><span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .4s"></span></div></div><style>@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>';
+  document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
+  try{
+    const payload={product,competitor,stage,
+      industry:document.getElementById('industry').value,
+      reasons,context:document.getElementById('context').value.trim(),
+      your_sku:yourSku,comp_sku:compSku,
+      your_pid:document.getElementById('your_pid').value.trim(),
+      comp_pid:document.getElementById('comp_pid').value.trim(),
+      company_size:document.getElementById('company_size').value,
+      deal_size:document.getElementById('deal_size').value,
+      partner:document.getElementById('partner').value.trim(),
+      audience:document.getElementById('audience').value,
+      geography:document.getElementById('geography').value,
+      deal_type:document.getElementById('deal_type').value,
+      tco_model:document.getElementById('tco_model').value,
+      prospect_company:document.getElementById('prospect_company').value.trim(),
+      meddic_status:meddic,
+      depth:depthList,flip_mode:flipMode};
+    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const reader=res.body.getReader();
+    const decoder=new TextDecoder();
+    let fullText='';
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      const chunk=decoder.decode(value);
+      const lines=chunk.split('\n');
+      for(const line of lines){
+        if(!line.startsWith('data:'))continue;
+        try{
+          const d=JSON.parse(line.slice(5).trim());
+          if(d.error)throw new Error(d.error);
+          if(d.chunk)fullText+=d.chunk;
+          if(d.done){
+            const clean=fullText.trim().replace(/```json|```/g,'').trim();
+            const data=JSON.parse(clean);
+            window._flipInput={product,competitor,deal_stage:stage,losing_reason:reasons,industry:document.getElementById('industry').value};
+            renderOutput(data,product,competitor,flipMode);
+            document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
+          }
+        }catch(parseErr){if(parseErr.message!=='Unexpected end of JSON input')console.log('stream parse:',parseErr.message);}
+      }
+    }
+  }catch(e){
+    errEl.textContent='Error: '+e.message;errEl.style.display='block';
+    document.getElementById('output').innerHTML='';
+  }finally{btn.disabled=false;btn.textContent='Flip this deal ->';}
+}
+function uc(u){if(!u)return'um';const v=u.toLowerCase();return v==='high'?'uh':v==='low'?'ul':'um';}
+function wc(p){return p>=60?'#30a46c':p>=35?'#e5a00d':'#e5484d';}
+function renderOutput(d,product,competitor,flipMode){
+  const a=d.dealAssessment,wp=Number(a.winProbability);
+  const mvs=(d.counterMoves||[]).map((m,i)=>'<div class="mv"><div class="mvn">'+(i+1)+'</div><div class="mvb"><div class="mvh"><span class="mvt">'+m.move+'</span><span class="mvtime">'+m.timing+'</span></div><div class="mva">'+m.action+'</div></div></div>').join('');
+  const msgs=(d.talkTrack.keyMessages||[]).map(m=>'<div class="kmsg"><span class="ck">&#10003;</span><span>'+m+'</span></div>').join('');
+  const objs=(d.talkTrack.objectionHandlers||[]).map(o=>'<div class="obi"><div class="obq">"'+o.objection+'"</div><div class="oba">'+o.response+'</div></div>').join('');
+  const weaks=(d.competitorWeaknesses||[]).map(w=>'<div class="kmsg"><span style="color:var(--red);flex-shrink:0;font-size:13px">&#10005;</span><span style="font-size:13px;color:var(--muted)">'+w+'</span></div>').join('');
+  const partnerHtml=d.partnerIntel?'<div class="pcard"><div class="pl">&#128101; Partner Intelligence</div><div style="font-size:13px;color:var(--muted);line-height:1.7">'+d.partnerIntel+'</div></div>':'';
+  const sizeHtml=d.sizeRecommendation?'<div style="background:var(--amber-bg);border:1px solid #2e2000;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;font-family:DM Mono,monospace">&#9888; Product Fit Advisory</div><div style="font-size:13px;color:var(--muted);line-height:1.7">'+d.sizeRecommendation+'</div></div>':'';
+  const headerLabel=flipMode?('&#128260; How '+competitor.split(' ')[0]+' pitches against you'):('Deal assessment &#8212; '+product+' vs '+competitor);
+  document.getElementById('output').innerHTML=
+    '<div class="out-section"><div class="sl">'+headerLabel+'</div>'+
     '<div class="arow"><div><div class="wp" style="color:'+wc(wp)+'">'+wp+'%</div><div class="wb">win probability</div></div>'+
     '<div><div class="ubadge '+uc(a.urgency)+'">'+a.urgency+' urgency</div><div class="at">'+a.summary+'</div></div></div></div>'+
     sizeHtml+partnerHtml+
-    (weaks ? '<div class="out-section"><div class="sl">'+(flipMode?'Our vulnerabilities they will exploit':'Verified competitor weaknesses')+'</div>'+weaks+'</div>' : '')+
+    (weaks?'<div class="out-section"><div class="sl">'+(flipMode?'Their attack angles against you':'Verified competitor weaknesses')+'</div>'+weaks+'</div>':'')+
     '<div class="kcard"><div class="kl">'+(flipMode?'Their kill shot against you':'The kill shot')+'</div><div class="kt">"'+d.killShot+'"</div></div>'+
     '<div class="out-section"><div class="sl">'+(flipMode?'Their counter-moves':'Counter-moves')+'</div>'+mvs+'</div>'+
     '<div class="out-section"><div class="sl">Talk track</div><div class="ttsub">Opening line</div><div class="ttop">'+d.talkTrack.opening+'</div><div class="ttsub">Key messages</div><div style="margin-bottom:12px">'+msgs+'</div><div class="ttsub">Objection handlers</div>'+objs+'</div>'+
@@ -489,59 +556,52 @@ function renderOutput(d, product, competitor, flipMode) {
     '<button class="abt" style="flex:0;padding:5px 14px;font-size:11px" onclick="trackOutcome(this,\'open\')">Still open</button>'+
     '</div>'+
     '<div class="share-result" id="shareResult"><span class="share-url-text" id="shareUrlText"></span><button class="copy-link-btn" onclick="copyShareLink(this)">Copy link</button></div>';
-  window._ld = d;
+  window._ld=d;
 }
-
-async function sharePlan(btn) {
-  if (!window._ld || !window._flipInput) return;
-  btn.disabled = true; btn.textContent = 'Saving...';
-  try {
-    const res = await fetch('/api/save-plan', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...window._flipInput, plan_data:window._ld}) });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    const url = window.location.origin+'/plan?id='+data.id;
-    window._shareUrl = url;
-    document.getElementById('shareUrlText').textContent = url;
+async function sharePlan(btn){
+  if(!window._ld||!window._flipInput)return;
+  btn.disabled=true;btn.textContent='Saving...';
+  try{
+    const res=await fetch('/api/save-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...window._flipInput,plan_data:window._ld})});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    const url=window.location.origin+'/plan?id='+data.id;
+    window._shareUrl=url;
+    document.getElementById('shareUrlText').textContent=url;
     document.getElementById('shareResult').classList.add('visible');
-    btn.textContent = '\u2713 Link ready';
-  } catch(e) { btn.textContent = 'Error'; btn.disabled = false; }
+    btn.textContent='\u2713 Link ready';
+  }catch(e){btn.textContent='Error';btn.disabled=false;}
 }
-
-function copyShareLink(btn) {
-  if (!window._shareUrl) return;
-  navigator.clipboard.writeText(window._shareUrl).then(() => { btn.textContent='Copied!'; btn.classList.add('ok'); setTimeout(()=>{btn.textContent='Copy link';btn.classList.remove('ok');},2000); });
+function copyShareLink(btn){
+  if(!window._shareUrl)return;
+  navigator.clipboard.writeText(window._shareUrl).then(()=>{btn.textContent='Copied!';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy link';btn.classList.remove('ok');},2000);});
 }
-
-function copyAll(btn) {
-  const d = window._ld; if (!d) return;
-  const mv = (d.counterMoves||[]).map((m,i)=>(i+1)+'. '+m.move+' ['+m.timing+'] '+m.action).join('\n');
-  const ms = (d.talkTrack.keyMessages||[]).map(m=>'- '+m).join('\n');
-  const ob = (d.talkTrack.objectionHandlers||[]).map(o=>'Q: "'+o.objection+'" A: '+o.response).join('\n');
-  const t = 'FLIPIT DEAL RESCUE PLAN\n=======================\nWin: '+d.dealAssessment.winProbability+'% | '+d.dealAssessment.urgency+' urgency\n'+d.dealAssessment.summary+'\n\nKILL SHOT\n"'+d.killShot+'"\n\nCOUNTER-MOVES\n'+mv+'\n\nTALK TRACK\n'+d.talkTrack.opening+'\n\nKEY MESSAGES\n'+ms+'\n\nOBJECTION HANDLERS\n'+ob+'\n\nEMAIL\nSubject: '+d.emailTemplate.subject+'\n\n'+d.emailTemplate.body+'\n\n---\nGenerated by FlipIt - flipit.fyi';
+function copyAll(btn){
+  const d=window._ld;if(!d)return;
+  const mv=(d.counterMoves||[]).map((m,i)=>(i+1)+'. '+m.move+' ['+m.timing+'] '+m.action).join('\n');
+  const ms=(d.talkTrack.keyMessages||[]).map(m=>'- '+m).join('\n');
+  const ob=(d.talkTrack.objectionHandlers||[]).map(o=>'Q: "'+o.objection+'" A: '+o.response).join('\n');
+  const t='FLIPIT PLAN\n===========\nWin: '+d.dealAssessment.winProbability+'% | '+d.dealAssessment.urgency+'\n'+d.dealAssessment.summary+'\n\nKILL SHOT\n"'+d.killShot+'"\n\nCOUNTER-MOVES\n'+mv+'\n\nTALK TRACK\n'+d.talkTrack.opening+'\n\nKEY MESSAGES\n'+ms+'\n\nOBJECTION HANDLERS\n'+ob+'\n\nEMAIL\nSubject: '+d.emailTemplate.subject+'\n\n'+d.emailTemplate.body+'\n\n---\nflipit.fyi';
   navigator.clipboard.writeText(t).then(()=>{btn.textContent='Copied!';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy full plan';btn.classList.remove('ok');},2000);});
 }
-
-function copyEmail(btn) {
-  const d = window._ld; if (!d) return;
+function copyEmail(btn){
+  const d=window._ld;if(!d)return;
   navigator.clipboard.writeText('Subject: '+d.emailTemplate.subject+'\n\n'+d.emailTemplate.body).then(()=>{btn.textContent='Copied!';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy email';btn.classList.remove('ok');},2000);});
 }
-
-async function trackOutcome(btn, outcome) {
-  btn.textContent = outcome==='won'?'\u2713 Won':outcome==='lost'?'\u2715 Lost':'Open';
-  btn.disabled = true;
-  try { await fetch('/api/track-outcome',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...window._flipInput,outcome})}); } catch(e) {}
+async function trackOutcome(btn,outcome){
+  btn.textContent=outcome==='won'?'\u2713 Won':outcome==='lost'?'\u2715 Lost':'Open';
+  btn.disabled=true;
+  try{await fetch('/api/track-outcome',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...window._flipInput,outcome})});}catch(e){}
 }
-
-function newDeal() {
-  document.getElementById('output').innerHTML = '';
-  ['your_company','your_category','your_sku','comp_company','comp_category','comp_sku','stage','industry','geography','company_size','deal_size','audience','partner','context','your_pid','comp_pid','prospect_company','deal_type','tco_model'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  ['your_category','your_sku','comp_category','comp_sku'].forEach(id => { document.getElementById(id).disabled=true; });
+function newDeal(){
+  document.getElementById('output').innerHTML='';
+  ['your_company','your_category','your_sku','comp_company','comp_category','comp_sku','stage','industry','geography','company_size','deal_size','audience','partner','context','your_pid','comp_pid','prospect_company','deal_type','tco_model'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['your_category','your_sku','comp_category','comp_sku'].forEach(id=>{document.getElementById(id).disabled=true;});
   selected.clear();
   document.querySelectorAll('.rtag').forEach(b=>b.classList.remove('on'));
   document.getElementById('sizeWarn').classList.remove('visible');
   window.scrollTo({top:0,behavior:'smooth'});
 }
-
 initDropdowns();
 </script>
 </body>
