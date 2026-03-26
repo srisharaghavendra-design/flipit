@@ -1,6 +1,25 @@
 import Anthropic from "@anthropic-ai/sdk";
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// Robust JSON extraction — finds the outermost {...} block regardless of surrounding text/fences
+function extractJSON(text) {
+  if (!text) return null;
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0, inStr = false, escape = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\' && inStr) { escape = true; continue; }
+    if (c === '"' && !escape) { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) { try { return JSON.parse(text.slice(start, i+1)); } catch(e) { return attemptJSONRecovery(text.slice(start, i+1)); } } }
+  }
+  // No clean close found — try recovery on everything from start
+  return attemptJSONRecovery(text.slice(start));
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   const {
@@ -92,18 +111,12 @@ Return ONLY valid JSON, no markdown, no backticks, no preamble:
         console.warn("rescue: hit max_tokens, attempting partial parse");
       }
 
-      const clean = fullText.trim().replace(/^```json\s*|^```\s*|```$/g, "").trim();
-      try {
-        const parsed = JSON.parse(clean);
+      const parsed = extractJSON(fullText);
+      if (parsed) {
         res.write(`data: ${JSON.stringify({ done: true, result: parsed })}\n\n`);
-      } catch (parseErr) {
-        // Try to recover by closing open JSON
-        const recovered = attemptJSONRecovery(clean);
-        if (recovered) {
-          res.write(`data: ${JSON.stringify({ done: true, result: recovered })}\n\n`);
-        } else {
-          res.write(`data: ${JSON.stringify({ error: "JSON parse error — please try again." })}\n\n`);
-        }
+      } else {
+        console.error("stream parse error, raw start:", fullText.slice(0, 200));
+        res.write(`data: ${JSON.stringify({ error: "JSON parse error — please try again." })}\n\n`);
       }
       return res.end();
 
@@ -121,15 +134,10 @@ Return ONLY valid JSON, no markdown, no backticks, no preamble:
       messages: [{ role: "user", content: user }]
     });
 
-    const clean = r.content[0].text.trim().replace(/^```json\s*|^```\s*|```$/g, "").trim();
-    try {
-      return res.status(200).json(JSON.parse(clean));
-    } catch (parseErr) {
-      const recovered = attemptJSONRecovery(clean);
-      if (recovered) return res.status(200).json(recovered);
-      console.error("rescue parse error:", parseErr.message, "\nRaw:", clean.slice(0, 500));
-      return res.status(500).json({ error: "Failed to parse response — please try again." });
-    }
+    const parsed = extractJSON(r.content[0].text);
+    if (parsed) return res.status(200).json(parsed);
+    console.error("parse error, raw:", r.content[0].text.slice(0, 300));
+    return res.status(500).json({ error: "Failed to parse response — please try again." });
 
   } catch (err) {
     console.error("rescue error:", err);
