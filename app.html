@@ -500,7 +500,7 @@ async function streamRescue(corePayload, depthPayload, onCoreDone, errEl){
     clearLoaderTimer();
     onCoreDone(data);
     showDepthSkeleton();
-    document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
+    document.getElementById('output').scrollIntoView({behavior:'smooth',block:'nearest'});
   }, (err)=>{
     coreSettled=true;
     errEl.textContent='Error: '+err; errEl.style.display='block';
@@ -519,7 +519,7 @@ async function handleNLInput(){
   const btn=document.querySelector('.nl-send'); btn.style.opacity='0.5';
   const errEl=document.getElementById('err'); errEl.style.display='none';
   showLoader('Generating your rescue plan...');
-  document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('output').scrollIntoView({behavior:'smooth',block:'nearest'});
   const corePayload={product:'described in context',competitor:'described in context',stage:'Discovery',reasons:'Natural language input',context:text};
   const depthPayload={product:'described in context',competitor:'described in context',stage:'Discovery',reasons:'Natural language input',context:text};
   await streamRescue(corePayload, depthPayload, (data)=>{
@@ -548,7 +548,7 @@ async function handleFlip(flipMode=false){
   const btn=document.getElementById('flipBtn');
   btn.disabled=true; btn.textContent=flipMode?'Analyzing their playbook...':'Building your rescue plan...';
   showLoader(flipMode?'Analyzing their playbook...':'Building your rescue plan...');
-  document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('output').scrollIntoView({behavior:'smooth',block:'nearest'});
 
   const shared={
     product, competitor, stage, your_sku:yourSku, comp_sku:compSku,
@@ -657,7 +657,21 @@ function renderOutput(raw,product,competitor,flipMode){
     '<div style="font-size:10px;font-weight:700;color:#a855f7;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;font-family:DM Mono,monospace">&#128101; Partner Intel</div>' +
     '<div style="font-size:13px;color:var(--muted);line-height:1.65">'+d.partnerIntel+'</div></div>' : '';
 
+  // Sticky mini bar — always visible while tabbing
+  const urgencyColor = a.urgency==='high'?'var(--red)':a.urgency==='low'?'var(--green)':'var(--amber)';
   document.getElementById('output').innerHTML =
+  // ── STICKY HEADER
+  '<div style="position:sticky;top:56px;z-index:50;background:rgba(8,8,8,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:10px 1.5rem;margin:-1px -0px 12px;display:flex;align-items:center;gap:16px;border-radius:14px 14px 0 0" id="stickyBar">' +
+    '<div style="font-size:24px;font-weight:700;color:'+wc(wp)+'">'+wp+'%</div>' +
+    '<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:'+urgencyColor+';text-transform:uppercase;letter-spacing:.08em">'+a.urgency+' urgency</div>' +
+    '<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(d.killShot?d.killShot.slice(0,80)+'...':'Loading kill shot...')+'</div></div>' +
+    '<div style="display:flex;gap:6px">' +
+      '<button class="ftab-mini on" data-tab="plan" onclick="switchTab(this,this.dataset.tab)" style="padding:5px 10px;font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--muted);cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">&#127919; Plan</button>' +
+      '<button class="ftab-mini" data-tab="battlecard" onclick="switchTab(this,this.dataset.tab)" style="padding:5px 10px;font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--muted);cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">&#128202; Card</button>' +
+      '<button class="ftab-mini" data-tab="talktrack" onclick="switchTab(this,this.dataset.tab)" style="padding:5px 10px;font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--muted);cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">&#128172; Talk</button>' +
+      '<button class="ftab-mini" data-tab="email" onclick="switchTab(this,this.dataset.tab)" style="padding:5px 10px;font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--muted);cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">&#9993; Email</button>' +
+    '</div>' +
+  '</div>' +
   // ── HEADER: Win % + Kill Shot — always visible above tabs
   '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:6px">' +
     '<div style="display:flex;align-items:flex-start;gap:1.5rem;margin-bottom:12px">' +
@@ -675,7 +689,7 @@ function renderOutput(raw,product,competitor,flipMode){
   // ── KILL SHOT — prominent, above tabs
   '<div style="background:var(--red-bg);border:1px solid var(--red-border);border-radius:14px;padding:1rem 1.5rem;margin-bottom:6px">' +
     '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px;font-family:DM Mono,monospace">&#9889; Kill shot</div>' +
-    '<div style="font-size:15px;font-weight:500;line-height:1.65;font-style:italic">“'+d.killShot+'”</div>' +
+    '<div style="font-size:15px;font-weight:600;line-height:1.6;color:#f0f0f0">“'+d.killShot+'”</div>' +
   '</div>' +
 
   // ── TABBED SECTIONS
@@ -745,6 +759,11 @@ function switchTab(btn, tabId){
   btn.classList.add('on');
   const el = document.getElementById('tab-'+tabId);
   if(el) el.classList.add('on');
+  // Sync sticky mini tabs
+  document.querySelectorAll('.ftab-mini').forEach(b=>{
+    b.style.color = b.dataset.tab===tabId ? 'var(--text)' : 'var(--muted)';
+    b.style.borderColor = b.dataset.tab===tabId ? 'var(--red)' : 'var(--border2)';
+  });
   // Lazy-load depth tabs on first click
   if((tabId==='battlecard'||tabId==='intel') && !window._depthLoading && !window._depthLoaded) {
     window._depthLoading = true;
