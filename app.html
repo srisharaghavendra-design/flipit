@@ -103,6 +103,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .abt.share-btn{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)}
 .share-result{display:none;margin-top:8px;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:8px;padding:9px 13px;align-items:center;gap:10px;flex-wrap:wrap}
 .share-result.visible{display:flex}
+.ftab{flex-shrink:0;padding:11px 18px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.ftab:hover{color:var(--text)}
+.ftab.on{color:var(--text);border-bottom-color:var(--red)}
+.ftab-content{display:none}
+.ftab-content.on{display:block}
 .share-url-text{flex:1;font-size:11px;color:var(--blue);font-family:DM Mono,monospace;word-break:break-all}
 .copy-link-btn{padding:4px 11px;border-radius:6px;background:var(--surface);border:1px solid var(--blue-border);color:var(--blue);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
 .copy-link-btn.ok{color:var(--green);border-color:var(--green)}
@@ -181,7 +186,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <!-- ADVANCED OPTIONS TOGGLE -->
     <div class="advanced-toggle" id="advToggle" onclick="toggleAdvanced()">
       <span class="arrow">&#9658;</span>
-      <span>Advanced options (depth, audience, geography, MEDDPICC, partner, TCO)</span>
+      <span>Advanced options (audience, geography, MEDDPICC, partner, TCO)</span>
     </div>
     <div class="advanced-section" id="advSection">
       <div style="padding-top:12px">
@@ -222,17 +227,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       </div>
     </div>
 
-    <div style="margin-bottom:12px">
-      <div class="rl">Output depth (select one or more)</div>
-      <div class="rw">
-        <button class="dtag" data-depth="1">Business Value</button>
-        <button class="dtag on" data-depth="2">Technical Specs</button>
-        <button class="dtag" data-depth="3">Architecture</button>
-        <button class="dtag" data-depth="4">Cost &amp; Integration</button>
-        <button class="dtag" data-depth="5">Proof &amp; Evidence</button>
-        <button class="dtag" data-depth="all">All Depths</button>
-      </div>
-    </div>
+
     <div class="field" style="margin-bottom:12px;margin-top:8px">
       <label>Additional context <span style="font-weight:400;color:var(--muted2)">(optional)</span></label>
       <textarea id="context" placeholder="Key stakeholders, what the customer said, budget situation..."></textarea>
@@ -360,7 +355,7 @@ const PRODUCT_DB = {
 
 const SMB_WARN={"Room Bar Pro":"Room Bar Pro is large-room optimized. For SMB consider Room Bar or Room Kit Mini.","Board Pro 75":"Board Pro 75 is enterprise-sized. For SMB consider Board Pro 55 or Desk Pro.","Codec Pro":"Codec Pro is broadcast-grade. For SMB consider Room Kit or Room Bar.","Nexus 9000":"Nexus 9000 is data center grade. For SMB consider Catalyst 9200 or Meraki MS.","Sales Cloud Unlimited":"Sales Cloud Unlimited is enterprise-priced. SMB should consider Professional tier."};
 const selected=new Set();
-const selectedDepths=new Set([2]);
+const selectedDepths=new Set([1,2,3,4,5]); // all depths always active
 const RL={late:'Entered the deal late - competitor has the head start',price:'Pricing is higher than competitor',discount:'Limited discount flexibility',partner:'Partner is actively pushing competitor',features:'Competitor has better or more features',incumbent:'Competitor is the incumbent solution',relationship:'Weaker executive or champion relationship',technical:'Lost the technical evaluation or POC',greenfield:'No budget allocated / greenfield evaluation',M:'Metrics identified',E:'Economic buyer engaged',D:'Decision criteria defined',Dp:'Decision process mapped',P:'Paper process understood',I:'Pain identified',Ch:'Champion identified',Co:'Competition mapped'};
 
 function initDropdowns(){
@@ -418,109 +413,129 @@ document.querySelectorAll('.rtag').forEach(b=>{
     else{selected.add(id);b.classList.add('on');}
   };
 });
-document.querySelectorAll('.dtag').forEach(b=>{
-  b.onclick=()=>{
-    const d=b.dataset.depth;
-    if(d==='all'){
-      const allOn=[1,2,3,4,5].every(x=>selectedDepths.has(x));
-      if(allOn){selectedDepths.clear();document.querySelectorAll('.dtag').forEach(x=>x.classList.remove('on'));}
-      else{selectedDepths.clear();[1,2,3,4,5].forEach(x=>selectedDepths.add(x));document.querySelectorAll('.dtag').forEach(x=>x.classList.add('on'));}
-    }else{
-      const n=parseInt(d);
-      if(selectedDepths.has(n)){selectedDepths.delete(n);b.classList.remove('on');}
-      else{selectedDepths.add(n);b.classList.add('on');}
-      const allBtn=document.querySelector('.dtag[data-depth="all"]');
-      if([1,2,3,4,5].every(x=>selectedDepths.has(x)))allBtn.classList.add('on');
-      else allBtn.classList.remove('on');
-    }
-  };
-});
-// ── Streaming helpers ──────────────────────────────────────────────────────
-function showStreamingLoader(msg){
+
+// ── Two-phase parallel loading ────────────────────────────────────────────────
+// Phase 1: Core plan via Haiku — renders in ~6s
+// Phase 2: Depth intelligence via Sonnet — fills in behind it at ~20s
+
+function showLoader(msg, phase2=false){
   document.getElementById('output').innerHTML=
-    '<div class="out-section" style="text-align:center;padding:2.5rem 1.5rem">'+
-    '<div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">'+msg+'</div>'+
+    '<div class="out-section" id="mainLoader" style="text-align:center;padding:2.5rem 1.5rem">'+
+    '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">'+msg+'</div>'+
     '<div id="loaderStatus" style="font-size:12px;color:var(--muted);margin-bottom:20px">Connecting to AI engine...</div>'+
-    '<div style="width:100%;height:3px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:20px">'+
-      '<div id="loaderBar" style="height:100%;background:linear-gradient(90deg,var(--red),#a855f7);border-radius:3px;width:0%;transition:width 1.5s ease"></div>'+
+    '<div style="width:100%;height:3px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:16px">'+
+      '<div id="loaderBar" style="height:100%;background:linear-gradient(90deg,var(--red),#a855f7);border-radius:3px;width:4%;transition:width 1.5s ease"></div>'+
     '</div>'+
-    '<div id="streamPreview" style="font-size:11px;color:var(--muted2);font-family:DM Mono,monospace;max-height:44px;overflow:hidden;text-align:left;padding:0 4px;word-break:break-all;line-height:1.5"></div>'+
-    '<div style="display:flex;justify-content:center;gap:6px;margin-top:18px">'+
+    '<div style="display:flex;justify-content:center;gap:6px">'+
     '<span style="width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1s infinite"></span>'+
     '<span style="width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .2s"></span>'+
     '<span style="width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .4s"></span>'+
     '</div></div><style>@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>';
-  const statuses=['Connecting to AI engine...','Analyzing competitive landscape...','Building kill shot...','Generating counter-moves...','Crafting talk track...','Compiling depth intelligence...','Finalizing your plan...'];
+  const statuses=['Connecting to AI engine...','Analyzing competitive landscape...','Building kill shot...','Generating counter-moves...','Crafting talk track...'];
   let step=0,pct=4;
   window._loaderTimer=setInterval(()=>{
     step=Math.min(step+1,statuses.length-1);
-    pct=Math.min(pct+(step<4?16:4),90);
+    pct=Math.min(pct+18,88);
     const bar=document.getElementById('loaderBar');
     const stat=document.getElementById('loaderStatus');
     if(bar)bar.style.width=pct+'%';
     if(stat)stat.textContent=statuses[step];
-  },5000);
+  },3500);
 }
 function clearLoaderTimer(){
   if(window._loaderTimer){clearInterval(window._loaderTimer);window._loaderTimer=null;}
   const bar=document.getElementById('loaderBar');
   if(bar){bar.style.transition='width 0.3s ease';bar.style.width='100%';}
 }
-async function streamRescue(payload,onDone,errEl){
-  try{
-    const res=await fetch('/api/rescue',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({...payload,stream:true})});
-    if(!res.ok||!res.body){
-      // Fallback: server doesn't support streaming, parse body as JSON
-      const data=await res.json();
-      if(data.error)throw new Error(data.error);
-      onDone(data);return;
-    }
-    const reader=res.body.getReader();
-    const decoder=new TextDecoder();
-    let buf='';
-    const preview=document.getElementById('streamPreview');
-    while(true){
-      const {done,value}=await reader.read();
-      if(done)break;
-      buf+=decoder.decode(value,{stream:true});
-      const lines=buf.split('\n');
-      buf=lines.pop();
-      for(const line of lines){
-        if(!line.startsWith('data:'))continue;
-        const raw=line.slice(5).trim();
-        if(!raw)continue;
-        let msg;
-        try{msg=JSON.parse(raw);}catch{continue;}
-        if(msg.error){errEl.textContent='Error: '+msg.error;errEl.style.display='block';document.getElementById('output').innerHTML='';return;}
-        if(msg.delta&&preview){preview.textContent=(preview.textContent+msg.delta).slice(-200);}
-        if(msg.done&&msg.result){onDone(msg.result);return;}
-      }
-    }
-  }catch(e){
-    errEl.textContent='Error: '+e.message;errEl.style.display='block';
-    document.getElementById('output').innerHTML='';
-  }
+
+function showDepthSkeleton(){
+  // Show a pulsing placeholder where depth sections will appear
+  const outputEl=document.getElementById('output');
+  const actRow=outputEl.querySelector('.act-row');
+  if(!actRow)return;
+  const skeleton=document.createElement('div');
+  skeleton.id='depthSkeleton';
+  skeleton.innerHTML=
+    '<div style="background:linear-gradient(135deg,#0d0d1a,#0a0a12);border:1px solid #1e1e40;border-radius:16px;padding:1.5rem;margin-bottom:1rem">'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'+
+      '<div style="width:24px;height:24px;background:linear-gradient(135deg,#6366f1,#a855f7);border-radius:6px;animation:pulse 1.5s infinite"></div>'+
+      '<div style="font-size:12px;font-weight:600;color:#6366f1">Loading deep intelligence — Technical specs, architecture, cost analysis, proof points...</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+      '<div style="height:60px;background:#1a1a2a;border-radius:8px;animation:pulse 1.5s infinite .1s"></div>'+
+      '<div style="height:60px;background:#1a1a2a;border-radius:8px;animation:pulse 1.5s infinite .2s"></div>'+
+      '<div style="height:60px;background:#1a1a2a;border-radius:8px;animation:pulse 1.5s infinite .3s"></div>'+
+      '<div style="height:60px;background:#1a1a2a;border-radius:8px;animation:pulse 1.5s infinite .4s"></div>'+
+    '</div></div>';
+  outputEl.insertBefore(skeleton, actRow);
 }
-// ──────────────────────────────────────────────────────────────────────────
+
+async function streamRescue(corePayload, depthPayload, onCoreDone, errEl){
+  let coreSettled=false, depthSettled=false;
+
+  // Helper: read SSE stream
+  async function readSSE(url, payload, onDone, onError){
+    try{
+      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,stream:true})});
+      if(!res.ok||!res.body){ const d=await res.json(); if(d.error)throw new Error(d.error); onDone(d); return; }
+      const reader=res.body.getReader(); const decoder=new TextDecoder(); let buf='';
+      while(true){
+        const {done,value}=await reader.read(); if(done)break;
+        buf+=decoder.decode(value,{stream:true});
+        const lines=buf.split('\n'); buf=lines.pop();
+        for(const line of lines){
+          if(!line.startsWith('data:'))continue;
+          const raw=line.slice(5).trim(); if(!raw)continue;
+          let msg; try{msg=JSON.parse(raw);}catch{continue;}
+          if(msg.error){onError(msg.error);return;}
+          if(msg.done&&msg.result){onDone(msg.result);return;}
+        }
+      }
+    }catch(e){ onError(e.message); }
+  }
+
+  // Fire both calls simultaneously
+  readSSE('/api/rescue', corePayload, (data)=>{
+    coreSettled=true;
+    clearLoaderTimer();
+    onCoreDone(data);
+    showDepthSkeleton();
+    document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
+  }, (err)=>{
+    coreSettled=true;
+    errEl.textContent='Error: '+err; errEl.style.display='block';
+    document.getElementById('output').innerHTML='';
+  });
+
+  readSSE('/api/rescue-depth', depthPayload, (depthData)=>{
+    depthSettled=true;
+    // Remove skeleton and inject real depth sections
+    const sk=document.getElementById('depthSkeleton');
+    if(sk)sk.remove();
+    injectDepthSections(depthData);
+  }, (err)=>{
+    depthSettled=true;
+    const sk=document.getElementById('depthSkeleton');
+    if(sk)sk.remove(); // silently fail depth — core plan still shows
+  });
+}
+
 async function handleNLInput(){
   const text=document.getElementById('nlInput').value.trim();
   if(!text)return;
-  const btn=document.querySelector('.nl-send');
-  btn.style.opacity='0.5';
-  const errEl=document.getElementById('err');
-  errEl.style.display='none';
-  showStreamingLoader('Generating your rescue plan...');
+  const btn=document.querySelector('.nl-send'); btn.style.opacity='0.5';
+  const errEl=document.getElementById('err'); errEl.style.display='none';
+  showLoader('Generating your rescue plan...');
   document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
-  try{
-    await streamRescue({product:'described in context',competitor:'described in context',stage:'Discovery',reasons:'Described in natural language input',nl_input:text,context:text,depth:'2',use_nl:true},
-      (data)=>{
-        window._flipInput={product:'Natural Language Input',competitor:'Competitor',deal_stage:'Discovery',losing_reason:text,industry:''};
-        clearLoaderTimer(); renderOutput(data,'Your Product','Competitor',false);
-        document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
-      },errEl);
-  }finally{btn.style.opacity='1';}
+  const corePayload={product:'described in context',competitor:'described in context',stage:'Discovery',reasons:'Natural language input',context:text};
+  const depthPayload={product:'described in context',competitor:'described in context',stage:'Discovery',reasons:'Natural language input',context:text};
+  await streamRescue(corePayload, depthPayload, (data)=>{
+    window._flipInput={product:'Your Product',competitor:'Competitor',deal_stage:'Discovery',losing_reason:text,industry:''};
+    renderOutput(data,'Your Product','Competitor',false);
+  }, errEl);
+  btn.style.opacity='1';
 }
+
 async function handleFlip(flipMode=false){
   const yourCo=document.getElementById('your_company').value;
   const yourSku=document.getElementById('your_sku').value;
@@ -537,35 +552,53 @@ async function handleFlip(flipMode=false){
   const competitor=compCo+' '+compSku;
   const reasons=[...selected].filter(id=>RL[id]&&!['M','E','D','Dp','P','I','Ch','Co'].includes(id)).map(id=>RL[id]).join('; ');
   const meddic=[...selected].filter(id=>['M','E','D','Dp','P','I','Ch','Co'].includes(id)).map(id=>RL[id]).join(', ');
-  const depthList=[...selectedDepths].sort().join(',');
   const btn=document.getElementById('flipBtn');
-  btn.disabled=true;btn.textContent=flipMode?'Analyzing their playbook...':'Generating your rescue plan...';
-  showStreamingLoader(flipMode?'Analyzing their playbook...':'Generating your rescue plan...');
+  btn.disabled=true; btn.textContent=flipMode?'Analyzing their playbook...':'Building your rescue plan...';
+  showLoader(flipMode?'Analyzing their playbook...':'Building your rescue plan...');
   document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
-  try{
-    await streamRescue({product,competitor,stage,
-      industry:document.getElementById('industry').value,
-      reasons,context:document.getElementById('context').value.trim(),
-      your_sku:yourSku,comp_sku:compSku,
-      your_pid:document.getElementById('your_pid').value.trim(),
-      comp_pid:document.getElementById('comp_pid').value.trim(),
-      company_size:document.getElementById('company_size').value,
-      deal_size:document.getElementById('deal_size').value,
-      partner:document.getElementById('partner').value.trim(),
-      audience:document.getElementById('audience').value,
-      geography:document.getElementById('geography').value,
-      deal_type:document.getElementById('deal_type').value,
-      tco_model:document.getElementById('tco_model').value,
-      prospect_company:document.getElementById('prospect_company').value.trim(),
-      meddic_status:meddic,
-      depth:depthList,flip_mode:flipMode},
-      (data)=>{
-        window._flipInput={product,competitor,deal_stage:stage,losing_reason:reasons,industry:document.getElementById('industry').value};
-        clearLoaderTimer(); renderOutput(data,product,competitor,flipMode);
-        document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
-      },errEl);
-  }finally{btn.disabled=false;btn.textContent='Flip this deal ->';}
+
+  const shared={
+    product, competitor, stage, your_sku:yourSku, comp_sku:compSku,
+    your_pid:document.getElementById('your_pid').value.trim(),
+    comp_pid:document.getElementById('comp_pid').value.trim(),
+    industry:document.getElementById('industry').value,
+    reasons, context:document.getElementById('context').value.trim(),
+    company_size:document.getElementById('company_size').value,
+    deal_size:document.getElementById('deal_size').value,
+    partner:document.getElementById('partner').value.trim(),
+    audience:document.getElementById('audience').value,
+    geography:document.getElementById('geography').value,
+    deal_type:document.getElementById('deal_type').value,
+    tco_model:document.getElementById('tco_model').value,
+    prospect_company:document.getElementById('prospect_company').value.trim(),
+    meddic_status:meddic, flip_mode:flipMode
+  };
+
+  await streamRescue(shared, shared, (data)=>{
+    window._flipInput={product,competitor,deal_stage:stage,losing_reason:reasons,industry:document.getElementById('industry').value};
+    renderOutput(data,product,competitor,flipMode);
+  }, errEl);
+  btn.disabled=false; btn.textContent='Flip this deal ->';
 }
+
+function injectDepthSections(depthData){
+  // Merge depth data into window._ld and re-render depth sections
+  if(!window._ld) return;
+  const d = {...window._ld,
+    executiveSummary: depthData.executiveSummary||null,
+    specComparison: depthData.specComparison||null,
+    architectureBreakdown: depthData.architectureBreakdown||null,
+    implementationAnalysis: depthData.implementationAnalysis||null,
+    evidenceAndProof: depthData.evidenceAndProof||null
+  };
+  window._ld = d;
+  // Rebuild depth HTML and inject
+  const product = window._flipInput?.product||'Our Product';
+  const competitor = window._flipInput?.competitor||'Competitor';
+  const flipMode = window._flipInput?.flipMode||false;
+  buildAndInjectDepth(d, product, competitor, flipMode);
+}
+
 function uc(u){if(!u)return'um';const v=u.toLowerCase();return v==='high'?'uh':v==='low'?'ul':'um';}
 function normalize(d){
   return {
@@ -590,33 +623,139 @@ function normalize(d){
   };
 }
 function wc(p){return p>=60?'#30a46c':p>=35?'#e5a00d':'#e5484d';}
-function renderOutput(raw,product,competitor,flipMode){const d=normalize(raw);
-  const a=d.dealAssessment,wp=Number(a.winProbability);
-  const mvs=(d.counterMoves||[]).map((m,i)=>'<div class="mv"><div class="mvn">'+(i+1)+'</div><div class="mvb"><div class="mvh"><span class="mvt">'+m.move+'</span><span class="mvtime">'+m.timing+'</span></div><div class="mva">'+m.action+'</div></div></div>').join('');
-  const msgs=(d.talkTrack.keyMessages||[]).map(m=>'<div class="kmsg"><span class="ck">&#10003;</span><span>'+m+'</span></div>').join('');
-  const objs=(d.talkTrack.objectionHandlers||[]).map(o=>'<div class="obi"><div class="obq">"'+o.objection+'"</div><div class="oba">'+o.response+'</div></div>').join('');
-  const weaks=(d.competitorWeaknesses||[]).map(w=>'<div class="kmsg"><span style="color:var(--red);flex-shrink:0;font-size:13px">&#10005;</span><span style="font-size:13px;color:var(--muted)">'+w+'</span></div>').join('');
-  const partnerHtml=d.partnerIntel?'<div class="pcard"><div class="pl">&#128101; Partner Intelligence</div><div style="font-size:13px;color:var(--muted);line-height:1.7">'+d.partnerIntel+'</div></div>':'';
-  const sizeHtml=d.sizeRecommendation?'<div style="background:var(--amber-bg);border:1px solid #2e2000;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem"><div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;font-family:DM Mono,monospace">&#9888; Product Fit Advisory</div><div style="font-size:13px;color:var(--muted);line-height:1.7">'+d.sizeRecommendation+'</div></div>':'';
-  const headerLabel=flipMode?('&#128260; How '+competitor.split(' ')[0]+' pitches against you'):('Deal assessment &#8212; '+product+' vs '+competitor);
-  document.getElementById('output').innerHTML=
-    '<div class="out-section"><div class="sl">'+headerLabel+'</div>'+
-    '<div class="arow"><div><div class="wp" style="color:'+wc(wp)+'">'+wp+'%</div><div class="wb">win probability</div></div>'+
-    '<div><div class="ubadge '+uc(a.urgency)+'">'+a.urgency+' urgency</div><div class="at">'+a.summary+'</div></div></div></div>'+
-    sizeHtml+partnerHtml+
-    '<div class="kcard"><div class="kl">'+(flipMode?'Their kill shot against you':'&#9889; The kill shot')+'</div><div class="kt">\u201c'+d.killShot+'\u201d</div></div>'+
-    '<div class="out-section"><div class="sl">'+(flipMode?'Their counter-moves':'Counter-moves')+'</div>'+mvs+'</div>'+
-    (weaks?'<div class="out-section"><div class="sl" style="color:var(--red)">'+(flipMode?'Their attack angles against you':'Competitor weaknesses')+'</div>'+weaks+'</div>':'')+
-    '<div class="out-section"><div class="sl">Talk track</div><div class="ttsub">Opening line</div><div class="ttop">'+d.talkTrack.opening+'</div><div class="ttsub">Key messages</div><div style="margin-bottom:12px">'+msgs+'</div><div class="ttsub">Objection handlers</div>'+objs+'</div>'+
-    '<div class="out-section"><div class="sl">Email template</div><div class="ew"><div class="em">To: [Prospect name]</div><div class="es">'+d.emailTemplate.subject+'</div><div class="eb">'+d.emailTemplate.body+'</div></div></div>'+
-    '<div class="act-row">'+
-    '<button class="abt" onclick="copyAll(this)">Copy full plan</button>'+
-    '<button class="abt" onclick="copyEmail(this)">Copy email</button>'+
-    '<button class="abt share-btn" onclick="sharePlan(this)">&#128279; Share link</button>'+
-    '<button class="abt" onclick="newDeal()">&#8635; New deal</button>'+
-    '</div>'+
-    '<div class="share-result" id="shareResult"><span class="share-url-text" id="shareUrlText"></span><button class="copy-link-btn" onclick="copyShareLink(this)">Copy link</button></div>';
-  // ── Depth Intelligence Sections ─────────────────────────────────────────
+function renderOutput(raw,product,competitor,flipMode){
+  const d=normalize(raw);
+  window._ld=d;
+  const a=d.dealAssessment, wp=Number(a.winProbability);
+  const ours = (flipMode?competitor:product).split(' ').slice(0,2).join(' ');
+  const theirs = (flipMode?product:competitor).split(' ').slice(0,2).join(' ');
+  const headerLabel=flipMode?('&#128260; How '+theirs+' pitches against '+ours):('');
+
+  // ── Counter-moves HTML
+  const mvHtml=(d.counterMoves||[]).map((m,i)=>
+    '<div style="display:flex;gap:13px;padding:14px 0;border-bottom:1px solid var(--border)">' +
+    '<div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0;margin-top:2px;font-family:DM Mono,monospace">'+(i+1)+'</div>' +
+    '<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
+    '<span style="font-size:14px;font-weight:600">'+m.move+'</span>' +
+    '<span style="font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:4px;white-space:nowrap;font-family:DM Mono,monospace">'+m.timing+'</span></div>' +
+    '<div style="font-size:13px;color:var(--muted);line-height:1.6">'+m.action+'</div></div></div>'
+  ).join('');
+
+  // ── Weaknesses HTML
+  const weakHtml=(d.competitorWeaknesses||[]).map(w=>
+    '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+    '<span style="color:var(--red);flex-shrink:0;font-size:14px;margin-top:2px">&#10005;</span>' +
+    '<span style="font-size:13px;color:var(--muted);line-height:1.6">'+w+'</span></div>'
+  ).join('');
+
+  // ── Talk track HTML
+  const msgsHtml=(d.talkTrack.keyMessages||[]).map(m=>
+    '<div style="display:flex;gap:9px;margin-bottom:8px"><span style="color:var(--green);flex-shrink:0;font-size:13px;margin-top:2px">&#10003;</span><span style="font-size:13px;line-height:1.6">'+m+'</span></div>'
+  ).join('');
+  const objHtml=(d.talkTrack.objectionHandlers||[]).map(o=>
+    '<div style="margin-bottom:12px">' +
+    '<div style="font-size:12px;color:var(--amber);font-style:italic;margin-bottom:4px;padding-left:10px;border-left:2px solid var(--amber)">\"'+o.objection+'\"</div>' +
+    '<div style="font-size:13px;color:var(--muted);line-height:1.65;padding-left:12px">'+o.response+'</div></div>'
+  ).join('');
+
+  // ── Partner intel
+  const partnerHtml = d.partnerIntel ?
+    '<div style="margin-top:12px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:10px;padding:13px 15px">' +
+    '<div style="font-size:10px;font-weight:700;color:#a855f7;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;font-family:DM Mono,monospace">&#128101; Partner Intel</div>' +
+    '<div style="font-size:13px;color:var(--muted);line-height:1.65">'+d.partnerIntel+'</div></div>' : '';
+
+  document.getElementById('output').innerHTML =
+  // ── HEADER: Win % + Kill Shot — always visible above tabs
+  '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:6px">' +
+    '<div style="display:flex;align-items:flex-start;gap:1.5rem;margin-bottom:12px">' +
+      '<div>' +
+        '<div style="font-size:52px;font-weight:600;line-height:1;letter-spacing:-3px;color:'+wc(wp)+'">'+wp+'%</div>' +
+        '<div style="font-size:12px;color:var(--muted);margin-top:3px">win probability</div>' +
+      '</div>' +
+      '<div style="flex:1">' +
+        '<div class="ubadge '+uc(a.urgency)+'">'+a.urgency+' urgency</div>' +
+        '<div style="font-size:14px;color:var(--muted);line-height:1.7">'+a.summary+'</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>' +
+
+  // ── KILL SHOT — prominent, above tabs
+  '<div style="background:var(--red-bg);border:1px solid var(--red-border);border-radius:14px;padding:1rem 1.5rem;margin-bottom:6px">' +
+    '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px;font-family:DM Mono,monospace">&#9889; Kill shot</div>' +
+    '<div style="font-size:15px;font-weight:500;line-height:1.65;font-style:italic">“'+d.killShot+'”</div>' +
+  '</div>' +
+
+  // ── TABBED SECTIONS
+  '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1rem">' +
+
+    // Tab bar
+    '<div style="display:flex;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none" id="tabBar">' +
+      '<button class="ftab on" data-tab="plan" onclick="switchTab(this,this.dataset.tab)">&#127919; Plan</button>' +
+      '<button class="ftab" data-tab="battlecard" onclick="switchTab(this,this.dataset.tab)">&#128202; Battle Card</button>' +
+      '<button class="ftab" data-tab="talktrack" onclick="switchTab(this,this.dataset.tab)">&#128172; Talk Track</button>' +
+      '<button class="ftab" data-tab="email" onclick="switchTab(this,this.dataset.tab)">&#9993; Email</button>' +
+      '<button class="ftab" data-tab="intel" onclick="switchTab(this,this.dataset.tab)">&#128640; Deep Intel</button>' +
+    '</div>' +
+
+    // Tab: Plan (counter-moves + weaknesses)
+    '<div class="ftab-content on" id="tab-plan" style="padding:1.25rem 1.5rem">' +
+      (mvHtml ? '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:4px;font-family:DM Mono,monospace">Counter-moves</div>'+mvHtml : '') +
+      (weakHtml ? '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-top:16px;margin-bottom:4px;font-family:DM Mono,monospace">'+theirs+' weaknesses</div>'+weakHtml : '') +
+      partnerHtml +
+    '</div>' +
+
+    // Tab: Battle Card (spec comparison — depth fills this in)
+    '<div class="ftab-content" id="tab-battlecard" style="padding:1.25rem 1.5rem">' +
+      '<div id="battlecardContent"><div style="text-align:center;padding:2rem;color:var(--muted2);font-size:13px">&#9203; Loading technical intelligence...</div></div>' +
+    '</div>' +
+
+    // Tab: Talk Track
+    '<div class="ftab-content" id="tab-talktrack" style="padding:1.25rem 1.5rem">' +
+      '<div style="background:var(--surface2);border-radius:9px;border-left:3px solid var(--border2);padding:11px 14px;font-size:14px;line-height:1.7;margin-bottom:14px">'+d.talkTrack.opening+'</div>' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;font-family:DM Mono,monospace">Key messages</div>' +
+      '<div style="margin-bottom:14px">'+msgsHtml+'</div>' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;font-family:DM Mono,monospace">Objection handlers</div>' +
+      objHtml +
+    '</div>' +
+
+    // Tab: Email
+    '<div class="ftab-content" id="tab-email" style="padding:1.25rem 1.5rem">' +
+      '<div style="background:var(--surface2);border-radius:10px;padding:14px 16px">' +
+        '<div style="font-size:11px;color:var(--muted2);margin-bottom:4px;font-family:DM Mono,monospace">Subject:</div>' +
+        '<div style="font-size:15px;font-weight:600;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px">'+d.emailTemplate.subject+'</div>' +
+        '<div style="font-size:13px;color:var(--muted);line-height:1.8;white-space:pre-line">'+d.emailTemplate.body+'</div>' +
+      '</div>' +
+      '<div style="margin-top:12px;display:flex;gap:8px">' +
+        '<button class="abt" onclick="copyEmail(this)" style="flex:1">Copy email</button>' +
+      '</div>' +
+    '</div>' +
+
+    // Tab: Deep Intel (depth sections load here)
+    '<div class="ftab-content" id="tab-intel" style="padding:1.25rem 1.5rem">' +
+      '<div id="depthContent"><div style="text-align:center;padding:2rem;color:var(--muted2);font-size:13px">&#9203; Loading deep intelligence — architecture, cost, proof points...</div></div>' +
+    '</div>' +
+
+  '</div>' + // end tabbed card
+
+  // Action buttons
+  '<div class="act-row">' +
+    '<button class="abt" onclick="copyAll(this)">Copy full plan</button>' +
+    '<button class="abt share-btn" onclick="sharePlan(this)">&#128279; Share link</button>' +
+    '<button class="abt" onclick="newDeal()">&#8635; New deal</button>' +
+  '</div>' +
+  '<div class="share-result" id="shareResult"><span class="share-url-text" id="shareUrlText"></span><button class="copy-link-btn" onclick="copyShareLink(this)">Copy link</button></div>';
+}
+
+function switchTab(btn, tabId){
+  document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.ftab-content').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  const el = document.getElementById('tab-'+tabId);
+  if(el) el.classList.add('on');
+}
+
+function buildAndInjectDepth(d, product, competitor, flipMode){
+  // Build depth HTML ─────────────────────────────────────────
   const DS = {
     badge: (label,color,icon) => `<div style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${color};font-family:DM Mono,monospace;margin-bottom:14px;padding:4px 10px;background:${color}18;border:1px solid ${color}30;border-radius:6px">${icon} ${label}</div>`,
     card: (bg,border,content) => `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:13px 15px;margin-bottom:10px">${content}</div>`,
@@ -742,26 +881,90 @@ function renderOutput(raw,product,competitor,flipMode){const d=normalize(raw);
       '</div>';
   }
 
-  // Insert depth sections right after the kill shot card
-  const outputEl = document.getElementById('output');
-  if (outputEl && depthHtml) {
-    const kcard = outputEl.querySelector('.kcard');
-    if (kcard) {
-      const div = document.createElement('div');
-      div.innerHTML = depthHtml;
-      kcard.insertAdjacentElement('afterend', div);
-    } else {
-      // fallback: before act-row
-      const actRow = outputEl.querySelector('.act-row');
-      if (actRow) {
-        const div = document.createElement('div');
-        div.innerHTML = depthHtml;
-        outputEl.insertBefore(div, actRow);
-      }
+  // Inject spec comparison into battle card tab
+  const battleEl = document.getElementById('battlecardContent');
+  if (battleEl) {
+    let battleHtml = '';
+    if (d.specComparison && d.specComparison.tableRows) {
+      const specRows = d.specComparison.tableRows.map((r,i) => {
+        const ourWins = r.advantage && (r.advantage.toLowerCase().includes('we win') || r.advantage.toLowerCase().includes('our') || r.advantage.toLowerCase().includes(product.split(' ')[0].toLowerCase()) || r.advantage.toLowerCase().includes('advantage') || r.advantage.toLowerCase().includes('win'));
+        return '<div style="padding:14px 0;border-bottom:1px solid #1e1e1e">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">' +
+            '<div style="font-size:12px;font-weight:700;color:#c0c0d0">' + r.feature + '</div>' +
+            '<div style="flex-shrink:0;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;background:'+(ourWins?'#0a2a0a':'#1a0a0a')+';color:'+(ourWins?'#30a46c':'#e5484d')+';border:1px solid '+(ourWins?'#1a4a1a':'#3a1010')+';">'+(ourWins?'&#9650; We win':'&#9660; Disadvantage')+'</div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">' +
+            '<div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:7px;padding:9px 11px">' +
+              '<div style="font-size:9px;font-weight:700;color:#30a46c;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9670; '+(flipMode?theirs:ours)+'</div>' +
+              '<div style="font-size:12px;color:#eee;line-height:1.5">' + r.ours + '</div>' +
+            '</div>' +
+            '<div style="background:#1a0808;border:1px solid #3a1010;border-radius:7px;padding:9px 11px">' +
+              '<div style="font-size:9px;font-weight:700;color:#e5484d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9671; '+(flipMode?ours:theirs)+'</div>' +
+              '<div style="font-size:12px;color:#aaa;line-height:1.5">' + r.theirs + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size:12px;color:'+(ourWins?'#30a46c':'#888')+';line-height:1.55">' + r.advantage + '</div>' +
+        '</div>';
+      }).join('');
+      battleHtml = '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:4px;font-family:DM Mono,monospace">Technical Spec Comparison — '+ours+' vs '+theirs+'</div>' + specRows;
     }
+    if (d.executiveSummary) {
+      const es = d.executiveSummary;
+      battleHtml += '<div style="margin-top:16px;background:linear-gradient(135deg,#0d0d1f,#0a0a18);border:1px solid #2a2a5a;border-radius:12px;padding:1rem">' +
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a5b4fc;margin-bottom:10px;font-family:DM Mono,monospace">&#128081; Business Value</div>' +
+        '<div style="font-size:15px;font-weight:600;line-height:1.5;margin-bottom:10px;color:#f0f0ff">' + es.headline + '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
+          '<div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#30a46c;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">ROI</div><div style="font-size:12px;color:#aaa">' + es.roiStatement + '</div></div>' +
+          '<div style="background:#1a0808;border:1px solid #3a1010;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#e5484d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">Risk of Inaction</div><div style="font-size:12px;color:#aaa">' + es.riskOfInaction + '</div></div>' +
+        '</div>' +
+        '<div style="background:#1a1200;border:1px solid #3a2e00;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#e5a00d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#11088; Board-ready</div><div style="font-size:13px;font-style:italic;color:#f5e4a0">&ldquo;' + es.executiveTalkingPoint + '&rdquo;</div></div>' +
+      '</div>';
+    }
+    battleEl.innerHTML = battleHtml || '<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:13px">No spec data available.</div>';
   }
-  window._ld=d;
+
+  // Inject architecture + cost + evidence into Deep Intel tab
+  const depthEl = document.getElementById('depthContent');
+  if (depthEl) {
+    let intelHtml = '';
+    if (d.architectureBreakdown) {
+      const ab = d.architectureBreakdown;
+      const fields = [
+        {label:'Processing Model',icon:'&#9881;',val:ab.processingModel},
+        {label:'API Design',icon:'&#128279;',val:ab.apiDesign},
+        {label:'Security',icon:'&#128274;',val:ab.securityArchitecture},
+        {label:'Scalability',icon:'&#128640;',val:ab.scalabilityModel},
+      ].filter(f=>f.val);
+      intelHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6366f1;margin-bottom:10px;font-family:DM Mono,monospace">&#127959; Architecture</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">' +
+        fields.map(f=>'<div style="background:#0d0d18;border:1px solid #2a2a4a;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">'+f.icon+' '+f.label+'</div><div style="font-size:12px;color:#aaa;line-height:1.55">'+f.val+'</div></div>').join('') +
+        (ab.keyArchitecturalAdvantage ? '<div style="grid-column:1/-1;background:linear-gradient(135deg,#0f0f1a,#0d0d20);border:1px solid #3030a0;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9889; Key Advantage</div><div style="font-size:13px;font-weight:500;color:#c7d2fe">'+ab.keyArchitecturalAdvantage+'</div></div>' : '') +
+        '</div>';
+    }
+    if (d.implementationAnalysis) {
+      const ia = d.implementationAnalysis;
+      intelHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#e5a00d;margin-bottom:10px;font-family:DM Mono,monospace">&#128179; Cost & Implementation</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">' +
+        '<div style="background:#1a1200;border:1px solid #3a2e00;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#e5a00d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#128176; Year 1 Cost</div><div style="font-size:14px;font-weight:700;color:#e5a00d">'+(ia.totalFirstYearCost||'')+'</div></div>' +
+        '<div style="background:#111;border:1px solid #222;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#128197; Timeline</div><div style="font-size:12px;color:#aaa">'+(ia.deploymentTimeline||'')+'</div></div>' +
+        '</div>' +
+        (ia.hiddenCosts&&ia.hiddenCosts.length ? '<div style="background:#1a0808;border:1px solid #3a1010;border-radius:8px;padding:10px;margin-bottom:16px"><div style="font-size:9px;font-weight:700;color:#e5484d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-family:DM Mono,monospace">&#9888; Hidden Costs to Expose</div>'+ia.hiddenCosts.map(c=>'<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #2a1010"><span style="color:#e5484d">&#9888;</span><span style="font-size:12px;color:#aaa">'+c+'</span></div>').join('')+'</div>' : '');
+    }
+    if (d.evidenceAndProof) {
+      const ep = d.evidenceAndProof;
+      intelHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#30a46c;margin-bottom:10px;font-family:DM Mono,monospace">&#128196; Proof & Evidence</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">' +
+        (ep.analystRecognition ? '<div style="background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#128202; Analyst</div><div style="font-size:12px;color:#aaa;line-height:1.5">'+ep.analystRecognition+'</div></div>' : '') +
+        (ep.g2Data ? '<div style="background:#111;border:1px solid #222;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#e5a00d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#11088; G2</div><div style="font-size:12px;color:#aaa;line-height:1.5">'+ep.g2Data+'</div></div>' : '') +
+        '</div>' +
+        (ep.recentNews ? '<div style="background:#1a1200;border:1px solid #3a2e00;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#e5a00d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#128240; Recent News</div><div style="font-size:12px;color:#aaa">'+ep.recentNews+'</div></div>' : '') +
+        (ep.customerProof&&ep.customerProof.length ? '<div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:8px;padding:10px"><div style="font-size:9px;font-weight:700;color:#30a46c;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-family:DM Mono,monospace">&#127942; Customer Proof</div>'+ep.customerProof.map(p=>'<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #1a2a1a"><span style="color:#30a46c">&#10003;</span><span style="font-size:12px;color:#aaa">'+p+'</span></div>').join('')+'</div>' : '');
+    }
+    depthEl.innerHTML = intelHtml || '<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:13px">&#9203; Loading deep intelligence...</div>';
+  }
+
 }
+
 async function sharePlan(btn){
   if(!window._ld||!window._flipInput)return;
   btn.disabled=true;btn.textContent='Saving...';
