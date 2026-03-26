@@ -765,30 +765,15 @@ function switchTab(btn, tabId){
 function fireDepthCall(){
   if(!window._flipInput) return;
   const payload = window._depthPayload||{};
-  const errEl = document.getElementById('err');
-  fetch('/api/rescue-depth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,stream:true})})
-  .then(async res => {
-    if(!res.ok||!res.body){ window._depthLoading=false; return; }
-    const reader=res.body.getReader(); const decoder=new TextDecoder(); let buf='';
-    while(true){
-      const {done,value}=await reader.read(); if(done)break;
-      buf+=decoder.decode(value,{stream:true});
-      const lines=buf.split(`
-`); buf=lines.pop();
-      for(const line of lines){
-        if(!line.startsWith('data:'))continue;
-        const raw=line.slice(5).trim(); if(!raw)continue;
-        let msg; try{msg=JSON.parse(raw);}catch{continue;}
-        if(msg.error){ console.error('depth error:',msg.error); window._depthLoading=false; return; }
-        if(msg.done&&msg.result){
-          window._depthLoading=false;
-          window._depthLoaded=true;
-          injectDepthSections(msg.result);
-          return;
-        }
-      }
-    }
-  }).catch(e=>{ console.error('depth fetch error:',e); window._depthLoading=false; });
+  fetch('/api/rescue-depth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  .then(r=>r.json())
+  .then(data=>{
+    window._depthLoading=false;
+    window._depthLoaded=true;
+    if(data.error){console.error('depth error:',data.error);return;}
+    injectDepthSections(data);
+  })
+  .catch(e=>{console.error('depth fetch error:',e);window._depthLoading=false;});
 }
 
 function buildAndInjectDepth(d, product, competitor, flipMode){
