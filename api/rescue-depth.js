@@ -40,8 +40,8 @@ export default async function handler(req, res) {
   if (!product || !competitor) return res.status(400).json({ error: "Missing required fields" });
 
   const isFlip = flip_mode === true || flip_mode === "true";
-  const model = "claude-sonnet-4-6";
-  const max_tokens = 8000;
+  const model = "claude-haiku-4-5-20251001";
+  const max_tokens = 4000;
 
   const sysText = isFlip
     ? `You are a ${competitor} sales rep. Provide detailed competitive intelligence attacking ${product}. Be brutally specific with real data.`
@@ -50,50 +50,11 @@ export default async function handler(req, res) {
   const p = isFlip ? competitor : product;
   const c = isFlip ? product : competitor;
 
-  const user = `Generate deep competitive intelligence for: ${your_sku||product} vs ${comp_sku||competitor}
-Stage: ${stage} | Industry: ${industry||"B2B"}${context?" | Context: "+context:""}${company_size?" | Size: "+company_size:""}${deal_size?" | Deal: "+deal_size:""}
+  const user = `COMPETITIVE INTELLIGENCE: ${your_sku||product} vs ${comp_sku||competitor}
+Industry: ${industry||"B2B"} | Stage: ${stage}${context?" | Context: "+context:""}
 
-Return ONLY valid JSON, no markdown, no backticks:
-{
-  "executiveSummary":{
-    "headline":"<powerful one-sentence business case for ${p}>",
-    "roiStatement":"<specific ROI with real numbers and timeframe>",
-    "riskOfInaction":"<concrete cost/risk of choosing ${c} instead>",
-    "executiveTalkingPoint":"<one sentence a CFO can repeat in a board meeting>"
-  },
-  "specComparison":{"tableRows":[
-    {"feature":"<real differentiating feature>","ours":"<exact ${p} spec — model names, real numbers>","theirs":"<exact ${c} spec — real numbers not generic>","advantage":"<winner and why it matters>"},
-    {"feature":"<real feature>","ours":"<exact ${p} spec>","theirs":"<exact ${c} spec>","advantage":"<winner>"},
-    {"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"},
-    {"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"},
-    {"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"}
-  ]},
-  "architectureBreakdown":{
-    "processingModel":"<${p} vs ${c} — cloud/edge/on-prem tradeoffs with specifics>",
-    "apiDesign":"<API differences — protocols, rate limits, webhooks, SDK quality>",
-    "dataModel":"<storage, schema, retention, portability differences>",
-    "scalabilityModel":"<horizontal vs vertical, multi-tenant, load characteristics>",
-    "securityArchitecture":"<zero-trust, encryption, auth model, compliance certifications>",
-    "keyArchitecturalAdvantage":"<single biggest architectural reason to choose ${p}>"
-  },
-  "implementationAnalysis":{
-    "deploymentTimeline":"<realistic weeks to go-live ${p} vs ${c}>",
-    "professionalServicesRequired":"<PS needed with dollar cost>",
-    "hiddenCosts":["<hidden cost with $ estimate>","<hidden cost with $ estimate>","<hidden cost with $ estimate>"],
-    "adminOverhead":"<FTE hours/week to manage>",
-    "integrationComplexity":"<key integrations, complexity 1-5>",
-    "totalFirstYearCost":"<all-in Year 1 for ${p}>",
-    "migrationRisk":"<what can break in migration>"
-  },
-  "evidenceAndProof":{
-    "analystRecognition":"<specific Gartner MQ / Forrester Wave position — name report and year>",
-    "g2Data":"<G2 category, star rating out of 5, review count, top positive theme>",
-    "customerProof":["<named customer with specific outcome>","<named customer with outcome>"],
-    "benchmarkData":"<specific published benchmark — name the source>",
-    "winRateData":"<win rate vs ${c} or analyst data>",
-    "recentNews":"<most recent product launch or news affecting this deal>"
-  }
-}`;
+Return ONLY valid JSON, no markdown, no backticks — keep each value to 1-2 sentences max:
+{"executiveSummary":{"headline":"<business case for ${p} in one sentence>","roiStatement":"<specific ROI with real $ and timeframe>","riskOfInaction":"<cost of choosing ${c} instead>","executiveTalkingPoint":"<one sentence a CFO repeats in a board meeting>"},"specComparison":{"tableRows":[{"feature":"<real differentiating feature>","ours":"<exact ${p} spec — real numbers>","theirs":"<exact ${c} spec — real numbers>","advantage":"<winner and why>"},{"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"},{"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"},{"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"},{"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"}]},"architectureBreakdown":{"processingModel":"<${p} vs ${c} cloud/edge/on-prem>","apiDesign":"<API differences>","dataModel":"<storage differences>","scalabilityModel":"<scalability differences>","securityArchitecture":"<security differences>","keyArchitecturalAdvantage":"<biggest reason to choose ${p}>"},"implementationAnalysis":{"deploymentTimeline":"<weeks to go-live ${p} vs ${c}>","professionalServicesRequired":"<PS needed with $ cost>","hiddenCosts":["<hidden cost $>","<hidden cost $>","<hidden cost $>"],"adminOverhead":"<FTE hrs/week>","integrationComplexity":"<integrations, complexity 1-5>","totalFirstYearCost":"<all-in Year 1>","migrationRisk":"<migration risk>"},"evidenceAndProof":{"analystRecognition":"<Gartner MQ / Forrester Wave — name report + year>","g2Data":"<G2 stars/5, review count, top theme>","customerProof":["<named customer + outcome>","<named customer + outcome>"],"benchmarkData":"<specific benchmark source>","winRateData":"<win rate vs ${c}>","recentNews":"<most recent news affecting this deal>"}}`;
 
   if (wantStream) {
     res.setHeader("Content-Type", "text/event-stream");
