@@ -507,17 +507,10 @@ async function streamRescue(corePayload, depthPayload, onCoreDone, errEl){
     document.getElementById('output').innerHTML='';
   });
 
-  readSSE('/api/rescue-depth', depthPayload, (depthData)=>{
-    depthSettled=true;
-    // Remove skeleton and inject real depth sections
-    const sk=document.getElementById('depthSkeleton');
-    if(sk)sk.remove();
-    injectDepthSections(depthData);
-  }, (err)=>{
-    depthSettled=true;
-    const sk=document.getElementById('depthSkeleton');
-    if(sk)sk.remove(); // silently fail depth — core plan still shows
-  });
+  // Depth is lazy-loaded on tab click, store payload for later
+  window._depthPayload = depthPayload;
+  window._depthLoaded = false;
+  window._depthLoading = false;
 }
 
 async function handleNLInput(){
@@ -752,6 +745,38 @@ function switchTab(btn, tabId){
   btn.classList.add('on');
   const el = document.getElementById('tab-'+tabId);
   if(el) el.classList.add('on');
+  // Lazy-load depth tabs on first click
+  if((tabId==='battlecard'||tabId==='intel') && !window._depthLoading && !window._depthLoaded) {
+    window._depthLoading = true;
+    fireDepthCall();
+  }
+}
+function fireDepthCall(){
+  if(!window._flipInput) return;
+  const payload = window._depthPayload||{};
+  const errEl = document.getElementById('err');
+  fetch('/api/rescue-depth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,stream:true})})
+  .then(async res => {
+    if(!res.ok||!res.body){ window._depthLoading=false; return; }
+    const reader=res.body.getReader(); const decoder=new TextDecoder(); let buf='';
+    while(true){
+      const {done,value}=await reader.read(); if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lines=buf.split('\n'); buf=lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data:'))continue;
+        const raw=line.slice(5).trim(); if(!raw)continue;
+        let msg; try{msg=JSON.parse(raw);}catch{continue;}
+        if(msg.error){ console.error('depth error:',msg.error); window._depthLoading=false; return; }
+        if(msg.done&&msg.result){
+          window._depthLoading=false;
+          window._depthLoaded=true;
+          injectDepthSections(msg.result);
+          return;
+        }
+      }
+    }
+  }).catch(e=>{ console.error('depth fetch error:',e); window._depthLoading=false; });
 }
 
 function buildAndInjectDepth(d, product, competitor, flipMode){
