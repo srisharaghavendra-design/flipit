@@ -482,7 +482,8 @@ async function streamRescue(corePayload, depthPayload, onCoreDone, errEl){
       while(true){
         const {done,value}=await reader.read(); if(done)break;
         buf+=decoder.decode(value,{stream:true});
-        const lines=buf.split('\n'); buf=lines.pop();
+        const lines=buf.split(`
+`); buf=lines.pop();
         for(const line of lines){
           if(!line.startsWith('data:'))continue;
           const raw=line.slice(5).trim(); if(!raw)continue;
@@ -673,17 +674,8 @@ function renderOutput(raw,product,competitor,flipMode){
     '</div>' +
   '</div>' +
   // ── HEADER: Win % + Kill Shot — always visible above tabs
-  '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:6px">' +
-    '<div style="display:flex;align-items:flex-start;gap:1.5rem;margin-bottom:12px">' +
-      '<div>' +
-        '<div style="font-size:52px;font-weight:600;line-height:1;letter-spacing:-3px;color:'+wc(wp)+'">'+wp+'%</div>' +
-        '<div style="font-size:12px;color:var(--muted);margin-top:3px">win probability</div>' +
-      '</div>' +
-      '<div style="flex:1">' +
-        '<div class="ubadge '+uc(a.urgency)+'">'+a.urgency+' urgency</div>' +
-        '<div style="font-size:14px;color:var(--muted);line-height:1.7">'+a.summary+'</div>' +
-      '</div>' +
-    '</div>' +
+  '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem 1.5rem;margin-bottom:6px">' +
+    '<div style="font-size:13px;color:var(--muted);line-height:1.65">'+a.summary+'</div>' +
   '</div>' +
 
   // ── KILL SHOT — prominent, above tabs
@@ -781,7 +773,8 @@ function fireDepthCall(){
     while(true){
       const {done,value}=await reader.read(); if(done)break;
       buf+=decoder.decode(value,{stream:true});
-      const lines=buf.split('\n'); buf=lines.pop();
+      const lines=buf.split(`
+`); buf=lines.pop();
       for(const line of lines){
         if(!line.startsWith('data:'))continue;
         const raw=line.slice(5).trim(); if(!raw)continue;
