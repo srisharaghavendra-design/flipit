@@ -558,6 +558,88 @@ function renderOutput(raw,product,competitor,flipMode){const d=normalize(raw);
     '<button class="abt" style="flex:0;padding:5px 14px;font-size:11px" onclick="trackOutcome(this,\'open\')">Still open</button>'+
     '</div>'+
     '<div class="share-result" id="shareResult"><span class="share-url-text" id="shareUrlText"></span><button class="copy-link-btn" onclick="copyShareLink(this)">Copy link</button></div>';
+  // Render depth sections
+  let depthHtml = '';
+  if (d.executiveSummary) {
+    const es = d.executiveSummary;
+    depthHtml += '<div class="out-section" style="border-color:#2e2e2e;background:linear-gradient(135deg,#111,#0f0f18)"><div class="sl" style="color:#6366f1">&#127891; L1 — Executive Summary</div>' +
+      '<div style="background:#0f0f1a;border:1px solid #1e1e3a;border-radius:10px;padding:12px 14px;margin-bottom:10px"><div style="font-size:11px;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">Headline</div><div style="font-size:15px;font-weight:500;line-height:1.5">' + es.headline + '</div></div>' +
+      '<div class="grid2">' +
+      '<div style="background:var(--green-bg);border:1px solid #0a2a14;border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">ROI Statement</div><div style="font-size:13px;color:var(--muted);line-height:1.6">' + es.roiStatement + '</div></div>' +
+      '<div style="background:var(--red-bg);border:1px solid var(--red-border);border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">Risk of Inaction</div><div style="font-size:13px;color:var(--muted);line-height:1.6">' + es.riskOfInaction + '</div></div>' +
+      '</div>' +
+      '<div style="background:var(--amber-bg);border:1px solid #2e2000;border-radius:10px;padding:12px 14px;margin-top:10px"><div style="font-size:11px;color:var(--amber);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">&#9733; Board-Ready Talking Point</div><div style="font-size:14px;font-style:italic;line-height:1.6">"' + es.executiveTalkingPoint + '"</div></div>' +
+      '</div>';
+  }
+  if (d.specComparison && d.specComparison.tableRows) {
+    const rows = d.specComparison.tableRows.map(r =>
+      '<tr><td style="padding:10px 12px;font-size:13px;font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap">' + r.feature + '</td>' +
+      '<td style="padding:10px 12px;font-size:13px;color:#f0f0f0;border-bottom:1px solid var(--border)">' + r.ours + '</td>' +
+      '<td style="padding:10px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--border)">' + r.theirs + '</td>' +
+      '<td style="padding:10px 12px;font-size:12px;border-bottom:1px solid var(--border);color:' + (r.advantage.toLowerCase().includes('we') || r.advantage.toLowerCase().includes('our') || r.advantage.toLowerCase().includes(product.split(' ')[0].toLowerCase()) ? 'var(--green)' : 'var(--muted)') + '">' + r.advantage + '</td></tr>'
+    ).join('');
+    depthHtml += '<div class="out-section"><div class="sl" style="color:#6366f1">&#128202; L2 — Technical Spec Comparison</div>' +
+      '<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)"><table style="width:100%;border-collapse:collapse">' +
+      '<thead><tr style="background:var(--surface2)"><th style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);text-align:left;font-family:DM Mono,monospace;border-bottom:1px solid var(--border)">Feature</th><th style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--green);text-align:left;font-family:DM Mono,monospace;border-bottom:1px solid var(--border)">Our Product</th><th style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--red);text-align:left;font-family:DM Mono,monospace;border-bottom:1px solid var(--border)">Competitor</th><th style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);text-align:left;font-family:DM Mono,monospace;border-bottom:1px solid var(--border)">Advantage</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div></div>';
+  }
+  if (d.architectureBreakdown) {
+    const ab = d.architectureBreakdown;
+    const archFields = [
+      {label:'Processing Model', value:ab.processingModel, icon:'&#9881;'},
+      {label:'API Design', value:ab.apiDesign, icon:'&#128279;'},
+      {label:'Data Model', value:ab.dataModel, icon:'&#128200;'},
+      {label:'Scalability', value:ab.scalabilityModel, icon:'&#128640;'},
+      {label:'Security Architecture', value:ab.securityArchitecture, icon:'&#128274;'}
+    ].filter(f => f.value);
+    const archRows = archFields.map(f =>
+      '<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)"><div style="font-size:18px;width:28px;flex-shrink:0;text-align:center;margin-top:2px">' + f.icon + '</div><div><div style="font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-family:DM Mono,monospace">' + f.label + '</div><div style="font-size:13px;color:var(--muted);line-height:1.65">' + f.value + '</div></div></div>'
+    ).join('');
+    depthHtml += '<div class="out-section"><div class="sl" style="color:#6366f1">&#127959; L3 — Architecture Breakdown</div>' +
+      archRows +
+      '<div style="background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:10px;padding:12px 14px;margin-top:12px"><div style="font-size:11px;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">&#9889; Key Architectural Advantage</div><div style="font-size:14px;font-weight:500;line-height:1.6">' + (ab.keyArchitecturalAdvantage||'') + '</div></div>' +
+      '</div>';
+  }
+  if (d.implementationAnalysis) {
+    const ia = d.implementationAnalysis;
+    const hidden = (ia.hiddenCosts||[]).map(c => '<div class="kmsg"><span style="color:var(--red);flex-shrink:0">&#9888;</span><span style="font-size:13px;color:var(--muted)">' + c + '</span></div>').join('');
+    depthHtml += '<div class="out-section"><div class="sl" style="color:#6366f1">&#128179; L4 — Cost &amp; Implementation Analysis</div>' +
+      '<div class="grid2" style="margin-bottom:12px">' +
+      '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">Deployment Timeline</div><div style="font-size:13px;color:var(--muted)">' + (ia.deploymentTimeline||'') + '</div></div>' +
+      '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">Professional Services</div><div style="font-size:13px;color:var(--muted)">' + (ia.professionalServicesRequired||'') + '</div></div>' +
+      '</div>' +
+      '<div class="grid2" style="margin-bottom:12px">' +
+      '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">Admin Overhead</div><div style="font-size:13px;color:var(--muted)">' + (ia.adminOverhead||'') + '</div></div>' +
+      '<div style="background:var(--amber-bg);border:1px solid #2e2000;border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--amber);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">Total Year 1 Cost</div><div style="font-size:13px;color:var(--amber);font-weight:500">' + (ia.totalFirstYearCost||'') + '</div></div>' +
+      '</div>' +
+      (hidden ? '<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:DM Mono,monospace">&#9888; Hidden Costs to Expose</div>' + hidden + '</div>' : '') +
+      (ia.migrationRisk ? '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">Migration Risk</div><div style="font-size:13px;color:var(--muted)">' + ia.migrationRisk + '</div></div>' : '') +
+      '</div>';
+  }
+  if (d.evidenceAndProof) {
+    const ep = d.evidenceAndProof;
+    const proofs = (ep.customerProof||[]).map(p => '<div class="kmsg"><span class="ck">&#10003;</span><span style="font-size:13px;color:var(--muted)">' + p + '</span></div>').join('');
+    depthHtml += '<div class="out-section"><div class="sl" style="color:#6366f1">&#128196; L5 — Evidence &amp; Proof Points</div>' +
+      '<div class="grid2" style="margin-bottom:12px">' +
+      (ep.analystRecognition ? '<div style="background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">&#128202; Analyst Recognition</div><div style="font-size:13px;color:var(--muted);line-height:1.6">' + ep.analystRecognition + '</div></div>' : '') +
+      (ep.g2Data ? '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">&#11088; G2 Data</div><div style="font-size:13px;color:var(--muted);line-height:1.6">' + ep.g2Data + '</div></div>' : '') +
+      '</div>' +
+      (ep.benchmarkData ? '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px;margin-bottom:10px"><div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">&#128200; Benchmark Data</div><div style="font-size:13px;color:var(--muted)">' + ep.benchmarkData + '</div></div>' : '') +
+      (ep.recentNews ? '<div style="background:var(--amber-bg);border:1px solid #2e2000;border-radius:10px;padding:12px;margin-bottom:10px"><div style="font-size:11px;color:var(--amber);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-family:DM Mono,monospace">&#128240; Recent News</div><div style="font-size:13px;color:var(--muted)">' + ep.recentNews + '</div></div>' : '') +
+      (proofs ? '<div><div style="font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:DM Mono,monospace">Customer Proof</div>' + proofs + '</div>' : '') +
+      '</div>';
+  }
+
+  // Insert depth sections before action row
+  const outputEl = document.getElementById('output');
+  if (outputEl && depthHtml) {
+    const actRow = outputEl.querySelector('.act-row');
+    if (actRow) {
+      const div = document.createElement('div');
+      div.innerHTML = depthHtml;
+      outputEl.insertBefore(div, actRow);
+    }
+  }
   window._ld=d;
 }
 async function sharePlan(btn){
