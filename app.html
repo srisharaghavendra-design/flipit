@@ -777,6 +777,8 @@ function fireDepthCall(){
 }
 
 function buildAndInjectDepth(d, product, competitor, flipMode){
+  const ours = (flipMode?competitor:product).split(' ').slice(0,2).join(' ');
+  const theirs = (flipMode?product:competitor).split(' ').slice(0,2).join(' ');
   // Build depth HTML ─────────────────────────────────────────
   const DS = {
     badge: (label,color,icon) => `<div style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${color};font-family:DM Mono,monospace;margin-bottom:14px;padding:4px 10px;background:${color}18;border:1px solid ${color}30;border-radius:6px">${icon} ${label}</div>`,
