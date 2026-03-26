@@ -661,11 +661,11 @@ function renderOutput(raw,product,competitor,flipMode){const d=normalize(raw);
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">' +
           '<div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:7px;padding:9px 11px">' +
-            '<div style="font-size:9px;font-weight:700;color:#30a46c;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9670; Ours</div>' +
+            '<div style="font-size:9px;font-weight:700;color:#30a46c;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9670; '+( flipMode?competitor:product).split(' ').slice(0,2).join(' ')+'</div>' +
             '<div style="font-size:12px;color:#eee;line-height:1.5">' + r.ours + '</div>' +
           '</div>' +
           '<div style="background:#1a0808;border:1px solid #3a1010;border-radius:7px;padding:9px 11px">' +
-            '<div style="font-size:9px;font-weight:700;color:#e5484d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9671; Theirs</div>' +
+            '<div style="font-size:9px;font-weight:700;color:#e5484d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9671; '+(flipMode?product:competitor).split(' ').slice(0,2).join(' ')+'</div>' +
             '<div style="font-size:12px;color:#aaa;line-height:1.5">' + r.theirs + '</div>' +
           '</div>' +
         '</div>' +
@@ -742,14 +742,22 @@ function renderOutput(raw,product,competitor,flipMode){const d=normalize(raw);
       '</div>';
   }
 
-  // Insert depth sections before action row
+  // Insert depth sections right after the kill shot card
   const outputEl = document.getElementById('output');
   if (outputEl && depthHtml) {
-    const actRow = outputEl.querySelector('.act-row');
-    if (actRow) {
+    const kcard = outputEl.querySelector('.kcard');
+    if (kcard) {
       const div = document.createElement('div');
       div.innerHTML = depthHtml;
-      outputEl.insertBefore(div, actRow);
+      kcard.insertAdjacentElement('afterend', div);
+    } else {
+      // fallback: before act-row
+      const actRow = outputEl.querySelector('.act-row');
+      if (actRow) {
+        const div = document.createElement('div');
+        div.innerHTML = depthHtml;
+        outputEl.insertBefore(div, actRow);
+      }
     }
   }
   window._ld=d;
