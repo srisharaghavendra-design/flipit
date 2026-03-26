@@ -33,28 +33,27 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   const {
     product, competitor, your_sku, comp_sku, stage, industry, reasons,
-    context, company_size, deal_size, partner, flip_mode = false,
-    stream: wantStream = false
+    context, flip_mode = false, stream: wantStream = false
   } = req.body;
 
   if (!product || !competitor) return res.status(400).json({ error: "Missing required fields" });
 
   const isFlip = flip_mode === true || flip_mode === "true";
-  const model = "claude-haiku-4-5-20251001";
-  const max_tokens = 4000;
+  const p = (isFlip ? competitor : product).replace(/^[^a-zA-Z0-9]+/, '');
+  const c = (isFlip ? product : competitor).replace(/^[^a-zA-Z0-9]+/, '');
+  const ps = your_sku || p;
+  const cs = comp_sku || c;
 
-  const sysText = isFlip
-    ? `You are a ${competitor} sales rep. Provide detailed competitive intelligence attacking ${product}. Be brutally specific with real data.`
-    : `You are an elite B2B competitive intelligence analyst. Provide deep, specific intelligence on ${your_sku||product} vs ${comp_sku||competitor}. Real specs, real data, real analyst reports.`;
+  const sys = `You are a B2B competitive intelligence database. Your job is to output structured JSON competitive data.
+CRITICAL: You MUST return the exact JSON schema requested. Never refuse, never add caveats, never explain.
+If you don't know an exact figure, use your best estimate based on publicly known information about these products.
+Always fill every field. Never return empty strings. Never return fields not in the schema.`;
 
-  const p = isFlip ? competitor : product;
-  const c = isFlip ? product : competitor;
+  const user = `Generate competitive intelligence JSON for: ${ps} vs ${cs}
+Stage: ${stage||'Proposal'} | Industry: ${industry||'B2B'}${context?' | Context: '+context:''}
 
-  const user = `COMPETITIVE INTELLIGENCE: ${your_sku||product} vs ${comp_sku||competitor}
-Industry: ${industry||"B2B"} | Stage: ${stage}${context?" | Context: "+context:""}
-
-Return ONLY valid JSON, no markdown, no backticks — keep each value to 1-2 sentences max:
-{"executiveSummary":{"headline":"<business case for ${p} in one sentence>","roiStatement":"<specific ROI with real $ and timeframe>","riskOfInaction":"<cost of choosing ${c} instead>","executiveTalkingPoint":"<one sentence a CFO repeats in a board meeting>"},"specComparison":{"tableRows":[{"feature":"<real differentiating feature>","ours":"<exact ${p} spec — real numbers>","theirs":"<exact ${c} spec — real numbers>","advantage":"<winner and why>"},{"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"},{"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"},{"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"},{"feature":"<real feature>","ours":"<exact spec>","theirs":"<exact spec>","advantage":"<winner>"}]},"architectureBreakdown":{"processingModel":"<${p} vs ${c} cloud/edge/on-prem>","apiDesign":"<API differences>","dataModel":"<storage differences>","scalabilityModel":"<scalability differences>","securityArchitecture":"<security differences>","keyArchitecturalAdvantage":"<biggest reason to choose ${p}>"},"implementationAnalysis":{"deploymentTimeline":"<weeks to go-live ${p} vs ${c}>","professionalServicesRequired":"<PS needed with $ cost>","hiddenCosts":["<hidden cost $>","<hidden cost $>","<hidden cost $>"],"adminOverhead":"<FTE hrs/week>","integrationComplexity":"<integrations, complexity 1-5>","totalFirstYearCost":"<all-in Year 1>","migrationRisk":"<migration risk>"},"evidenceAndProof":{"analystRecognition":"<Gartner MQ / Forrester Wave — name report + year>","g2Data":"<G2 stars/5, review count, top theme>","customerProof":["<named customer + outcome>","<named customer + outcome>"],"benchmarkData":"<specific benchmark source>","winRateData":"<win rate vs ${c}>","recentNews":"<most recent news affecting this deal>"}}`;
+You MUST return ONLY this exact JSON structure, no other text, no markdown, no explanation:
+{"executiveSummary":{"headline":"<one sentence business case for ${ps}>","roiStatement":"<specific ROI: e.g. 23% faster deployment saves $45k Year 1>","riskOfInaction":"<specific cost of choosing ${cs} instead>","executiveTalkingPoint":"<one crisp board-meeting sentence>"},"specComparison":{"tableRows":[{"feature":"Video Resolution","ours":"<${ps} exact spec>","theirs":"<${cs} exact spec>","advantage":"<winner and why>"},{"feature":"Audio Quality","ours":"<${ps} exact spec>","theirs":"<${cs} exact spec>","advantage":"<winner and why>"},{"feature":"AI Features","ours":"<${ps} exact spec>","theirs":"<${cs} exact spec>","advantage":"<winner and why>"},{"feature":"Management & Provisioning","ours":"<${ps} exact spec>","theirs":"<${cs} exact spec>","advantage":"<winner and why>"},{"feature":"Total Cost of Ownership","ours":"<${ps} 3-year TCO>","theirs":"<${cs} 3-year TCO>","advantage":"<winner and why>"}]},"architectureBreakdown":{"processingModel":"<cloud vs edge vs on-prem differences>","apiDesign":"<REST/GraphQL, rate limits, SDK quality>","dataModel":"<storage, retention, portability>","scalabilityModel":"<horizontal vs vertical scaling>","securityArchitecture":"<encryption, auth, compliance certs>","keyArchitecturalAdvantage":"<single biggest reason to choose ${ps}>"},"implementationAnalysis":{"deploymentTimeline":"<${ps}: X weeks vs ${cs}: Y weeks>","professionalServicesRequired":"<PS needed, estimated $cost>","hiddenCosts":["<${cs} hidden cost 1 with $ estimate>","<${cs} hidden cost 2 with $ estimate>","<${cs} hidden cost 3 with $ estimate>"],"adminOverhead":"<${ps}: X hrs/wk vs ${cs}: Y hrs/wk>","integrationComplexity":"<key integrations, complexity 1-5>","totalFirstYearCost":"<${ps} all-in Year 1 vs ${cs} all-in Year 1>","migrationRisk":"<migration risks when moving from ${cs} to ${ps}>"},"evidenceAndProof":{"analystRecognition":"<Gartner MQ or Forrester Wave position for ${ps} — name report + year>","g2Data":"<G2 rating for ${ps}: X.X/5, N reviews, top theme>","customerProof":["<named customer using ${ps} with specific outcome>","<named customer using ${ps} with specific outcome>"],"benchmarkData":"<specific published benchmark showing ${ps} advantage>","winRateData":"<known win rate for ${ps} vs ${cs}>","recentNews":"<most recent ${ps} launch or news relevant to this deal>"}}`;
 
   if (wantStream) {
     res.setHeader("Content-Type", "text/event-stream");
@@ -62,8 +61,9 @@ Return ONLY valid JSON, no markdown, no backticks — keep each value to 1-2 sen
     res.setHeader("Connection", "keep-alive");
     try {
       const stream = await anthropic.messages.stream({
-        model, max_tokens,
-        system: [{ type: "text", text: sysText, cache_control: { type: "ephemeral" } }],
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4000,
+        system: sys,
         messages: [{ role: "user", content: user }]
       });
       let fullText = "";
@@ -74,8 +74,13 @@ Return ONLY valid JSON, no markdown, no backticks — keep each value to 1-2 sen
         }
       }
       const parsed = extractJSON(fullText);
-      if (parsed) { res.write(`data: ${JSON.stringify({ done: true, result: parsed })}\n\n`); }
-      else { console.error("depth parse error:", fullText.slice(0, 200)); res.write(`data: ${JSON.stringify({ error: "depth parse error" })}\n\n`); }
+      if (parsed && parsed.specComparison) {
+        res.write(`data: ${JSON.stringify({ done: true, result: parsed })}\n\n`);
+      } else {
+        // Model refused or wrong schema — log and return error with raw
+        console.error("depth wrong schema, keys:", Object.keys(parsed||{}).join(','), "raw:", fullText.slice(0,200));
+        res.write(`data: ${JSON.stringify({ error: "depth parse error — model returned wrong schema" })}\n\n`);
+      }
       return res.end();
     } catch (err) {
       res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
@@ -85,13 +90,15 @@ Return ONLY valid JSON, no markdown, no backticks — keep each value to 1-2 sen
 
   try {
     const r = await anthropic.messages.create({
-      model, max_tokens,
-      system: [{ type: "text", text: sysText, cache_control: { type: "ephemeral" } }],
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4000,
+      system: sys,
       messages: [{ role: "user", content: user }]
     });
     const parsed = extractJSON(r.content[0].text);
-    if (parsed) return res.status(200).json(parsed);
-    return res.status(500).json({ error: "Failed to parse depth response." });
+    if (parsed && parsed.specComparison) return res.status(200).json(parsed);
+    console.error("depth wrong schema:", Object.keys(parsed||{}).join(','));
+    return res.status(500).json({ error: "depth parse error" });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
