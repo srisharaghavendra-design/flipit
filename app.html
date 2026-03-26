@@ -101,8 +101,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .abt:hover{border-color:#3a3a3a;color:var(--text)}
 .abt.ok{color:var(--green);border-color:var(--green)}
 .abt.share-btn{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)}
-.wl-row{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
-.wl-label{font-size:11px;color:var(--muted);font-family:DM Mono,monospace}
 .share-result{display:none;margin-top:8px;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:8px;padding:9px 13px;align-items:center;gap:10px;flex-wrap:wrap}
 .share-result.visible{display:flex}
 .share-url-text{flex:1;font-size:11px;color:var(--blue);font-family:DM Mono,monospace;word-break:break-all}
@@ -440,14 +438,33 @@ document.querySelectorAll('.dtag').forEach(b=>{
 // ── Streaming helpers ──────────────────────────────────────────────────────
 function showStreamingLoader(msg){
   document.getElementById('output').innerHTML=
-    '<div class="out-section" style="text-align:center;padding:2rem">'+
-    '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">'+msg+'</div>'+
-    '<div id="streamPreview" style="font-size:11px;color:var(--muted);font-family:\'DM Mono\',monospace;max-height:60px;overflow:hidden;opacity:0.5;text-align:left;padding:0 1rem;word-break:break-all"></div>'+
-    '<div style="display:flex;justify-content:center;gap:6px;margin-top:12px">'+
-    '<span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite"></span>'+
-    '<span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .2s"></span>'+
-    '<span style="width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .4s"></span>'+
+    '<div class="out-section" style="text-align:center;padding:2.5rem 1.5rem">'+
+    '<div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">'+msg+'</div>'+
+    '<div id="loaderStatus" style="font-size:12px;color:var(--muted);margin-bottom:20px">Connecting to AI engine...</div>'+
+    '<div style="width:100%;height:3px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:20px">'+
+      '<div id="loaderBar" style="height:100%;background:linear-gradient(90deg,var(--red),#a855f7);border-radius:3px;width:0%;transition:width 1.5s ease"></div>'+
+    '</div>'+
+    '<div id="streamPreview" style="font-size:11px;color:var(--muted2);font-family:DM Mono,monospace;max-height:44px;overflow:hidden;text-align:left;padding:0 4px;word-break:break-all;line-height:1.5"></div>'+
+    '<div style="display:flex;justify-content:center;gap:6px;margin-top:18px">'+
+    '<span style="width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1s infinite"></span>'+
+    '<span style="width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .2s"></span>'+
+    '<span style="width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 1s infinite .4s"></span>'+
     '</div></div><style>@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>';
+  const statuses=['Connecting to AI engine...','Analyzing competitive landscape...','Building kill shot...','Generating counter-moves...','Crafting talk track...','Compiling depth intelligence...','Finalizing your plan...'];
+  let step=0,pct=4;
+  window._loaderTimer=setInterval(()=>{
+    step=Math.min(step+1,statuses.length-1);
+    pct=Math.min(pct+(step<4?16:4),90);
+    const bar=document.getElementById('loaderBar');
+    const stat=document.getElementById('loaderStatus');
+    if(bar)bar.style.width=pct+'%';
+    if(stat)stat.textContent=statuses[step];
+  },5000);
+}
+function clearLoaderTimer(){
+  if(window._loaderTimer){clearInterval(window._loaderTimer);window._loaderTimer=null;}
+  const bar=document.getElementById('loaderBar');
+  if(bar){bar.style.transition='width 0.3s ease';bar.style.width='100%';}
 }
 async function streamRescue(payload,onDone,errEl){
   try{
@@ -499,7 +516,7 @@ async function handleNLInput(){
     await streamRescue({product:'described in context',competitor:'described in context',stage:'Discovery',reasons:'Described in natural language input',nl_input:text,context:text,depth:'2',use_nl:true},
       (data)=>{
         window._flipInput={product:'Natural Language Input',competitor:'Competitor',deal_stage:'Discovery',losing_reason:text,industry:''};
-        renderOutput(data,'Your Product','Competitor',false);
+        clearLoaderTimer(); renderOutput(data,'Your Product','Competitor',false);
         document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
       },errEl);
   }finally{btn.style.opacity='1';}
@@ -544,7 +561,7 @@ async function handleFlip(flipMode=false){
       depth:depthList,flip_mode:flipMode},
       (data)=>{
         window._flipInput={product,competitor,deal_stage:stage,losing_reason:reasons,industry:document.getElementById('industry').value};
-        renderOutput(data,product,competitor,flipMode);
+        clearLoaderTimer(); renderOutput(data,product,competitor,flipMode);
         document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
       },errEl);
   }finally{btn.disabled=false;btn.textContent='Flip this deal ->';}
@@ -587,21 +604,16 @@ function renderOutput(raw,product,competitor,flipMode){const d=normalize(raw);
     '<div class="arow"><div><div class="wp" style="color:'+wc(wp)+'">'+wp+'%</div><div class="wb">win probability</div></div>'+
     '<div><div class="ubadge '+uc(a.urgency)+'">'+a.urgency+' urgency</div><div class="at">'+a.summary+'</div></div></div></div>'+
     sizeHtml+partnerHtml+
-    (weaks?'<div class="out-section"><div class="sl">'+(flipMode?'Their attack angles against you':'Verified competitor weaknesses')+'</div>'+weaks+'</div>':'')+
-    '<div class="kcard"><div class="kl">'+(flipMode?'Their kill shot against you':'The kill shot')+'</div><div class="kt">"'+d.killShot+'"</div></div>'+
+    '<div class="kcard"><div class="kl">'+(flipMode?'Their kill shot against you':'&#9889; The kill shot')+'</div><div class="kt">\u201c'+d.killShot+'\u201d</div></div>'+
     '<div class="out-section"><div class="sl">'+(flipMode?'Their counter-moves':'Counter-moves')+'</div>'+mvs+'</div>'+
+    (weaks?'<div class="out-section"><div class="sl" style="color:var(--red)">'+(flipMode?'Their attack angles against you':'Competitor weaknesses')+'</div>'+weaks+'</div>':'')+
     '<div class="out-section"><div class="sl">Talk track</div><div class="ttsub">Opening line</div><div class="ttop">'+d.talkTrack.opening+'</div><div class="ttsub">Key messages</div><div style="margin-bottom:12px">'+msgs+'</div><div class="ttsub">Objection handlers</div>'+objs+'</div>'+
     '<div class="out-section"><div class="sl">Email template</div><div class="ew"><div class="em">To: [Prospect name]</div><div class="es">'+d.emailTemplate.subject+'</div><div class="eb">'+d.emailTemplate.body+'</div></div></div>'+
     '<div class="act-row">'+
     '<button class="abt" onclick="copyAll(this)">Copy full plan</button>'+
     '<button class="abt" onclick="copyEmail(this)">Copy email</button>'+
     '<button class="abt share-btn" onclick="sharePlan(this)">&#128279; Share link</button>'+
-    '<button class="abt" onclick="newDeal()">New deal</button>'+
-    '</div>'+
-    '<div class="wl-row"><span class="wl-label">Outcome:</span>'+
-    '<button class="abt" style="flex:0;padding:5px 14px;font-size:11px;color:var(--green);border-color:var(--green)" onclick="trackOutcome(this,\'won\')">&#10003; Won</button>'+
-    '<button class="abt" style="flex:0;padding:5px 14px;font-size:11px;color:var(--red);border-color:var(--red-border)" onclick="trackOutcome(this,\'lost\')">&#10005; Lost</button>'+
-    '<button class="abt" style="flex:0;padding:5px 14px;font-size:11px" onclick="trackOutcome(this,\'open\')">Still open</button>'+
+    '<button class="abt" onclick="newDeal()">&#8635; New deal</button>'+
     '</div>'+
     '<div class="share-result" id="shareResult"><span class="share-url-text" id="shareUrlText"></span><button class="copy-link-btn" onclick="copyShareLink(this)">Copy link</button></div>';
   // ── Depth Intelligence Sections ─────────────────────────────────────────
@@ -640,28 +652,31 @@ function renderOutput(raw,product,competitor,flipMode){const d=normalize(raw);
   }
   if (d.specComparison && d.specComparison.tableRows) {
     const rows = d.specComparison.tableRows.map((r,i) => {
-      const ourWins = r.advantage && (r.advantage.toLowerCase().includes('we win') || r.advantage.toLowerCase().includes('our') || r.advantage.toLowerCase().includes(product.split(' ')[0].toLowerCase()) || r.advantage.toLowerCase().includes('advantage'));
-      const bg = i%2===0 ? '#0f0f0f' : '#111111';
-      return '<tr style="background:'+bg+'">' +
-        '<td style="padding:11px 13px;font-size:13px;font-weight:600;border-bottom:1px solid #1e1e1e;color:#c0c0d0;white-space:nowrap">' + r.feature + '</td>' +
-        '<td style="padding:11px 13px;font-size:13px;border-bottom:1px solid #1e1e1e;color:#f0f0f0">' + r.ours + '</td>' +
-        '<td style="padding:11px 13px;font-size:13px;border-bottom:1px solid #1e1e1e;color:#888">' + r.theirs + '</td>' +
-        '<td style="padding:11px 13px;font-size:12px;border-bottom:1px solid #1e1e1e"><span style="color:'+(ourWins?'#30a46c':'#aaa')+';">'+(ourWins?'&#9650; ':'')+r.advantage+'</span></td></tr>';
+      const ourWins = r.advantage && (r.advantage.toLowerCase().includes('we win') || r.advantage.toLowerCase().includes('our') || r.advantage.toLowerCase().includes(product.split(' ')[0].toLowerCase()) || r.advantage.toLowerCase().includes('advantage') || r.advantage.toLowerCase().includes('win'));
+      const bg = i%2===0 ? 'transparent' : '#0a0a0a';
+      return '<div style="background:'+bg+';border-bottom:1px solid #1e1e1e;padding:14px 0">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">' +
+          '<div style="font-size:12px;font-weight:700;color:#c0c0d0;letter-spacing:.02em">' + r.feature + '</div>' +
+          '<div style="flex-shrink:0;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;background:'+(ourWins?'#0a2a0a':'#1a0a0a')+';color:'+(ourWins?'#30a46c':'#e5484d')+';border:1px solid '+(ourWins?'#1a4a1a':'#3a1010')+';">'+(ourWins?'&#9650; We win':'&#9660; Disadvantage')+'</div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">' +
+          '<div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:7px;padding:9px 11px">' +
+            '<div style="font-size:9px;font-weight:700;color:#30a46c;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9670; Ours</div>' +
+            '<div style="font-size:12px;color:#eee;line-height:1.5">' + r.ours + '</div>' +
+          '</div>' +
+          '<div style="background:#1a0808;border:1px solid #3a1010;border-radius:7px;padding:9px 11px">' +
+            '<div style="font-size:9px;font-weight:700;color:#e5484d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:DM Mono,monospace">&#9671; Theirs</div>' +
+            '<div style="font-size:12px;color:#aaa;line-height:1.5">' + r.theirs + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:12px;color:'+(ourWins?'#30a46c':'#888')+';;line-height:1.55;padding:0 2px">' + r.advantage + '</div>' +
+      '</div>';
     }).join('');
     depthHtml +=
       '<div style="background:#0f0f1a;border:1px solid #2a2a4a;border-radius:16px;padding:1.5rem;margin-bottom:1rem">' +
       '<div style="display:inline-flex;align-items:center;gap:7px;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#a5b4fc;font-family:DM Mono,monospace;margin-bottom:16px;padding:5px 12px;background:#1e1e4a;border:1px solid #3030a0;border-radius:20px">&#128202; L2 &mdash; Technical Spec Comparison</div>' +
-      '<div style="overflow-x:auto;border-radius:10px;border:1px solid #2a2a2a">' +
-        '<table style="width:100%;border-collapse:collapse">' +
-          '<thead><tr style="background:#151520">' +
-            '<th style="padding:10px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#555;text-align:left;font-family:DM Mono,monospace;border-bottom:1px solid #2a2a2a">Feature</th>' +
-            '<th style="padding:10px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#30a46c;text-align:left;font-family:DM Mono,monospace;border-bottom:1px solid #2a2a2a">&#9670; Our Product</th>' +
-            '<th style="padding:10px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#e5484d;text-align:left;font-family:DM Mono,monospace;border-bottom:1px solid #2a2a2a">&#9671; Competitor</th>' +
-            '<th style="padding:10px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#555;text-align:left;font-family:DM Mono,monospace;border-bottom:1px solid #2a2a2a">Verdict</th>' +
-          '</tr></thead>' +
-          '<tbody>' + rows + '</tbody>' +
-        '</table>' +
-      '</div></div>';
+      '<div style="padding:0 4px">' + rows + '</div>' +
+      '</div>';
   }
   if (d.architectureBreakdown) {
     const ab = d.architectureBreakdown;
@@ -768,11 +783,6 @@ function copyAll(btn){
 function copyEmail(btn){
   const d=window._ld;if(!d)return;
   navigator.clipboard.writeText('Subject: '+d.emailTemplate.subject+'\n\n'+d.emailTemplate.body).then(()=>{btn.textContent='Copied!';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy email';btn.classList.remove('ok');},2000);});
-}
-async function trackOutcome(btn,outcome){
-  btn.textContent=outcome==='won'?'\u2713 Won':outcome==='lost'?'\u2715 Lost':'Open';
-  btn.disabled=true;
-  try{await fetch('/api/track-outcome',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...window._flipInput,outcome})});}catch(e){}
 }
 function newDeal(){
   document.getElementById('output').innerHTML='';
