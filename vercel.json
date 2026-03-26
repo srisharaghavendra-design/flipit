@@ -1,5 +1,8 @@
 {
   "functions": {
+    "api/warm-cache.js": {
+      "maxDuration": 300
+    },
     "api/*.js": {
       "maxDuration": 60
     }
