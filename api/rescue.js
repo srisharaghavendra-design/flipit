@@ -53,7 +53,9 @@ export default async function handler(req, res) {
 
   // Cache check — skip for flip mode or personalised context
   if (!isFlip && !context && !partner) {
-    const key = cacheKey(product, competitor);
+    const keyA = (your_sku ? product + " " + your_sku : product).trim();
+    const keyB = (comp_sku ? competitor.split(" /")[0].trim() + " " + comp_sku : competitor).trim();
+    const key = cacheKey(keyA, keyB);
     const cached = await checkCache(key);
     if (cached) {
       res.setHeader('X-Cache', 'HIT');
@@ -97,7 +99,9 @@ Return ONLY this JSON:
     const parsed = JSON.parse(full.slice(start, end + 1));
 
     if (!isFlip && !context && !partner) {
-      saveCache(cacheKey(product, competitor), product, competitor, parsed).catch(()=>{});
+      const keyA2 = (your_sku ? product + " " + your_sku : product).trim();
+      const keyB2 = (comp_sku ? competitor.split(" /")[0].trim() + " " + comp_sku : competitor).trim();
+      saveCache(cacheKey(keyA2, keyB2), product, competitor, parsed).catch(()=>{});
     }
 
     res.write(`data: ${JSON.stringify({ done: true, result: parsed })}\n\n`);
