@@ -70,7 +70,7 @@ export default async function handler(req, res) {
 Stage: ${stage} | Industry: ${industry||"B2B"} | Losing: ${reasons}${company_size?" | Size: "+company_size:""}${deal_size?" | Deal: "+deal_size:""}${partner?" | Partner: "+partner:""}${meddic_status?" | MEDDPICC: "+meddic_status:""}${tco_model?" | TCO: "+tco_model:""}${deal_type?" | Type: "+deal_type:""}${context?" | Context: "+context:""}
 ${aud[audience]||""} ${geo[geography]||""}
 
-RULES: Real names and numbers only. Max 2 sentences per field. Win prob min 40%. No placeholders.
+RULES: Real names and numbers only. Max 2 sentences per field. Win prob min 40% — base it on FEATURES, SOLUTION FIT and STRATEGIC ADVANTAGE only, never on list price (discounts change everything). No placeholders.
 
 Return ONLY valid JSON, no markdown, no backticks:
 {"dealAssessment":{"winProbability":<int 40-100>,"urgency":"high|medium|low","summary":"<2 punchy sentences>"},"killShot":"<single most devastating differentiator — specific, quotable>","competitorWeaknesses":["<specific weakness>","<specific weakness>","<specific weakness>"],"counterMoves":[{"move":"<title>","timing":"<when>","action":"<exact action>"},{"move":"<title>","timing":"<when>","action":"<exact>"},{"move":"<title>","timing":"<when>","action":"<exact>"}],"talkTrack":{"opening":"<verbatim opening line>","keyMessages":["<specific>","<specific>","<specific>"],"objectionHandlers":[{"objection":"<exact objection>","response":"<specific counter>"},{"objection":"<exact objection>","response":"<specific counter>"}]},"emailTemplate":{"subject":"<subject <60 chars>","body":"<100 words max, ready to send>"}${partner?`,"partnerIntel":"<${partner} relationship with both vendors, co-sell incentives>"`:""}}`; 
