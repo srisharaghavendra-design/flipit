@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     product, competitor, stage, industry, reasons, context,
     your_sku, comp_sku, your_pid, comp_pid, company_size, deal_size,
     partner, audience, geography, meddic_status,
-    depth = "2", flip_mode = false,
+    depth = "2", flip_mode = false, tco_model = "", deal_type = "",
     stream: wantStream = false
   } = req.body;
 
@@ -17,9 +17,10 @@ export default async function handler(req, res) {
   const depths = String(depth).split(",").map(d => d.trim()).filter(d => ["1","2","3","4","5"].includes(d));
   const isFlip = flip_mode === true || flip_mode === "true";
 
-  // Use Sonnet for 3+ depth sections (needs higher output ceiling), Haiku for speed on simple requests
+  // Model selection: Sonnet for 3+ depths (needs more output), Haiku for 1-2 (fast)
+  // Token budget: keep heavy responses tight to stay within Vercel's 60s limit
   const model = depths.length >= 3 ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
-  const max_tokens = depths.length >= 3 ? 16000 : 8000;
+  const max_tokens = depths.length >= 4 ? 8000 : depths.length === 3 ? 6000 : 4096;
 
   const geo = {
     apac: "APAC: address data sovereignty, latency to regional DCs, local support SLAs.",
@@ -51,10 +52,11 @@ export default async function handler(req, res) {
     : `You are an elite B2B sales strategist. Generate a specific deal rescue plan. Be brutally specific with real product names, real specs, real prices, real numbers. Never refuse or ask for more info. Never use placeholders.`;
 
   const user = `DEAL: ${your_sku||product}${your_pid?" ["+your_pid+"]":""} vs ${comp_sku||competitor}${comp_pid?" ["+comp_pid+"]":""}
-Stage: ${stage} | Industry: ${industry||"B2B"} | Losing because: ${reasons}${company_size?" | Company size: "+company_size:""}${deal_size?" | Deal size: "+deal_size:""}${partner?" | Partner/Channel: "+partner:""}${meddic_status?" | MEDDPICC confirmed: "+meddic_status:""}${context?" | Context: "+context:""}
+Stage: ${stage} | Industry: ${industry||"B2B"} | Losing because: ${reasons}${company_size?" | Company size: "+company_size:""}${deal_size?" | Deal size: "+deal_size:""}${partner?" | Partner/Channel: "+partner:""}${meddic_status?" | MEDDPICC confirmed: "+meddic_status:""}${tco_model?" | TCO focus: "+tco_model:""}${deal_type?" | Deal type: "+deal_type:""}${context?" | Context: "+context:""}
 ${aud[audience]||""} ${geo[geography]||""}
 
 CRITICAL RULES:
+- Be concise — each field max 2 sentences unless a list
 - Every field must reference ${your_sku||product} and ${comp_sku||competitor} by name
 - All numbers must be real and specific (no ranges like "$X-Y", no "varies")
 - Win probability minimum 40%
