@@ -1,159 +1,165 @@
 // api/warm-cache.js
-// Nightly background job: web search + Sonnet → generates core_plan + depth_plan → stores in Supabase
-// Every live request hits cache only — no AI at request time
-// GET /api/warm-cache?secret=YOUR_SECRET
-
+// Runs nightly via cron — generates BOTH core_plan + depth_plan for all matchups
+// Uses web search + Sonnet for accuracy. Sellers always hit cache, never wait for AI.
 import Anthropic from "@anthropic-ai/sdk";
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_KEY;
 
 const MATCHUPS = [
-  { a: "Cisco Room Bar Pro",              b: "Poly Studio X50" },
-  { a: "Cisco Room Bar Pro",              b: "Zoom Bar" },
-  { a: "Cisco Room Bar Pro",              b: "Microsoft Teams Room" },
-  { a: "Cisco Room Bar Pro",              b: "Logitech Rally Bar" },
-  { a: "Cisco Room Bar Pro",              b: "Yealink MVC960" },
-  { a: "Cisco Room Bar Pro",              b: "Neat Bar Pro" },
-  { a: "Cisco Room Bar",                  b: "Neat Bar" },
-  { a: "Cisco Webex Contact Center",      b: "Genesys Cloud CX 2" },
-  { a: "Cisco Webex Contact Center",      b: "NICE CXone Core" },
-  { a: "Cisco Webex Contact Center",      b: "Five9 Cloud Contact Center" },
-  { a: "Cisco Webex Contact Center",      b: "Amazon Connect Voice" },
-  { a: "Cisco Webex Contact Center",      b: "Avaya Experience Platform" },
-  { a: "Genesys Cloud CX 2",             b: "NICE CXone Core" },
-  { a: "Genesys Cloud CX 2",             b: "Five9 Cloud Contact Center" },
-  { a: "Genesys Cloud CX 2",             b: "Amazon Connect Voice" },
-  { a: "Autodesk Revit",                  b: "Bentley Systems MicroStation" },
-  { a: "Autodesk BIM 360",               b: "Bexel Manager" },
-  { a: "Autodesk BIM 360",               b: "Trimble ProjectSight" },
-  { a: "Autodesk Revit",                  b: "Dassault Systemes SOLIDWORKS Professional" },
-  { a: "Boxx Insurance BOXX Cyber Enterprise", b: "Chubb CyberEdge" },
-  { a: "Boxx Insurance BOXX Cyber Enterprise", b: "AIG CyberEdge by AIG" },
-  { a: "Boxx Insurance BOXX Cyber Enterprise", b: "Coalition Coalition Active Cyber Insurance" },
+  { a: "Cisco Room Bar Pro", b: "Poly Studio X50", category: "video_device" },
+  { a: "Cisco Room Bar Pro", b: "Zoom Bar", category: "video_device" },
+  { a: "Cisco Room Bar Pro", b: "Microsoft Teams Room", category: "video_device" },
+  { a: "Cisco Room Bar Pro", b: "Logitech Rally Bar", category: "video_device" },
+  { a: "Cisco Room Bar Pro", b: "Yealink MVC960", category: "video_device" },
+  { a: "Cisco Room Bar Pro", b: "Neat Bar Pro", category: "video_device" },
+  { a: "Cisco Room Bar", b: "Neat Bar", category: "video_device" },
+  { a: "Cisco Webex Contact Center", b: "Genesys Cloud CX 2", category: "contact_center" },
+  { a: "Cisco Webex Contact Center", b: "NICE CXone Core", category: "contact_center" },
+  { a: "Cisco Webex Contact Center", b: "Five9 Cloud Contact Center", category: "contact_center" },
+  { a: "Cisco Webex Contact Center", b: "Amazon Connect Voice", category: "contact_center" },
+  { a: "Cisco Webex Contact Center", b: "Avaya Experience Platform", category: "contact_center" },
+  { a: "Genesys Cloud CX 2", b: "NICE CXone Core", category: "contact_center" },
+  { a: "Genesys Cloud CX 2", b: "Five9 Cloud Contact Center", category: "contact_center" },
+  { a: "Genesys Cloud CX 2", b: "Amazon Connect Voice", category: "contact_center" },
+  { a: "Autodesk Revit", b: "Bentley Systems MicroStation", category: "cad_bim" },
+  { a: "Autodesk BIM 360", b: "Bexel Manager", category: "cad_bim" },
+  { a: "Autodesk BIM 360", b: "Trimble ProjectSight", category: "cad_bim" },
+  { a: "Autodesk Revit", b: "Dassault Systemes SOLIDWORKS Professional", category: "cad_bim" },
+  { a: "Boxx Insurance BOXX Cyber Enterprise", b: "Chubb CyberEdge", category: "insurance" },
+  { a: "Boxx Insurance BOXX Cyber Enterprise", b: "AIG CyberEdge by AIG", category: "insurance" },
+  { a: "Boxx Insurance BOXX Cyber Enterprise", b: "Coalition Active Cyber Insurance", category: "insurance" },
 ];
 
-// Shared key normalizer — must match rescue.js exactly
+// Shared normalizer — must match rescue.js exactly
 function cacheKey(a, b) {
   const norm = s => s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
   return [norm(a), norm(b)].sort().join('::');
 }
 
-function detectCategory(name) {
-  const p = name.toLowerCase();
-  if (p.includes('contact center') || p.includes('genesys') || p.includes('five9') ||
-      p.includes('amazon connect') || p.includes('avaya') || p.includes('nice') ||
-      p.includes('cxone')) return 'contact_center';
-  if (p.includes('room bar') || p.includes('room kit') || p.includes('board') ||
-      p.includes('poly') || p.includes('neat') || p.includes('logitech') ||
-      p.includes('yealink') || p.includes('zoom bar') || p.includes('teams room'))
-    return 'video_device';
-  if (p.includes('revit') || p.includes('microstation') || p.includes('bim') ||
-      p.includes('trimble') || p.includes('bexel') || p.includes('solidworks') ||
-      p.includes('dassault')) return 'cad_bim';
-  if (p.includes('insurance') || p.includes('cyber') || p.includes('chubb') ||
-      p.includes('aig') || p.includes('coalition') || p.includes('boxx')) return 'insurance';
-  return 'saas';
-}
-
 function getCategoryFeatures(category, p, c) {
-  switch (category) {
+  switch(category) {
     case 'contact_center': return [
-      { feature: 'Omnichannel Channels', ours: p + ' channels', theirs: c + ' channels', advantage: '' },
-      { feature: 'AI / Virtual Agent',   ours: p + ' AI',       theirs: c + ' AI',       advantage: '' },
-      { feature: 'Compliance',           ours: p + ' certs',    theirs: c + ' certs',    advantage: '' },
-      { feature: 'CRM Integrations',     ours: p + ' CRM',      theirs: c + ' CRM',      advantage: '' },
-      { feature: '3yr TCO',              ours: p + ' cost',     theirs: c + ' cost',     advantage: '' },
+      {"feature":"Omnichannel Channels","ours":"<"+p+" channels>","theirs":"<"+c+" channels>","advantage":"<winner>"},
+      {"feature":"AI / Virtual Agent","ours":"<"+p+" AI>","theirs":"<"+c+" AI>","advantage":"<winner>"},
+      {"feature":"Compliance","ours":"<"+p+" certs>","theirs":"<"+c+" certs>","advantage":"<winner>"},
+      {"feature":"CRM Integrations","ours":"<"+p+" integrations>","theirs":"<"+c+" integrations>","advantage":"<winner>"},
+      {"feature":"3yr TCO","ours":"<"+p+" cost>","theirs":"<"+c+" cost>","advantage":"<winner>"}
     ];
     case 'video_device': return [
-      { feature: 'Video Resolution', ours: p + ' res',   theirs: c + ' res',   advantage: '' },
-      { feature: 'Audio',            ours: p + ' audio', theirs: c + ' audio', advantage: '' },
-      { feature: 'AI Features',      ours: p + ' AI',    theirs: c + ' AI',    advantage: '' },
-      { feature: 'Management',       ours: p + ' mgmt',  theirs: c + ' mgmt',  advantage: '' },
-      { feature: '3yr TCO',          ours: p + ' cost',  theirs: c + ' cost',  advantage: '' },
+      {"feature":"Video Resolution","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
+      {"feature":"Audio","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
+      {"feature":"AI Features","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
+      {"feature":"Platform Support","ours":"<"+p+" platforms>","theirs":"<"+c+" platforms>","advantage":"<winner>"},
+      {"feature":"3yr TCO","ours":"<"+p+" cost>","theirs":"<"+c+" cost>","advantage":"<winner>"}
     ];
     case 'cad_bim': return [
-      { feature: 'BIM Capabilities',    ours: p + ' BIM',     theirs: c + ' BIM',     advantage: '' },
-      { feature: 'Cloud Collaboration', ours: p + ' cloud',   theirs: c + ' cloud',   advantage: '' },
-      { feature: 'Interoperability',    ours: p + ' formats', theirs: c + ' formats', advantage: '' },
-      { feature: 'Licensing Model',     ours: p + ' license', theirs: c + ' license', advantage: '' },
-      { feature: '3yr TCO',             ours: p + ' cost',    theirs: c + ' cost',    advantage: '' },
-    ];
-    case 'insurance': return [
-      { feature: 'Coverage Limits',   ours: p + ' limits',  theirs: c + ' limits',  advantage: '' },
-      { feature: 'Incident Response', ours: p + ' IR',      theirs: c + ' IR',      advantage: '' },
-      { feature: 'Risk Assessment',   ours: p + ' risk',    theirs: c + ' risk',    advantage: '' },
-      { feature: 'Claims Process',    ours: p + ' claims',  theirs: c + ' claims',  advantage: '' },
-      { feature: 'Premium Model',     ours: p + ' pricing', theirs: c + ' pricing', advantage: '' },
+      {"feature":"BIM Capabilities","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
+      {"feature":"Cloud Collaboration","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
+      {"feature":"Interoperability","ours":"<"+p+" formats>","theirs":"<"+c+" formats>","advantage":"<winner>"},
+      {"feature":"Licensing Model","ours":"<"+p+" model>","theirs":"<"+c+" model>","advantage":"<winner>"},
+      {"feature":"3yr TCO","ours":"<"+p+" cost>","theirs":"<"+c+" cost>","advantage":"<winner>"}
     ];
     default: return [
-      { feature: 'Core Functionality',    ours: p + ' capability', theirs: c + ' capability', advantage: '' },
-      { feature: 'AI / Automation',       ours: p + ' AI',         theirs: c + ' AI',         advantage: '' },
-      { feature: 'Integrations',          ours: p + ' integrations', theirs: c + ' integrations', advantage: '' },
-      { feature: 'Security & Compliance', ours: p + ' security',   theirs: c + ' security',   advantage: '' },
-      { feature: '3yr TCO',               ours: p + ' cost',       theirs: c + ' cost',       advantage: '' },
+      {"feature":"Coverage Limits","ours":"<"+p+" limits>","theirs":"<"+c+" limits>","advantage":"<winner>"},
+      {"feature":"Incident Response","ours":"<"+p+" IR>","theirs":"<"+c+" IR>","advantage":"<winner>"},
+      {"feature":"Risk Assessment","ours":"<"+p+" approach>","theirs":"<"+c+" approach>","advantage":"<winner>"},
+      {"feature":"Claims Process","ours":"<"+p+" process>","theirs":"<"+c+" process>","advantage":"<winner>"},
+      {"feature":"Premium Model","ours":"<"+p+" pricing>","theirs":"<"+c+" pricing>","advantage":"<winner>"}
     ];
   }
 }
 
-// Generate core battle card plan using web search + Sonnet
-async function generateCorePlan(ours, theirs) {
-  const category = detectCategory(ours + ' ' + theirs);
+async function generateBothPlans(ours, theirs, category) {
+  const featureRows = JSON.stringify(getCategoryFeatures(category, ours, theirs));
 
+  // Single Sonnet call with web search generates BOTH plans in one shot
   const r = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
-    tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-    system: `You are a B2B competitive sales strategist. Use web_search to find real current facts about ${ours} and ${theirs} before responding. Never invent weaknesses, features, or customer names. Base everything on what you find. Output only valid JSON.`,
-    messages: [{ role: 'user', content: `Search for "${ours} vs ${theirs} ${category.replace(/_/g,' ')} 2025 comparison review" then generate a rescue plan JSON.
+    model: "claude-sonnet-4-6",
+    max_tokens: 6000,
+    system: `You are a competitive intelligence analyst. Use web_search to find real current data before responding.
+Rules:
+- Every $ figure must cite its source e.g. (Source: Gartner 2024)
+- If no verified source, prefix with "est." and note (unverified)
+- Never invent customer names, analyst quotes, or awards
+- For video devices: include ALL supported platforms (Teams, Zoom, Webex, Google Meet etc) accurately
+- Output ONLY raw JSON, no markdown`,
+    tools: [{ type: "web_search_20250305", name: "web_search" }],
+    messages: [{ role: "user", content: `Search for: "${ours} vs ${theirs} ${category.replace(/_/g,' ')} specs pricing review 2025"
 
-Return ONLY this JSON (no markdown):
-{"dealAssessment":{"winProbability":65,"urgency":"high","summary":"<2 sentences based on real product differences>"},"killShot":"<real specific differentiator found in search>","competitorWeaknesses":["<real weakness 1>","<real weakness 2>","<real weakness 3>"],"counterMoves":[{"move":"<title>","timing":"<when>","action":"<what>"},{"move":"<title>","timing":"<when>","action":"<what>"},{"move":"<title>","timing":"<when>","action":"<what>"}],"talkTrack":{"opening":"<verbatim opening line>","keyMessages":["<msg>","<msg>","<msg>"],"objectionHandlers":[{"objection":"<obj>","response":"<resp>"},{"objection":"<obj>","response":"<resp>"}]},"emailTemplate":{"subject":"<subject>","body":"<150 word body>"},"partnerIntel":null,"cachedAt":"${new Date().toISOString()}"}` }]
+Then output ONLY this JSON with two top-level keys — core_plan and depth_plan:
+{
+  "core_plan": {
+    "dealAssessment": {"winProbability": <40-90>, "urgency": "<high|medium|low>", "summary": "<2 accurate sentences based on search results>"},
+    "killShot": "<specific verified differentiator>",
+    "competitorWeaknesses": ["<verified weakness 1>", "<verified weakness 2>", "<verified weakness 3>"],
+    "counterMoves": [
+      {"move": "<title>", "timing": "<when>", "action": "<what>"},
+      {"move": "<title>", "timing": "<when>", "action": "<what>"},
+      {"move": "<title>", "timing": "<when>", "action": "<what>"}
+    ],
+    "talkTrack": {
+      "opening": "<verbatim opening line>",
+      "keyMessages": ["<msg 1>", "<msg 2>", "<msg 3>"],
+      "objectionHandlers": [
+        {"objection": "<obj>", "response": "<resp>"},
+        {"objection": "<obj>", "response": "<resp>"}
+      ]
+    },
+    "emailTemplate": {"subject": "<subject>", "body": "<body 150 words>"},
+    "partnerIntel": null
+  },
+  "depth_plan": {
+    "executiveSummary": {
+      "headline": "<one verified sentence why ${ours}>",
+      "roiStatement": "<ROI with $ AND source citation, or est. (unverified)>",
+      "riskOfInaction": "<verified risk of choosing ${theirs}>",
+      "executiveTalkingPoint": "<board-ready line>"
+    },
+    "specComparison": {"tableRows": ${featureRows}},
+    "architectureBreakdown": {
+      "processingModel": "<verified differences>",
+      "apiDesign": "<verified differences>",
+      "dataModel": "<verified differences>",
+      "scalabilityModel": "<verified differences>",
+      "securityArchitecture": "<verified differences>",
+      "keyArchitecturalAdvantage": "<${ours} verified advantage>"
+    },
+    "implementationAnalysis": {
+      "deploymentTimeline": "<${ours} X wks vs ${theirs} Y wks>",
+      "professionalServicesRequired": "<PS details with source or est.>",
+      "hiddenCosts": ["<${theirs} cost 1 with source or est.>", "<cost 2>", "<cost 3>"],
+      "adminOverhead": "<hrs/wk>",
+      "integrationComplexity": "<1-5>",
+      "totalFirstYearCost": "<${ours} vs ${theirs} Year 1 with source or est.>",
+      "migrationRisk": "<key risks>"
+    },
+    "evidenceAndProof": {
+      "customerWins": [{"company": "<real customer or Major [industry] firm>", "result": "<outcome>", "quote": "<real quote or empty string>"}],
+      "analystRecognition": "<real Gartner/Forrester recognition with year or verify at source>",
+      "g2Rating": {"ours": "<real G2 score>/5", "theirs": "<real G2 score>/5"},
+      "recentNews": "<real 2024-2025 news from search>",
+      "sourcesUsed": ["<source URL or publication 1>", "<source 2>"],
+      "cachedAt": "${new Date().toISOString()}"
+    }
+  }
+}` }]
   });
 
   let text = '';
   for (const block of r.content) {
     if (block.type === 'text') text += block.text;
   }
-  const s = text.indexOf('{'), e = text.lastIndexOf('}');
-  if (s === -1 || e === -1) throw new Error('No JSON in core plan response');
-  return JSON.parse(text.slice(s, e + 1));
-}
 
-// Generate deep intel plan using web search + Sonnet
-async function generateDepthPlan(ours, theirs) {
-  const category = detectCategory(ours + ' ' + theirs);
-  const features = getCategoryFeatures(category, ours, theirs);
-
-  const r = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4000,
-    tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-    system: `You are a competitive intelligence analyst. Use web_search to find real current data. Rules: every $ figure must cite source e.g. (Source: Gartner 2024). If no verified source found, write "est." before number and add (unverified). Never invent customer names, quotes, or analyst awards. Output only valid JSON.`,
-    messages: [{ role: 'user', content: `Search for "${ours} vs ${theirs} ${category.replace(/_/g,' ')} pricing analyst review G2 2025" then generate deep competitive intelligence.
-
-Return ONLY this JSON (no markdown):
-{"executiveSummary":{"headline":"<one sentence why ${ours}>","roiStatement":"<ROI with $ AND source, or est. (unverified)>","riskOfInaction":"<risk of ${theirs}>","executiveTalkingPoint":"<board-ready line>"},"specComparison":{"tableRows":${JSON.stringify(features)}},"architectureBreakdown":{"processingModel":"<real differences>","apiDesign":"<real differences>","dataModel":"<real differences>","scalabilityModel":"<real differences>","securityArchitecture":"<real differences>","keyArchitecturalAdvantage":"<${ours} real advantage>"},"implementationAnalysis":{"deploymentTimeline":"<${ours} X wks vs ${theirs} Y wks>","professionalServicesRequired":"<PS details + $ with source or est.>","hiddenCosts":["<${theirs} real cost 1>","<real cost 2>","<real cost 3>"],"adminOverhead":"<hrs/wk>","integrationComplexity":"<1-5>","totalFirstYearCost":"<${ours} vs ${theirs} Year 1 with source or est.>","migrationRisk":"<real risks>"},"evidenceAndProof":{"customerWins":[{"company":"<real customer or Major [industry] firm>","result":"<real outcome>","quote":"<real quote or empty string>"}],"analystRecognition":"<real Gartner/Forrester recognition with year, or empty string>","g2Rating":{"ours":"<real G2 score>/5 (verify at g2.com)","theirs":"<real G2 score>/5 (verify at g2.com)"},"recentNews":"<real 2024-2025 news found in search>","sourcesUsed":["<source url or publication 1>","<source 2>"]},"cachedAt":"${new Date().toISOString()}"}` }]
-  });
-
-  let text = '';
-  for (const block of r.content) {
-    if (block.type === 'text') text += block.text;
-  }
-  const s = text.indexOf('{'), e = text.lastIndexOf('}');
-  if (s === -1 || e === -1) throw new Error('No JSON in depth plan response');
-  return JSON.parse(text.slice(s, e + 1));
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('No JSON in response');
+  const parsed = JSON.parse(text.slice(start, end + 1));
+  if (!parsed.core_plan || !parsed.depth_plan) throw new Error('Missing core_plan or depth_plan');
+  return parsed;
 }
 
 async function saveToCache(key, a, b, corePlan, depthPlan) {
-  const body = {
-    cache_key: key,
-    product_a: a,
-    product_b: b,
-    core_plan: corePlan,
-    depth_plan: depthPlan,
-    hit_count: 0
-  };
   const r = await fetch(`${SB_URL}/rest/v1/plan_cache`, {
     method: 'POST',
     headers: {
@@ -162,7 +168,15 @@ async function saveToCache(key, a, b, corePlan, depthPlan) {
       'Content-Type': 'application/json',
       Prefer: 'return=minimal,resolution=merge-duplicates'
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify({
+      cache_key: key,
+      product_a: a,
+      product_b: b,
+      core_plan: corePlan,
+      depth_plan: depthPlan,
+      hit_count: 0,
+      cached_at: new Date().toISOString()
+    })
   });
   if (!r.ok) throw new Error(`Supabase ${r.status}: ${await r.text()}`);
 }
@@ -172,37 +186,31 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // force=true regenerates even if already cached
   const force = req.query.force === 'true';
   const results = [];
 
   for (const m of MATCHUPS) {
     const key = cacheKey(m.a, m.b);
     try {
-      // Check if already cached (unless force refresh)
+      // Check if already cached (skip unless force=true)
       if (!force) {
         const chk = await fetch(
-          `${SB_URL}/rest/v1/plan_cache?cache_key=eq.${encodeURIComponent(key)}&select=id,depth_plan`,
+          `${SB_URL}/rest/v1/plan_cache?cache_key=eq.${encodeURIComponent(key)}&select=id,cached_at`,
           { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
         );
         const ex = await chk.json();
-        // Skip only if BOTH plans exist
-        if (ex?.length && ex[0].depth_plan) {
-          results.push({ matchup: `${m.a} vs ${m.b}`, status: 'already cached', key });
+        if (ex?.length) {
+          results.push({ matchup: `${m.a} vs ${m.b}`, status: 'already cached', cached_at: ex[0].cached_at });
           continue;
         }
       }
 
-      // Generate both plans in parallel for speed
-      const [corePlan, depthPlan] = await Promise.all([
-        generateCorePlan(m.a, m.b),
-        generateDepthPlan(m.a, m.b)
-      ]);
-
-      await saveToCache(key, m.a, m.b, corePlan, depthPlan);
+      // Generate both plans with web search
+      const { core_plan, depth_plan } = await generateBothPlans(m.a, m.b, m.category);
+      await saveToCache(key, m.a, m.b, core_plan, depth_plan);
       results.push({ matchup: `${m.a} vs ${m.b}`, status: 'cached', key });
 
-    } catch (e) {
+    } catch(e) {
       results.push({ matchup: `${m.a} vs ${m.b}`, status: 'error', error: e.message });
     }
   }
@@ -214,4 +222,4 @@ export default async function handler(req, res) {
     total: MATCHUPS.length,
     results
   });
-    }
+  }
