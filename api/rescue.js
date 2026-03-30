@@ -1,11 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_KEY;
 
-function cacheKey(product, competitor) {
-  return [product, competitor].map(s => s.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'')).sort().join('::');
+// Shared normalization — must match warm-cache.js exactly
+function cacheKey(a, b) {
+  const norm = s => s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+  return [norm(a), norm(b)].sort().join('::');
 }
 
 async function checkCache(key) {
@@ -41,20 +43,18 @@ async function saveCache(key, productA, productB, corePlan) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { product, competitor, your_sku, comp_sku, stage, reasons, context,
-    industry, company_size, deal_size, partner, audience, geography,
-    deal_type, tco_model, prospect_company, meddic_status, flip_mode = false } = req.body;
-
+  const { product, competitor, your_sku, comp_sku, stage, reasons, context, industry, company_size, deal_size, partner, audience, geography, deal_type, tco_model, prospect_company, meddic_status, flip_mode = false } = req.body;
   if (!product || !competitor) return res.status(400).json({ error: "Missing fields" });
 
   const isFlip = flip_mode === true || flip_mode === "true";
   const ours = isFlip ? competitor : product;
   const theirs = isFlip ? product : competitor;
 
-  // Cache check — skip for flip mode or personalised context
+  // Cache key uses SKU if provided, else product name — normalized consistently
+  const keyA = your_sku ? your_sku.trim() : product.trim();
+  const keyB = comp_sku ? comp_sku.trim() : competitor.split(" /")[0].trim();
+
   if (!isFlip && !context && !partner) {
-    const keyA = (your_sku ? product + " " + your_sku : product).trim();
-    const keyB = (comp_sku ? competitor.split(" /")[0].trim() + " " + comp_sku : competitor).trim();
     const key = cacheKey(keyA, keyB);
     const cached = await checkCache(key);
     if (cached) {
@@ -69,12 +69,9 @@ export default async function handler(req, res) {
   const sys = `You are FlipIt, an elite B2B competitive sales strategist. Generate battle-tested rescue plans. Be specific, use real product names, no fluff. Win probability based on FEATURES and SOLUTION FIT only, not price.`;
 
   const prompt = `${isFlip ? `FLIP MODE: Show how ${theirs} pitches against ${ours}` : `Rescue plan: ${ours} vs ${theirs}`}
-
 Product: ${ours}${your_sku?' ('+your_sku+')':''} | Competitor: ${theirs}${comp_sku?' ('+comp_sku+')':''}
 Stage: ${stage||'Unknown'} | Reasons: ${reasons||'Not specified'} | Industry: ${industry||'B2B'}${company_size?' | Size: '+company_size:''}${deal_size?' | Deal: '+deal_size:''}${partner?' | Partner: '+partner:''}${audience?' | Audience: '+audience:''}${geography?' | Geo: '+geography:''}${meddic_status?' | MEDDPICC: '+meddic_status:''}${context?' | Context: '+context:''}
-
-Return ONLY this JSON:
-{"dealAssessment":{"winProbability":<40-90>,"urgency":"<high|medium|low>","summary":"<2 sentences>"},"killShot":"<devastating specific differentiator>","competitorWeaknesses":["<weakness>","<weakness>","<weakness>"],"counterMoves":[{"move":"<title>","timing":"<when>","action":"<what>"},{"move":"<title>","timing":"<when>","action":"<what>"},{"move":"<title>","timing":"<when>","action":"<what>"}],"talkTrack":{"opening":"<verbatim opening line>","keyMessages":["<msg>","<msg>","<msg>"],"objectionHandlers":[{"objection":"<obj>","response":"<resp>"},{"objection":"<obj>","response":"<resp>"}]},"emailTemplate":{"subject":"<subject>","body":"<body 150 words>"},"partnerIntel":${partner?'"<partner strategy>"':"null"}}`;
+Return ONLY this JSON: {"dealAssessment":{"winProbability":<40-90>,"urgency":"<high|medium|low>","summary":"<2 sentences>"},"killShot":"<devastating specific differentiator>","competitorWeaknesses":["<weakness>","<weakness>","<weakness>"],"counterMoves":[{"move":"<title>","timing":"<when>","action":"<what>"},{"move":"<title>","timing":"<when>","action":"<what>"},{"move":"<title>","timing":"<when>","action":"<what>"}],"talkTrack":{"opening":"<verbatim opening line>","keyMessages":["<msg>","<msg>","<msg>"],"objectionHandlers":[{"objection":"<obj>","response":"<resp>"},{"objection":"<obj>","response":"<resp>"}]},"emailTemplate":{"subject":"<subject>","body":"<body 150 words>"},"partnerIntel":${partner?'"<partner strategy>"':"null"}}`;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -99,9 +96,7 @@ Return ONLY this JSON:
     const parsed = JSON.parse(full.slice(start, end + 1));
 
     if (!isFlip && !context && !partner) {
-      const keyA2 = (your_sku ? product + " " + your_sku : product).trim();
-      const keyB2 = (comp_sku ? competitor.split(" /")[0].trim() + " " + comp_sku : competitor).trim();
-      saveCache(cacheKey(keyA2, keyB2), product, competitor, parsed).catch(()=>{});
+      saveCache(cacheKey(keyA, keyB), keyA, keyB, parsed).catch(()=>{});
     }
 
     res.write(`data: ${JSON.stringify({ done: true, result: parsed })}\n\n`);
@@ -111,4 +106,4 @@ Return ONLY this JSON:
     res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
     res.end();
   }
-        }
+  }
