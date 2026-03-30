@@ -33,8 +33,6 @@ function cacheKey(a, b) {
   return [norm(a), norm(b)].sort().join('::');
 }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
 async function generateBothPlans(ours, theirs, category) {
   const r = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
@@ -68,37 +66,26 @@ async function saveToCache(key, a, b, corePlan, depthPlan) {
 export default async function handler(req, res) {
   if (req.query.secret !== process.env.WARM_CACHE_SECRET) return res.status(401).json({ error: 'Unauthorized' });
 
-  const force = req.query.force === 'true';
-  const offset = parseInt(req.query.offset || '0', 10);
-  const limit = parseInt(req.query.limit || '3', 10);
-  const batch = MATCHUPS.slice(offset, offset + limit);
-  const results = [];
-
-  for (const m of batch) {
+  // Single index mode: process exactly ONE matchup, return fast
+  const idx = parseInt(req.query.index ?? '-1', 10);
+  if (idx >= 0 && idx < MATCHUPS.length) {
+    const m = MATCHUPS[idx];
     const key = cacheKey(m.a, m.b);
     try {
-      if (!force) {
-        const chk = await fetch(`${SB_URL}/rest/v1/plan_cache?cache_key=eq.${encodeURIComponent(key)}&select=id,cached_at`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
-        const ex = await chk.json();
-        if (ex?.length) { results.push({ matchup: `${m.a} vs ${m.b}`, status: 'already cached' }); continue; }
-      }
       const { core_plan, depth_plan } = await generateBothPlans(m.a, m.b, m.category);
       await saveToCache(key, m.a, m.b, core_plan, depth_plan);
-      results.push({ matchup: `${m.a} vs ${m.b}`, status: 'cached' });
-      if (batch.indexOf(m) < batch.length - 1) await sleep(8000);
+      return res.json({ index: idx, matchup: `${m.a} vs ${m.b}`, status: 'cached', next: idx + 1 < MATCHUPS.length ? idx + 1 : 'DONE' });
     } catch(e) {
-      results.push({ matchup: `${m.a} vs ${m.b}`, status: 'error', error: e.message });
-      await sleep(3000);
+      return res.status(500).json({ index: idx, matchup: `${m.a} vs ${m.b}`, status: 'error', error: e.message, next: idx + 1 });
     }
   }
 
-  const nextOffset = offset + limit;
-  res.json({
-    cached: results.filter(r=>r.status==='cached').length,
-    errors: results.filter(r=>r.status==='error').length,
-    batch_total: batch.length,
-    total_matchups: MATCHUPS.length,
-    next_batch: nextOffset < MATCHUPS.length ? `/api/warm-cache?secret=${req.query.secret}&force=true&offset=${nextOffset}&limit=${limit}` : 'DONE — all matchups complete',
-    results
-  });
+  // No index — return status of all matchups
+  const statuses = await Promise.all(MATCHUPS.map(async (m, i) => {
+    const key = cacheKey(m.a, m.b);
+    const chk = await fetch(`${SB_URL}/rest/v1/plan_cache?cache_key=eq.${encodeURIComponent(key)}&select=cached_at,depth_plan`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
+    const rows = await chk.json();
+    return { index: i, matchup: `${m.a} vs ${m.b}`, cached: rows?.length > 0, has_depth: !!rows?.[0]?.depth_plan, cached_at: rows?.[0]?.cached_at };
+  }));
+  res.json({ total: MATCHUPS.length, cached: statuses.filter(s=>s.cached).length, with_depth: statuses.filter(s=>s.has_depth).length, matchups: statuses });
       }
