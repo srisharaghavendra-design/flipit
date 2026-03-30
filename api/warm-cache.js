@@ -33,24 +33,35 @@ function cacheKey(a, b) {
   return [norm(a), norm(b)].sort().join('::');
 }
 
-async function generateBothPlans(ours, theirs, category) {
-  const r = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 3500,
-    system: `Competitive intelligence analyst. Use web_search once to find real current data. Rules: cite sources for $ figures e.g. (Source: Gartner 2024). If unverified prefix with est. Never invent customer names or awards. Output ONLY compact raw JSON, no markdown.`,
-    tools: [{ type: "web_search_20250305", name: "web_search" }],
-    messages: [{ role: "user", content: `Search: "${ours} vs ${theirs} ${category.replace(/_/g,' ')} 2025"
+function getCategoryFeatures(category) {
+  const f = {
+    contact_center: ["Omnichannel Channels","AI / Virtual Agent","Compliance (HIPAA/PCI/SOC2)","CRM Integrations","3yr TCO"],
+    video_device: ["Video Resolution","Audio","AI Features","Platform Support (Teams/Zoom/Webex/Google Meet)","3yr TCO"],
+    cad_bim: ["BIM Capabilities","Cloud Collaboration","Interoperability","Licensing Model","3yr TCO"],
+    insurance: ["Coverage Limits","Incident Response","Risk Assessment","Claims Process","Premium Model"],
+  };
+  return (f[category] || ["Core Capability","AI Features","Integrations","Security","3yr TCO"])
+    .map(feat => ({"feature": feat, "ours": "<spec>", "theirs": "<spec>", "advantage": "<winner>"}));
+}
 
-Output ONLY this JSON (keep all string values under 120 chars):
-{"core_plan":{"dealAssessment":{"winProbability":65,"urgency":"high","summary":"<2 sentences>"},"killShot":"<key differentiator>","competitorWeaknesses":["<w1>","<w2>","<w3>"],"counterMoves":[{"move":"<t>","timing":"<when>","action":"<what>"},{"move":"<t>","timing":"<when>","action":"<what>"},{"move":"<t>","timing":"<when>","action":"<what>"}],"talkTrack":{"opening":"<line>","keyMessages":["<m1>","<m2>","<m3>"],"objectionHandlers":[{"objection":"<o>","response":"<r>"},{"objection":"<o>","response":"<r>"}]},"emailTemplate":{"subject":"<subj>","body":"<150 words>"},"partnerIntel":null},"depth_plan":{"executiveSummary":{"headline":"<why ${ours}>","roiStatement":"<ROI with source or est.(unverified)>","riskOfInaction":"<risk>","executiveTalkingPoint":"<board line>"},"specComparison":{"tableRows":[{"feature":"<f1>","ours":"<spec>","theirs":"<spec>","advantage":"<winner>"},{"feature":"<f2>","ours":"<spec>","theirs":"<spec>","advantage":"<winner>"},{"feature":"<f3>","ours":"<spec>","theirs":"<spec>","advantage":"<winner>"},{"feature":"<f4>","ours":"<spec>","theirs":"<spec>","advantage":"<winner>"},{"feature":"3yr TCO","ours":"<cost>","theirs":"<cost>","advantage":"<winner>"}]},"architectureBreakdown":{"processingModel":"<diff>","apiDesign":"<diff>","dataModel":"<diff>","scalabilityModel":"<diff>","securityArchitecture":"<diff>","keyArchitecturalAdvantage":"<adv>"},"implementationAnalysis":{"deploymentTimeline":"<timeline>","professionalServicesRequired":"<PS>","hiddenCosts":["<c1>","<c2>","<c3>"],"adminOverhead":"<hrs/wk>","integrationComplexity":"3","totalFirstYearCost":"<cost>","migrationRisk":"<risks>"},"evidenceAndProof":{"customerWins":[{"company":"<real or Major firm>","result":"<outcome>","quote":""}],"analystRecognition":"<recognition>","g2Rating":{"ours":"<score>/5","theirs":"<score>/5"},"recentNews":"<2024-2025 news>","sourcesUsed":["<src1>","<src2>"],"cachedAt":"NOW"}}}` }]
+async function generateBothPlans(ours, theirs, category) {
+  const features = JSON.stringify(getCategoryFeatures(category));
+  const r = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 3000,
+    system: `B2B competitive sales analyst. Output ONLY valid compact JSON. Be specific and accurate about product capabilities. Never invent customer names. Label any unverified $ figures with est.`,
+    messages: [{ role: "user", content: `Generate competitive intel for ${ours} vs ${theirs} (category: ${category.replace(/_/g,' ')}).
+
+Output ONLY this JSON (strings under 100 chars each):
+{"core_plan":{"dealAssessment":{"winProbability":65,"urgency":"high","summary":"<2 accurate sentences>"},"killShot":"<specific real differentiator>","competitorWeaknesses":["<real w1>","<real w2>","<real w3>"],"counterMoves":[{"move":"<t>","timing":"<when>","action":"<what>"},{"move":"<t>","timing":"<when>","action":"<what>"},{"move":"<t>","timing":"<when>","action":"<what>"}],"talkTrack":{"opening":"<line>","keyMessages":["<m1>","<m2>","<m3>"],"objectionHandlers":[{"objection":"<o>","response":"<r>"},{"objection":"<o>","response":"<r>"}]},"emailTemplate":{"subject":"<subj>","body":"<120 words>"},"partnerIntel":null},"depth_plan":{"executiveSummary":{"headline":"<why ${ours}>","roiStatement":"est. <ROI> (verify before customer conversations)","riskOfInaction":"<risk of ${theirs}>","executiveTalkingPoint":"<board line>"},"specComparison":{"tableRows":${features}},"architectureBreakdown":{"processingModel":"<diff>","apiDesign":"<diff>","dataModel":"<diff>","scalabilityModel":"<diff>","securityArchitecture":"<diff>","keyArchitecturalAdvantage":"<adv>"},"implementationAnalysis":{"deploymentTimeline":"<timeline>","professionalServicesRequired":"est. <PS>","hiddenCosts":["est. <c1>","est. <c2>","est. <c3>"],"adminOverhead":"<hrs/wk>","integrationComplexity":"3","totalFirstYearCost":"est. <cost>","migrationRisk":"<risks>"},"evidenceAndProof":{"customerWins":[{"company":"<real or Major firm>","result":"<outcome>","quote":""}],"analystRecognition":"<real recognition or verify at gartner.com>","g2Rating":{"ours":"<score>/5","theirs":"<score>/5"},"recentNews":"<real recent news>","sourcesUsed":[],"cachedAt":"NOW"}}}` }]
   });
-  let text = '';
-  for (const block of r.content) { if (block.type === 'text') text += block.text; }
+
+  let text = r.content[0]?.text || '';
   text = text.replace('"cachedAt":"NOW"', `"cachedAt":"${new Date().toISOString()}"`);
   const start = text.indexOf('{'), end = text.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('No JSON in response');
+  if (start === -1 || end === -1) throw new Error('No JSON');
   const parsed = JSON.parse(text.slice(start, end + 1));
-  if (!parsed.core_plan || !parsed.depth_plan) throw new Error('Missing core_plan or depth_plan');
+  if (!parsed.core_plan || !parsed.depth_plan) throw new Error('Missing plans');
   return parsed;
 }
 
@@ -66,7 +77,6 @@ async function saveToCache(key, a, b, corePlan, depthPlan) {
 export default async function handler(req, res) {
   if (req.query.secret !== process.env.WARM_CACHE_SECRET) return res.status(401).json({ error: 'Unauthorized' });
 
-  // Single index mode: process exactly ONE matchup, return fast
   const idx = parseInt(req.query.index ?? '-1', 10);
   if (idx >= 0 && idx < MATCHUPS.length) {
     const m = MATCHUPS[idx];
@@ -80,12 +90,12 @@ export default async function handler(req, res) {
     }
   }
 
-  // No index — return status of all matchups
-  const statuses = await Promise.all(MATCHUPS.map(async (m, i) => {
+  // Status check — no index provided
+  const rows = await Promise.all(MATCHUPS.map(async (m, i) => {
     const key = cacheKey(m.a, m.b);
     const chk = await fetch(`${SB_URL}/rest/v1/plan_cache?cache_key=eq.${encodeURIComponent(key)}&select=cached_at,depth_plan`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
-    const rows = await chk.json();
-    return { index: i, matchup: `${m.a} vs ${m.b}`, cached: rows?.length > 0, has_depth: !!rows?.[0]?.depth_plan, cached_at: rows?.[0]?.cached_at };
+    const data = await chk.json();
+    return { index: i, matchup: `${m.a} vs ${m.b}`, cached: data?.length > 0, has_depth: !!data?.[0]?.depth_plan };
   }));
-  res.json({ total: MATCHUPS.length, cached: statuses.filter(s=>s.cached).length, with_depth: statuses.filter(s=>s.has_depth).length, matchups: statuses });
-      }
+  res.json({ total: MATCHUPS.length, cached: rows.filter(r=>r.cached).length, with_depth: rows.filter(r=>r.has_depth).length, matchups: rows });
+    }
