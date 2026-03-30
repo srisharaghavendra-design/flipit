@@ -1,25 +1,25 @@
 {
   "functions": {
-    "api/warm-cache.js":    { "maxDuration": 300 },
-    "api/rescue-depth.js":  { "maxDuration": 10 },
-    "api/*.js":             { "maxDuration": 60 }
+    "api/warm-cache.js": { "maxDuration": 300 },
+    "api/rescue-depth.js": { "maxDuration": 30 },
+    "api/*.js": { "maxDuration": 60 }
   },
   "crons": [
     {
       "path": "/api/warm-cache?secret=flipit2025",
-      "schedule": "0 2 * * *"
+      "schedule": "0 20 * * *"
     }
   ],
   "routes": [
-    { "src": "/app",             "dest": "/app.html" },
-    { "src": "/pricing",         "dest": "/pricing.html" },
-    { "src": "/admin",           "dest": "/admin.html" },
+    { "src": "/app", "dest": "/app.html" },
+    { "src": "/pricing", "dest": "/pricing.html" },
+    { "src": "/admin", "dest": "/admin.html" },
     { "src": "/beat-salesforce", "dest": "/beat-salesforce.html" },
-    { "src": "/beat-hubspot",    "dest": "/beat-hubspot.html" },
-    { "src": "/beat-outreach",   "dest": "/beat-outreach.html" },
-    { "src": "/beat-gong",       "dest": "/beat-gong.html" },
-    { "src": "/beat-clari",      "dest": "/beat-clari.html" },
-    { "src": "/plan",            "dest": "/plan.html" },
-    { "src": "/(.*)",            "dest": "/$1" }
+    { "src": "/beat-hubspot", "dest": "/beat-hubspot.html" },
+    { "src": "/beat-outreach", "dest": "/beat-outreach.html" },
+    { "src": "/beat-gong", "dest": "/beat-gong.html" },
+    { "src": "/beat-clari", "dest": "/beat-clari.html" },
+    { "src": "/plan", "dest": "/plan.html" },
+    { "src": "/(.*)", "dest": "/$1" }
   ]
 }
