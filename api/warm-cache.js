@@ -31,125 +31,32 @@ const MATCHUPS = [
   { a: "Boxx Insurance BOXX Cyber Enterprise", b: "Coalition Active Cyber Insurance", category: "insurance" },
 ];
 
-// Shared normalizer — must match rescue.js exactly
 function cacheKey(a, b) {
   const norm = s => s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
   return [norm(a), norm(b)].sort().join('::');
 }
 
-function getCategoryFeatures(category, p, c) {
-  switch(category) {
-    case 'contact_center': return [
-      {"feature":"Omnichannel Channels","ours":"<"+p+" channels>","theirs":"<"+c+" channels>","advantage":"<winner>"},
-      {"feature":"AI / Virtual Agent","ours":"<"+p+" AI>","theirs":"<"+c+" AI>","advantage":"<winner>"},
-      {"feature":"Compliance","ours":"<"+p+" certs>","theirs":"<"+c+" certs>","advantage":"<winner>"},
-      {"feature":"CRM Integrations","ours":"<"+p+" integrations>","theirs":"<"+c+" integrations>","advantage":"<winner>"},
-      {"feature":"3yr TCO","ours":"<"+p+" cost>","theirs":"<"+c+" cost>","advantage":"<winner>"}
-    ];
-    case 'video_device': return [
-      {"feature":"Video Resolution","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
-      {"feature":"Audio","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
-      {"feature":"AI Features","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
-      {"feature":"Platform Support","ours":"<"+p+" platforms>","theirs":"<"+c+" platforms>","advantage":"<winner>"},
-      {"feature":"3yr TCO","ours":"<"+p+" cost>","theirs":"<"+c+" cost>","advantage":"<winner>"}
-    ];
-    case 'cad_bim': return [
-      {"feature":"BIM Capabilities","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
-      {"feature":"Cloud Collaboration","ours":"<"+p+" spec>","theirs":"<"+c+" spec>","advantage":"<winner>"},
-      {"feature":"Interoperability","ours":"<"+p+" formats>","theirs":"<"+c+" formats>","advantage":"<winner>"},
-      {"feature":"Licensing Model","ours":"<"+p+" model>","theirs":"<"+c+" model>","advantage":"<winner>"},
-      {"feature":"3yr TCO","ours":"<"+p+" cost>","theirs":"<"+c+" cost>","advantage":"<winner>"}
-    ];
-    default: return [
-      {"feature":"Coverage Limits","ours":"<"+p+" limits>","theirs":"<"+c+" limits>","advantage":"<winner>"},
-      {"feature":"Incident Response","ours":"<"+p+" IR>","theirs":"<"+c+" IR>","advantage":"<winner>"},
-      {"feature":"Risk Assessment","ours":"<"+p+" approach>","theirs":"<"+c+" approach>","advantage":"<winner>"},
-      {"feature":"Claims Process","ours":"<"+p+" process>","theirs":"<"+c+" process>","advantage":"<winner>"},
-      {"feature":"Premium Model","ours":"<"+p+" pricing>","theirs":"<"+c+" pricing>","advantage":"<winner>"}
-    ];
-  }
-}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function generateBothPlans(ours, theirs, category) {
-  const featureRows = JSON.stringify(getCategoryFeatures(category, ours, theirs));
-
-  // Single Sonnet call with web search generates BOTH plans in one shot
   const r = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 6000,
-    system: `You are a competitive intelligence analyst. Use web_search to find real current data before responding.
-Rules:
-- Every $ figure must cite its source e.g. (Source: Gartner 2024)
-- If no verified source, prefix with "est." and note (unverified)
-- Never invent customer names, analyst quotes, or awards
-- For video devices: include ALL supported platforms (Teams, Zoom, Webex, Google Meet etc) accurately
-- Output ONLY raw JSON, no markdown`,
+    max_tokens: 3500,
+    system: `Competitive intelligence analyst. Use web_search once to find real current data.
+Rules: cite sources for $ figures e.g. (Source: Gartner 2024). If unverified prefix with est.
+Never invent customer names or awards. Output ONLY compact raw JSON, no markdown, no extra whitespace.`,
     tools: [{ type: "web_search_20250305", name: "web_search" }],
-    messages: [{ role: "user", content: `Search for: "${ours} vs ${theirs} ${category.replace(/_/g,' ')} specs pricing review 2025"
+    messages: [{ role: "user", content: `Search: "${ours} vs ${theirs} ${category.replace(/_/g,' ')} 2025"
 
-Then output ONLY this JSON with two top-level keys — core_plan and depth_plan:
-{
-  "core_plan": {
-    "dealAssessment": {"winProbability": <40-90>, "urgency": "<high|medium|low>", "summary": "<2 accurate sentences based on search results>"},
-    "killShot": "<specific verified differentiator>",
-    "competitorWeaknesses": ["<verified weakness 1>", "<verified weakness 2>", "<verified weakness 3>"],
-    "counterMoves": [
-      {"move": "<title>", "timing": "<when>", "action": "<what>"},
-      {"move": "<title>", "timing": "<when>", "action": "<what>"},
-      {"move": "<title>", "timing": "<when>", "action": "<what>"}
-    ],
-    "talkTrack": {
-      "opening": "<verbatim opening line>",
-      "keyMessages": ["<msg 1>", "<msg 2>", "<msg 3>"],
-      "objectionHandlers": [
-        {"objection": "<obj>", "response": "<resp>"},
-        {"objection": "<obj>", "response": "<resp>"}
-      ]
-    },
-    "emailTemplate": {"subject": "<subject>", "body": "<body 150 words>"},
-    "partnerIntel": null
-  },
-  "depth_plan": {
-    "executiveSummary": {
-      "headline": "<one verified sentence why ${ours}>",
-      "roiStatement": "<ROI with $ AND source citation, or est. (unverified)>",
-      "riskOfInaction": "<verified risk of choosing ${theirs}>",
-      "executiveTalkingPoint": "<board-ready line>"
-    },
-    "specComparison": {"tableRows": ${featureRows}},
-    "architectureBreakdown": {
-      "processingModel": "<verified differences>",
-      "apiDesign": "<verified differences>",
-      "dataModel": "<verified differences>",
-      "scalabilityModel": "<verified differences>",
-      "securityArchitecture": "<verified differences>",
-      "keyArchitecturalAdvantage": "<${ours} verified advantage>"
-    },
-    "implementationAnalysis": {
-      "deploymentTimeline": "<${ours} X wks vs ${theirs} Y wks>",
-      "professionalServicesRequired": "<PS details with source or est.>",
-      "hiddenCosts": ["<${theirs} cost 1 with source or est.>", "<cost 2>", "<cost 3>"],
-      "adminOverhead": "<hrs/wk>",
-      "integrationComplexity": "<1-5>",
-      "totalFirstYearCost": "<${ours} vs ${theirs} Year 1 with source or est.>",
-      "migrationRisk": "<key risks>"
-    },
-    "evidenceAndProof": {
-      "customerWins": [{"company": "<real customer or Major [industry] firm>", "result": "<outcome>", "quote": "<real quote or empty string>"}],
-      "analystRecognition": "<real Gartner/Forrester recognition with year or verify at source>",
-      "g2Rating": {"ours": "<real G2 score>/5", "theirs": "<real G2 score>/5"},
-      "recentNews": "<real 2024-2025 news from search>",
-      "sourcesUsed": ["<source URL or publication 1>", "<source 2>"],
-      "cachedAt": "${new Date().toISOString()}"
-    }
-  }
-}` }]
+Output ONLY this JSON (keep all string values under 120 chars):
+{"core_plan":{"dealAssessment":{"winProbability":<40-90>,"urgency":"<high|medium|low>","summary":"<2 sentences>"},"killShot":"<key differentiator>","competitorWeaknesses":["<w1>","<w2>","<w3>"],"counterMoves":[{"move":"<t>","timing":"<when>","action":"<what>"},{"move":"<t>","timing":"<when>","action":"<what>"},{"move":"<t>","timing":"<when>","action":"<what>"}],"talkTrack":{"opening":"<line>","keyMessages":["<m1>","<m2>","<m3>"],"objectionHandlers":[{"objection":"<o>","response":"<r>"},{"objection":"<o>","response":"<r>"}]},"emailTemplate":{"subject":"<subj>","body":"<150 words>"},"partnerIntel":null},"depth_plan":{"executiveSummary":{"headline":"<why ${ours}>","roiStatement":"<ROI with source or est.(unverified)>","riskOfInaction":"<risk of ${theirs}>","executiveTalkingPoint":"<board line>"},"specComparison":{"tableRows":[{"feature":"<f1>","ours":"<spec>","theirs":"<spec>","advantage":"<winner>"},{"feature":"<f2>","ours":"<spec>","theirs":"<spec>","advantage":"<winner>"},{"feature":"<f3>","ours":"<spec>","theirs":"<spec>","advantage":"<winner>"},{"feature":"<f4>","ours":"<spec>","theirs":"<spec>","advantage":"<winner>"},{"feature":"3yr TCO","ours":"<cost+source>","theirs":"<cost+source>","advantage":"<winner>"}]},"architectureBreakdown":{"processingModel":"<diff>","apiDesign":"<diff>","dataModel":"<diff>","scalabilityModel":"<diff>","securityArchitecture":"<diff>","keyArchitecturalAdvantage":"<${ours} adv>"},"implementationAnalysis":{"deploymentTimeline":"<${ours} X wks vs ${theirs} Y wks>","professionalServicesRequired":"<PS+$ or est.>","hiddenCosts":["<c1+source or est.>","<c2>","<c3>"],"adminOverhead":"<hrs/wk>","integrationComplexity":"<1-5>","totalFirstYearCost":"<${ours} vs ${theirs}+source or est.>","migrationRisk":"<risks>"},"evidenceAndProof":{"customerWins":[{"company":"<real or Major firm>","result":"<outcome>","quote":""}],"analystRecognition":"<real recognition+year or verify at gartner.com>","g2Rating":{"ours":"<real score>/5","theirs":"<real score>/5"},"recentNews":"<real 2024-2025 news>","sourcesUsed":["<src1>","<src2>"],"cachedAt":"NOW"}}}` }]
   });
 
   let text = '';
   for (const block of r.content) {
     if (block.type === 'text') text += block.text;
   }
+  text = text.replace('"cachedAt":"NOW"', `"cachedAt":"${new Date().toISOString()}"`);
 
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
@@ -192,7 +99,6 @@ export default async function handler(req, res) {
   for (const m of MATCHUPS) {
     const key = cacheKey(m.a, m.b);
     try {
-      // Check if already cached (skip unless force=true)
       if (!force) {
         const chk = await fetch(
           `${SB_URL}/rest/v1/plan_cache?cache_key=eq.${encodeURIComponent(key)}&select=id,cached_at`,
@@ -205,13 +111,17 @@ export default async function handler(req, res) {
         }
       }
 
-      // Generate both plans with web search
       const { core_plan, depth_plan } = await generateBothPlans(m.a, m.b, m.category);
       await saveToCache(key, m.a, m.b, core_plan, depth_plan);
       results.push({ matchup: `${m.a} vs ${m.b}`, status: 'cached', key });
 
+      // 15s delay between matchups to stay within 30k tokens/min rate limit
+      await sleep(15000);
+
     } catch(e) {
       results.push({ matchup: `${m.a} vs ${m.b}`, status: 'error', error: e.message });
+      // Still wait on error to avoid cascading rate limits
+      await sleep(5000);
     }
   }
 
@@ -222,4 +132,4 @@ export default async function handler(req, res) {
     total: MATCHUPS.length,
     results
   });
-  }
+}
