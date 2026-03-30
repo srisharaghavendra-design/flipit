@@ -1,6 +1,5 @@
-// api/warm-cache.js - Pre-generates top 25 matchups into Supabase
+// api/warm-cache.js - Pre-generates top matchups into Supabase
 // GET /api/warm-cache?secret=YOUR_SECRET
-
 import Anthropic from "@anthropic-ai/sdk";
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const SB_URL = process.env.SUPABASE_URL;
@@ -31,13 +30,16 @@ const MATCHUPS = [
   { a: "Boxx Insurance BOXX Cyber Enterprise", b: "Coalition Coalition Active Cyber Insurance" },
 ];
 
+// Shared normalization — must match rescue.js exactly
 function cacheKey(a, b) {
-  return [a,b].map(s=>s.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'')).sort().join('::');
+  const norm = s => s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+  return [norm(a), norm(b)].sort().join('::');
 }
 
 async function generatePlan(ours, theirs) {
   const r = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001", max_tokens: 2048,
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 2048,
     system: "B2B competitive sales strategist. Return only valid JSON. Win probability based on features only.",
     messages: [{ role: "user", content: `Rescue plan: ${ours} vs ${theirs}. Return ONLY this JSON: {"dealAssessment":{"winProbability":65,"urgency":"high","summary":"2 sentences"},"killShot":"specific differentiator","competitorWeaknesses":["w1","w2","w3"],"counterMoves":[{"move":"m","timing":"t","action":"a"},{"move":"m","timing":"t","action":"a"},{"move":"m","timing":"t","action":"a"}],"talkTrack":{"opening":"opening line","keyMessages":["m1","m2","m3"],"objectionHandlers":[{"objection":"o","response":"r"},{"objection":"o","response":"r"}]},"emailTemplate":{"subject":"s","body":"b"},"partnerIntel":null}` }]
   });
@@ -56,6 +58,7 @@ async function saveToCache(key, a, b, plan) {
 
 export default async function handler(req, res) {
   if (req.query.secret !== process.env.WARM_CACHE_SECRET) return res.status(401).json({ error: 'Unauthorized' });
+
   const results = [];
   for (const m of MATCHUPS) {
     const key = cacheKey(m.a, m.b);
@@ -64,13 +67,17 @@ export default async function handler(req, res) {
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
       });
       const ex = await chk.json();
-      if (ex?.length) { results.push({ matchup: `${m.a} vs ${m.b}`, status: 'already cached' }); continue; }
+      if (ex?.length) {
+        results.push({ matchup: `${m.a} vs ${m.b}`, status: 'already cached', key });
+        continue;
+      }
       const plan = await generatePlan(m.a, m.b);
       await saveToCache(key, m.a, m.b, plan);
-      results.push({ matchup: `${m.a} vs ${m.b}`, status: 'cached' });
+      results.push({ matchup: `${m.a} vs ${m.b}`, status: 'cached', key });
     } catch(e) {
       results.push({ matchup: `${m.a} vs ${m.b}`, status: 'error', error: e.message });
     }
   }
+
   res.json({ cached: results.filter(r=>r.status==='cached').length, total: MATCHUPS.length, results });
 }
