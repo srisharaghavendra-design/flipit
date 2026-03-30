@@ -1,11 +1,8 @@
 {
   "functions": {
-    "api/warm-cache.js": {
-      "maxDuration": 300
-    },
-    "api/*.js": {
-      "maxDuration": 60
-    }
+    "api/warm-cache.js": { "maxDuration": 300 },
+    "api/rescue-depth.js": { "maxDuration": 120 },
+    "api/*.js": { "maxDuration": 60 }
   },
   "routes": [
     { "src": "/app", "dest": "/app.html" },
