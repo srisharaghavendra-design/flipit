@@ -598,6 +598,7 @@ async function handleFlip(flipMode=false){
   btn.disabled=false; btn.textContent='Flip this deal ->';
 }
 
+function flagUnverified(text){return text||''}
 function injectDepthSections(depthData){
   // Merge depth data into window._ld and re-render depth sections
   if(!window._ld) return;
