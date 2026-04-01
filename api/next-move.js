@@ -23,6 +23,8 @@ export default async function handler(req, res) {
       messages: [{ role: 'user', content: prompt }],
     };
 
+    // Bullet rewriter does not need web search — it rewrites what the user provides.
+    // Main career plan DOES need live search to surface currently hiring companies.
     if (!raw) {
       body.tools = [
         {
@@ -51,15 +53,19 @@ export default async function handler(req, res) {
 
     const data = await anthropicRes.json();
 
+    // Extract only text blocks — response may include tool_use + tool_result
+    // blocks from web search activity, we only want the final text answer
     const text = (data.content || [])
       .filter(block => block.type === 'text')
       .map(block => block.text || '')
       .join('');
 
+    // Bullet rewriter — return plain text directly
     if (raw) {
       return res.status(200).json({ result: text.trim() });
     }
 
+    // Main plan — Claude returns JSON, parse it
     const cleaned = text.replace(/```json|```/g, '').trim();
     try {
       const parsed = JSON.parse(cleaned);

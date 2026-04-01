@@ -142,3 +142,402 @@
   }
 </style>
 </head>
+<body>
+
+<nav>
+  <a href="https://flipit.fyi" class="logo">
+    <div class="logo-icon">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 12L7 2L12 12H2Z" fill="white"/></svg>
+    </div>
+    <span class="logo-text">FlipIt</span>
+    <span class="logo-badge">beta</span>
+  </a>
+  <a href="#form" class="nav-cta">Get your next move →</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge"><div class="badge-dot"></div>AI-powered career rescue</div>
+  <h1>You lost your job.<br><span class="accent">Not your career.</span></h1>
+  <p class="hero-sub">Tell us your background. We'll build your next move in 60 seconds — roles to target, companies hiring, and exactly how to pitch yourself.</p>
+</section>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num">01</div>
+    <h3>Enter your details</h3>
+    <p>Your role, skills, experience, and where you want to be. 60 seconds.</p>
+  </div>
+  <div class="step">
+    <div class="step-num">02</div>
+    <h3>AI maps the market</h3>
+    <p>We find who's hiring your profile, what they want, and where you fit right now.</p>
+  </div>
+  <div class="step">
+    <div class="step-num">03</div>
+    <h3>Walk away with a plan</h3>
+    <p>Job titles, target companies, a rewritten resume, and exactly what to do today.</p>
+  </div>
+</div>
+
+<section class="form-section" id="form">
+  <div class="form-wrap">
+    <div class="form-title">Find your next move</div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Most Recent Role</label>
+        <input type="text" id="role" placeholder="e.g. Senior Java Developer" />
+      </div>
+      <div class="field">
+        <label>Years of Experience</label>
+        <select id="years">
+          <option value="">Select...</option>
+          <option>0–2 years</option>
+          <option>3–5 years</option>
+          <option>6–10 years</option>
+          <option>10–15 years</option>
+          <option>15+ years</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Key Skills</label>
+        <input type="text" id="skills" placeholder="e.g. Java, OCI, SQL, NetSuite, Python" />
+      </div>
+      <div class="field">
+        <label>Country / Region</label>
+        <select id="location">
+          <option value="">Select...</option>
+          <option>India</option>
+          <option>United States</option>
+          <option>United Kingdom</option>
+          <option>Canada</option>
+          <option>Australia</option>
+          <option>Germany</option>
+          <option>Singapore</option>
+          <option>UAE / Middle East</option>
+          <option>Europe (other)</option>
+          <option>APAC (other)</option>
+          <option>Open to remote / relocation</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>What did you actually work on? <span style="color:#2e2e2e;text-transform:none;font-weight:400">(optional — but helps a lot)</span></label>
+      <textarea id="context" placeholder="e.g. Led Oracle Fusion integrations for BFSI clients. Managed NetSuite implementations for US mid-market. Built OCI microservices at 10M requests/day..."></textarea>
+    </div>
+    <div class="divider"></div>
+    <button class="submit-btn" id="btn" onclick="generate()">Get my next move →</button>
+    <p class="form-note">Free. No signup required.</p>
+    <div class="error" id="err"></div>
+  </div>
+
+  <div class="results" id="results">
+
+    <!-- Card 1: Titles -->
+    <div class="result-card">
+      <div class="result-label">Job Titles to Target Right Now</div>
+      <div class="tags" id="titleTags"></div>
+    </div>
+
+    <!-- Card 2: Companies with links -->
+    <div class="result-card">
+      <div class="result-label">Companies Hiring Your Profile</div>
+      <div class="company-list" id="companiesList"></div>
+    </div>
+
+    <!-- Card 3: Pitch -->
+    <div class="result-card">
+      <div class="result-label">How to Frame Your Experience</div>
+      <div class="result-body" id="pitchBody"></div>
+    </div>
+
+    <!-- Card 4: Actions -->
+    <div class="result-card">
+      <div class="result-label">Do These Today — In This Order</div>
+      <div class="result-body" id="actionsBody"></div>
+    </div>
+
+    <!-- Card 5: Resume rewriter -->
+    <div class="result-card">
+      <div class="result-label">Update Your Resume with AI</div>
+
+      <div class="resume-box">
+        <div class="resume-box-label">✦ Your new LinkedIn summary — ready to use</div>
+        <div class="resume-box-text" id="resumeSummary"></div>
+        <button class="copy-btn" id="copyBtn" onclick="copySummary()">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg>
+          Copy summary
+        </button>
+      </div>
+
+      <div class="rewrite-divider"></div>
+
+      <div class="rewrite-sub-label">Rewrite your old bullet points</div>
+      <div class="rewrite-hint">Paste 3–5 lines from your current CV. We'll rewrite them to match the roles you're targeting.</div>
+      <textarea class="rewrite-input" id="oldBullets" placeholder="• Responsible for managing Java backend services&#10;• Worked on Oracle database integration&#10;• Part of a team that delivered cloud migration project"></textarea>
+      <button class="rewrite-btn" id="rewriteBtn" onclick="rewriteBullets()">
+        Rewrite my bullet points →
+      </button>
+      <div class="rewrite-output" id="rewriteOutput">
+        <div class="rewrite-output-text" id="rewriteOutputText"></div>
+        <button class="copy-btn" id="copyBulletsBtn" onclick="copyBullets()" style="margin-top:12px">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg>
+          Copy bullets
+        </button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  FlipIt — built for people who refuse to stay down &nbsp;·&nbsp;
+  <a href="https://flipit.fyi">Deal Rescue for Sales Teams</a> &nbsp;·&nbsp;
+  flipit.fyi
+</footer>
+
+<script>
+// ─── Job board links per country ───────────────────────────────────────────
+const enc = s => encodeURIComponent(s);
+
+const BOARDS = {
+  'India': (company, role) => [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=India&f_C=${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'Naukri',   url: `https://www.naukri.com/${enc(role)}-jobs-in-${enc(company)}`.toLowerCase().replace(/%20/g,'-'), cls: 'link-primary' },
+    { label: 'Indeed',   url: `https://in.indeed.com/jobs?q=${enc(role)}+${enc(company)}&l=India`, cls: 'link-secondary' }
+  ],
+  'United States': (company, role) => [
+    { label: 'LinkedIn',  url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=United+States&f_C=${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'Indeed',    url: `https://www.indeed.com/jobs?q=${enc(role)}+${enc(company)}&l=United+States`, cls: 'link-primary' },
+    { label: 'Glassdoor', url: `https://www.glassdoor.com/Jobs/${enc(company)}-Jobs-E0.htm`, cls: 'link-secondary' }
+  ],
+  'United Kingdom': (company, role) => [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=United+Kingdom&f_C=${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'Reed',     url: `https://www.reed.co.uk/jobs/${enc(role).replace(/%20/g,'-')}-jobs-at-${enc(company).replace(/%20/g,'-')}`, cls: 'link-primary' },
+    { label: 'Totaljobs',url: `https://www.totaljobs.com/jobs/${enc(role).replace(/%20/g,'-')}/at-${enc(company).replace(/%20/g,'-')}`, cls: 'link-secondary' }
+  ],
+  'Canada': (company, role) => [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=Canada&f_C=${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'Indeed',   url: `https://ca.indeed.com/jobs?q=${enc(role)}+${enc(company)}&l=Canada`, cls: 'link-primary' },
+    { label: 'Jobbank',  url: `https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=${enc(role)}+${enc(company)}`, cls: 'link-secondary' }
+  ],
+  'Australia': (company, role) => [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=Australia&f_C=${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'Seek',     url: `https://www.seek.com.au/${enc(role).replace(/%20/g,'-')}-jobs/at-${enc(company).replace(/%20/g,'-')}`, cls: 'link-primary' },
+    { label: 'Indeed AU',url: `https://au.indeed.com/jobs?q=${enc(role)}+${enc(company)}`, cls: 'link-secondary' }
+  ],
+  'Germany': (company, role) => [
+    { label: 'LinkedIn',  url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=Germany&f_C=${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'StepStone', url: `https://www.stepstone.de/jobs/${enc(role).replace(/%20/g,'-')}-bei-${enc(company).replace(/%20/g,'-')}`, cls: 'link-primary' },
+    { label: 'Indeed DE', url: `https://de.indeed.com/jobs?q=${enc(role)}+${enc(company)}&l=Deutschland`, cls: 'link-secondary' }
+  ],
+  'Singapore': (company, role) => [
+    { label: 'LinkedIn',         url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=Singapore&f_C=${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'MyCareersFuture',  url: `https://www.mycareersfuture.gov.sg/search?search=${enc(role)}`, cls: 'link-primary' },
+    { label: 'Indeed SG',        url: `https://sg.indeed.com/jobs?q=${enc(role)}+${enc(company)}`, cls: 'link-secondary' }
+  ],
+  'UAE / Middle East': (company, role) => [
+    { label: 'LinkedIn',   url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=United+Arab+Emirates&f_C=${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'Bayt',       url: `https://www.bayt.com/en/international/jobs/${enc(role).replace(/%20/g,'-')}-jobs/`, cls: 'link-primary' },
+    { label: 'GulfTalent', url: `https://www.gulftalent.com/jobs/search?q=${enc(role)}+${enc(company)}`, cls: 'link-secondary' }
+  ],
+};
+
+// Fallback for Europe (other), APAC (other), remote
+function getBoards(location, company, role) {
+  const boards = BOARDS[location];
+  if (boards) return boards(company, role);
+  return [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}+${enc(company)}`, cls: 'link-linkedin' },
+    { label: 'Indeed',   url: `https://www.indeed.com/jobs?q=${enc(role)}+${enc(company)}`, cls: 'link-primary' },
+  ];
+}
+
+// ─── State ──────────────────────────────────────────────────────────────────
+let generatedSummary = '';
+let currentRole = '', currentLocation = '', currentSkills = '';
+
+// ─── Main generate ───────────────────────────────────────────────────────────
+async function generate() {
+  const role     = document.getElementById('role').value.trim();
+  const years    = document.getElementById('years').value;
+  const skills   = document.getElementById('skills').value.trim();
+  const location = document.getElementById('location').value;
+  const context  = document.getElementById('context').value.trim();
+  const errEl    = document.getElementById('err');
+  errEl.style.display = 'none';
+
+  if (!role || !years || !skills || !location) {
+    errEl.textContent = 'Please fill in your role, experience, skills, and location.';
+    errEl.style.display = 'block'; return;
+  }
+
+  currentRole = role; currentLocation = location; currentSkills = skills;
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Building your plan...';
+
+  const prompt = `You are a senior career advisor helping a tech professional find their next role after a layoff. You have access to web search — use it to find companies that are ACTIVELY HIRING RIGHT NOW in ${location} for profiles like this. Do not recommend companies from memory. Search first, then recommend.
+
+Profile:
+- Role: ${role}
+- Experience: ${years}
+- Skills: ${skills}
+- Location/Region: ${location}
+- Background: ${context || 'Not provided'}
+
+IMPORTANT: Before recommending any companies, search the web for:
+1. "${role} hiring ${location} 2026"
+2. "${skills.split(',')[0].trim()} jobs ${location} 2026"
+3. Tech companies hiring in ${location} right now
+
+Only recommend companies that are verifiably hiring similar profiles TODAY. Include the hiring signal you found (e.g. "posted 3 new Java roles this week", "announced expansion in India Q1 2026").
+
+Respond with raw JSON only — no markdown, no backticks, nothing outside the JSON object:
+{
+  "jobTitles": ["6 precise job titles to search for on job boards — specific to their skills"],
+  "companies": [
+    {"name": "Company Name", "why": "Why they are hiring this profile RIGHT NOW — include the signal you found from search", "mode": "Hybrid / Remote / Onsite"},
+    {"name": "Company Name", "why": "...", "mode": "..."}
+  ],
+  "pitch": "3–4 sentences for their LinkedIn summary and resume opener. Lead with scale, outcomes, impact. Make a recruiter want to reach out in 5 seconds.",
+  "actions": "5 specific things to do TODAY in priority order. Which platforms first, which communities, what to message former colleagues, one move most people skip, one thing forgotten in first 48 hours.",
+  "resumeSummary": "A punchy 3-sentence LinkedIn summary rewrite based on their background. First person. Outcome-led. Ready to paste."
+}
+
+Return exactly 6–8 companies in the companies array. Every company must be currently hiring — verified by your search.`;
+
+  try {
+    const res = await fetch('/api/next-move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data   = await res.json();
+    const parsed = data.result;
+
+    // Card 1: titles
+    const tagsEl = document.getElementById('titleTags');
+    tagsEl.innerHTML = '';
+    (parsed.jobTitles || []).forEach(t => {
+      const s = document.createElement('span');
+      s.className = 'tag'; s.textContent = t;
+      tagsEl.appendChild(s);
+    });
+
+    // Card 2: companies with country-specific job links
+    const listEl = document.getElementById('companiesList');
+    listEl.innerHTML = '';
+    (parsed.companies || []).forEach(c => {
+      const boards = getBoards(location, c.name, role);
+      const linksHtml = boards.map(b =>
+        `<a class="job-link ${b.cls}" href="${b.url}" target="_blank" rel="noopener">
+          ${b.label}
+          <svg class="link-ext" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 7L7 1M7 1H3M7 1v4"/></svg>
+        </a>`
+      ).join('');
+
+      listEl.innerHTML += `
+        <div class="company-item">
+          <div class="company-info">
+            <div class="company-name">${c.name}</div>
+            <div class="company-why">${c.why}</div>
+            <div class="company-mode">${c.mode || ''}</div>
+          </div>
+          <div class="company-links">${linksHtml}</div>
+        </div>`;
+    });
+
+    // Card 3 & 4
+    document.getElementById('pitchBody').textContent   = parsed.pitch   || '';
+    document.getElementById('actionsBody').textContent = parsed.actions || '';
+
+    // Card 5: resume summary
+    generatedSummary = parsed.resumeSummary || '';
+    document.getElementById('resumeSummary').textContent = generatedSummary;
+
+    const r = document.getElementById('results');
+    r.classList.add('show');
+    setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+
+  } catch(e) {
+    errEl.textContent = 'Something went wrong. Please try again.';
+    errEl.style.display = 'block';
+    console.error(e);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Get my next move →';
+}
+
+// ─── Copy summary ────────────────────────────────────────────────────────────
+function copySummary() {
+  if (!generatedSummary) return;
+  navigator.clipboard.writeText(generatedSummary).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> Copy summary'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ─── Rewrite bullet points ───────────────────────────────────────────────────
+async function rewriteBullets() {
+  const oldText = document.getElementById('oldBullets').value.trim();
+  if (!oldText) return;
+
+  const btn = document.getElementById('rewriteBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner spinner-sm"></span>Rewriting...';
+
+  const prompt = `You are a professional resume writer. Rewrite these CV bullet points to be outcome-led, specific, and tailored for someone who was a ${currentRole} with skills in ${currentSkills}, now targeting roles in ${currentLocation}.
+
+Rules:
+- Start each bullet with a strong action verb
+- Add numbers/scale wherever possible (estimate if not given)
+- Remove passive language and vague phrases
+- Each bullet should make a hiring manager pause
+
+Old bullets:
+${oldText}
+
+Return only the rewritten bullets, one per line, starting with •. No preamble, no explanation.`;
+
+  try {
+    const res = await fetch('/api/next-move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, raw: true })
+    });
+
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data = await res.json();
+    const text = data.result;
+
+    document.getElementById('rewriteOutputText').textContent = text;
+    document.getElementById('rewriteOutput').classList.add('show');
+
+  } catch(e) {
+    console.error(e);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Rewrite my bullet points →';
+}
+
+// ─── Copy rewritten bullets ──────────────────────────────────────────────────
+function copyBullets() {
+  const text = document.getElementById('rewriteOutputText').textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBulletsBtn');
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> Copy bullets'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+</body>
+</html>
