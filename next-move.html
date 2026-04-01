@@ -380,7 +380,21 @@ async function generate() {
 
   const btn = document.getElementById('btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Building your plan...';
+
+  // Animated status messages so users know it's working
+  const messages = [
+    'Searching who\'s hiring right now...',
+    'Scanning job boards across the web...',
+    'Matching your profile to open roles...',
+    'Building your personalised plan...',
+    'Almost there...'
+  ];
+  let msgIndex = 0;
+  btn.innerHTML = `<span class="spinner"></span>${messages[0]}`;
+  const msgInterval = setInterval(() => {
+    msgIndex = Math.min(msgIndex + 1, messages.length - 1);
+    btn.innerHTML = `<span class="spinner"></span>${messages[msgIndex]}`;
+  }, 5000);
 
   const prompt = `You are a senior career advisor helping a tech professional find their next role after a layoff. You have access to web search — use it to find companies that are ACTIVELY HIRING RIGHT NOW in ${location} for profiles like this. Do not recommend companies from memory. Search first, then recommend.
 
@@ -463,11 +477,13 @@ Return exactly 6–8 companies in the companies array. Every company must be cur
     generatedSummary = parsed.resumeSummary || '';
     document.getElementById('resumeSummary').textContent = generatedSummary;
 
+    clearInterval(msgInterval);
     const r = document.getElementById('results');
     r.classList.add('show');
     setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
 
   } catch(e) {
+    clearInterval(msgInterval);
     errEl.textContent = 'Something went wrong. Please try again.';
     errEl.style.display = 'block';
     console.error(e);
