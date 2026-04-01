@@ -219,6 +219,10 @@
           <option>Open to remote / relocation</option>
         </select>
       </div>
+      <div class="field">
+        <label>City</label>
+        <input type="text" id="city" placeholder="e.g. Bengaluru, Mumbai, London, New York" />
+      </div>
     </div>
     <div class="field">
       <label>What did you actually work on? <span style="color:#2e2e2e;text-transform:none;font-weight:400">(optional — but helps a lot)</span></label>
@@ -300,55 +304,55 @@
 const enc = s => encodeURIComponent(s);
 
 const BOARDS = {
-  'India': (company, role) => [
-    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=India&f_C=${enc(company)}`, cls: 'link-linkedin' },
-    { label: 'Naukri',   url: `https://www.naukri.com/${enc(role)}-jobs-in-${enc(company)}`.toLowerCase().replace(/%20/g,'-'), cls: 'link-primary' },
-    { label: 'Indeed',   url: `https://in.indeed.com/jobs?q=${enc(role)}+${enc(company)}&l=India`, cls: 'link-secondary' }
+  'India': (company, role, city) => [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||'India')}`, cls: 'link-linkedin' },
+    { label: 'Naukri',   url: `https://www.naukri.com/${enc(role+' '+company).toLowerCase().replace(/%20/g,'-')}-jobs${city?`-in-${enc(city).toLowerCase().replace(/%20/g,'-')}`:''}`, cls: 'link-primary' },
+    { label: 'Indeed',   url: `https://in.indeed.com/jobs?q=${enc('"'+company+'" '+role)}&l=${enc(city||'India')}`, cls: 'link-secondary' }
   ],
-  'United States': (company, role) => [
-    { label: 'LinkedIn',  url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=United+States&f_C=${enc(company)}`, cls: 'link-linkedin' },
-    { label: 'Indeed',    url: `https://www.indeed.com/jobs?q=${enc(role)}+${enc(company)}&l=United+States`, cls: 'link-primary' },
-    { label: 'Glassdoor', url: `https://www.glassdoor.com/Jobs/${enc(company)}-Jobs-E0.htm`, cls: 'link-secondary' }
+  'United States': (company, role, city) => [
+    { label: 'LinkedIn',  url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||'United States')}`, cls: 'link-linkedin' },
+    { label: 'Indeed',    url: `https://www.indeed.com/jobs?q=${enc('"'+company+'" '+role)}&l=${enc(city||'United States')}`, cls: 'link-primary' },
+    { label: 'Glassdoor', url: `https://www.glassdoor.com/Jobs/${enc(company).replace(/%20/g,'-')}-Jobs-E0.htm`, cls: 'link-secondary' }
   ],
-  'United Kingdom': (company, role) => [
-    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=United+Kingdom&f_C=${enc(company)}`, cls: 'link-linkedin' },
-    { label: 'Reed',     url: `https://www.reed.co.uk/jobs/${enc(role).replace(/%20/g,'-')}-jobs-at-${enc(company).replace(/%20/g,'-')}`, cls: 'link-primary' },
-    { label: 'Totaljobs',url: `https://www.totaljobs.com/jobs/${enc(role).replace(/%20/g,'-')}/at-${enc(company).replace(/%20/g,'-')}`, cls: 'link-secondary' }
+  'United Kingdom': (company, role, city) => [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||'United Kingdom')}`, cls: 'link-linkedin' },
+    { label: 'Reed',     url: `https://www.reed.co.uk/jobs?keywords=${enc(role+' '+company)}&location=${enc(city||'UK')}`, cls: 'link-primary' },
+    { label: 'Totaljobs',url: `https://www.totaljobs.com/jobs/${enc(role).replace(/%20/g,'-')}/in-${enc(city||'uk').replace(/%20/g,'-')}?keywords=${enc(company)}`, cls: 'link-secondary' }
   ],
-  'Canada': (company, role) => [
-    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=Canada&f_C=${enc(company)}`, cls: 'link-linkedin' },
-    { label: 'Indeed',   url: `https://ca.indeed.com/jobs?q=${enc(role)}+${enc(company)}&l=Canada`, cls: 'link-primary' },
-    { label: 'Jobbank',  url: `https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=${enc(role)}+${enc(company)}`, cls: 'link-secondary' }
+  'Canada': (company, role, city) => [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||'Canada')}`, cls: 'link-linkedin' },
+    { label: 'Indeed',   url: `https://ca.indeed.com/jobs?q=${enc('"'+company+'" '+role)}&l=${enc(city||'Canada')}`, cls: 'link-primary' },
+    { label: 'Jobbank',  url: `https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=${enc(role+' '+company)}&locationstring=${enc(city||'Canada')}`, cls: 'link-secondary' }
   ],
-  'Australia': (company, role) => [
-    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=Australia&f_C=${enc(company)}`, cls: 'link-linkedin' },
-    { label: 'Seek',     url: `https://www.seek.com.au/${enc(role).replace(/%20/g,'-')}-jobs/at-${enc(company).replace(/%20/g,'-')}`, cls: 'link-primary' },
-    { label: 'Indeed AU',url: `https://au.indeed.com/jobs?q=${enc(role)}+${enc(company)}`, cls: 'link-secondary' }
+  'Australia': (company, role, city) => [
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||'Australia')}`, cls: 'link-linkedin' },
+    { label: 'Seek',     url: `https://www.seek.com.au/${enc(role).replace(/%20/g,'-')}-jobs/at-${enc(company).replace(/%20/g,'-')}${city?`/in-${enc(city).replace(/%20/g,'-')}`:''}`, cls: 'link-primary' },
+    { label: 'Indeed AU',url: `https://au.indeed.com/jobs?q=${enc('"'+company+'" '+role)}&l=${enc(city||'Australia')}`, cls: 'link-secondary' }
   ],
-  'Germany': (company, role) => [
-    { label: 'LinkedIn',  url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=Germany&f_C=${enc(company)}`, cls: 'link-linkedin' },
+  'Germany': (company, role, city) => [
+    { label: 'LinkedIn',  url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||'Germany')}`, cls: 'link-linkedin' },
     { label: 'StepStone', url: `https://www.stepstone.de/jobs/${enc(role).replace(/%20/g,'-')}-bei-${enc(company).replace(/%20/g,'-')}`, cls: 'link-primary' },
-    { label: 'Indeed DE', url: `https://de.indeed.com/jobs?q=${enc(role)}+${enc(company)}&l=Deutschland`, cls: 'link-secondary' }
+    { label: 'Indeed DE', url: `https://de.indeed.com/jobs?q=${enc('"'+company+'" '+role)}&l=${enc(city||'Deutschland')}`, cls: 'link-secondary' }
   ],
-  'Singapore': (company, role) => [
-    { label: 'LinkedIn',         url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=Singapore&f_C=${enc(company)}`, cls: 'link-linkedin' },
-    { label: 'MyCareersFuture',  url: `https://www.mycareersfuture.gov.sg/search?search=${enc(role)}`, cls: 'link-primary' },
-    { label: 'Indeed SG',        url: `https://sg.indeed.com/jobs?q=${enc(role)}+${enc(company)}`, cls: 'link-secondary' }
+  'Singapore': (company, role, city) => [
+    { label: 'LinkedIn',        url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||'Singapore')}`, cls: 'link-linkedin' },
+    { label: 'MyCareersFuture', url: `https://www.mycareersfuture.gov.sg/search?search=${enc(role+' '+company)}`, cls: 'link-primary' },
+    { label: 'Indeed SG',       url: `https://sg.indeed.com/jobs?q=${enc('"'+company+'" '+role)}`, cls: 'link-secondary' }
   ],
-  'UAE / Middle East': (company, role) => [
-    { label: 'LinkedIn',   url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}&location=United+Arab+Emirates&f_C=${enc(company)}`, cls: 'link-linkedin' },
-    { label: 'Bayt',       url: `https://www.bayt.com/en/international/jobs/${enc(role).replace(/%20/g,'-')}-jobs/`, cls: 'link-primary' },
-    { label: 'GulfTalent', url: `https://www.gulftalent.com/jobs/search?q=${enc(role)}+${enc(company)}`, cls: 'link-secondary' }
+  'UAE / Middle East': (company, role, city) => [
+    { label: 'LinkedIn',   url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||'United Arab Emirates')}`, cls: 'link-linkedin' },
+    { label: 'Bayt',       url: `https://www.bayt.com/en/international/jobs/?q=${enc(role+' '+company)}`, cls: 'link-primary' },
+    { label: 'GulfTalent', url: `https://www.gulftalent.com/jobs/search?q=${enc(role+' '+company)}`, cls: 'link-secondary' }
   ],
 };
 
 // Fallback for Europe (other), APAC (other), remote
-function getBoards(location, company, role) {
+function getBoards(location, company, role, city) {
   const boards = BOARDS[location];
-  if (boards) return boards(company, role);
+  if (boards) return boards(company, role, city);
   return [
-    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role)}+${enc(company)}`, cls: 'link-linkedin' },
-    { label: 'Indeed',   url: `https://www.indeed.com/jobs?q=${enc(role)}+${enc(company)}`, cls: 'link-primary' },
+    { label: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${enc(role+' '+company)}&location=${enc(city||location)}`, cls: 'link-linkedin' },
+    { label: 'Indeed',   url: `https://www.indeed.com/jobs?q=${enc('"'+company+'" '+role)}&l=${enc(city||location)}`, cls: 'link-primary' },
   ];
 }
 
@@ -362,6 +366,7 @@ async function generate() {
   const years    = document.getElementById('years').value;
   const skills   = document.getElementById('skills').value.trim();
   const location = document.getElementById('location').value;
+  const city     = document.getElementById('city').value.trim();
   const context  = document.getElementById('context').value.trim();
   const errEl    = document.getElementById('err');
   errEl.style.display = 'none';
@@ -383,7 +388,7 @@ Profile:
 - Role: ${role}
 - Experience: ${years}
 - Skills: ${skills}
-- Location/Region: ${location}
+- Location/Region: ${location}${city ? ` (${city})` : ''}
 - Background: ${context || 'Not provided'}
 
 IMPORTANT: Before recommending any companies, search the web for:
@@ -431,7 +436,7 @@ Return exactly 6–8 companies in the companies array. Every company must be cur
     const listEl = document.getElementById('companiesList');
     listEl.innerHTML = '';
     (parsed.companies || []).forEach(c => {
-      const boards = getBoards(location, c.name, role);
+      const boards = getBoards(location, c.name, role, city);
       const linksHtml = boards.map(b =>
         `<a class="job-link ${b.cls}" href="${b.url}" target="_blank" rel="noopener">
           ${b.label}
