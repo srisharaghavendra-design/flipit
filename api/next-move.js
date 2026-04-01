@@ -23,24 +23,12 @@ export default async function handler(req, res) {
       messages: [{ role: 'user', content: prompt }],
     };
 
-    // Bullet rewriter does not need web search — it rewrites what the user provides.
-    // Main career plan DOES need live search to surface currently hiring companies.
-    if (!raw) {
-      body.tools = [
-        {
-          type: 'web_search_20250305',
-          name: 'web_search',
-        }
-      ];
-    }
-
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'web-search-2025-03-05',
       },
       body: JSON.stringify(body),
     });

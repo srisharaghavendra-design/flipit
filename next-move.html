@@ -396,35 +396,28 @@ async function generate() {
     btn.innerHTML = `<span class="spinner"></span>${messages[msgIndex]}`;
   }, 5000);
 
-  const prompt = `You are a senior career advisor helping a tech professional find their next role after a layoff. You have access to web search — use it to find companies that are ACTIVELY HIRING RIGHT NOW in ${location} for profiles like this. Do not recommend companies from memory. Search first, then recommend.
+  const prompt = `You are a senior career advisor helping a tech professional who was just laid off find their next role fast. Be specific, direct, and actionable. No filler. Draw on your deep knowledge of the tech hiring market.
 
 Profile:
 - Role: ${role}
 - Experience: ${years}
 - Skills: ${skills}
-- Location/Region: ${location}${city ? ` (${city})` : ''}
+- Location/Region: ${location}${city ? ` / ${city}` : ''}
 - Background: ${context || 'Not provided'}
-
-IMPORTANT: Before recommending any companies, search the web for:
-1. "${role} hiring ${location} 2026"
-2. "${skills.split(',')[0].trim()} jobs ${location} 2026"
-3. Tech companies hiring in ${location} right now
-
-Only recommend companies that are verifiably hiring similar profiles TODAY. Include the hiring signal you found (e.g. "posted 3 new Java roles this week", "announced expansion in India Q1 2026").
 
 Respond with raw JSON only — no markdown, no backticks, nothing outside the JSON object:
 {
-  "jobTitles": ["6 precise job titles to search for on job boards — specific to their skills"],
+  "jobTitles": ["6 precise job titles to search on job boards — specific to their skills, not generic"],
   "companies": [
-    {"name": "Company Name", "why": "Why they are hiring this profile RIGHT NOW — include the signal you found from search", "mode": "Hybrid / Remote / Onsite"},
+    {"name": "Company Name", "why": "One sharp sentence: why this company actively hires this profile — name the team, product, or growth signal that makes them relevant right now", "mode": "Hybrid / Remote / Onsite"},
     {"name": "Company Name", "why": "...", "mode": "..."}
   ],
-  "pitch": "3–4 sentences for their LinkedIn summary and resume opener. Lead with scale, outcomes, impact. Make a recruiter want to reach out in 5 seconds.",
-  "actions": "5 specific things to do TODAY in priority order. Which platforms first, which communities, what to message former colleagues, one move most people skip, one thing forgotten in first 48 hours.",
-  "resumeSummary": "A punchy 3-sentence LinkedIn summary rewrite based on their background. First person. Outcome-led. Ready to paste."
+  "pitch": "3–4 sentences for their LinkedIn summary and resume opener. Lead with scale, outcomes, impact — not job titles. Make a recruiter want to reach out in 5 seconds.",
+  "actions": "5 specific things to do TODAY in priority order. Which platforms first, which communities, what to message former colleagues, one job board move most people skip, one thing most people forget in the first 48 hours.",
+  "resumeSummary": "A punchy 3-sentence LinkedIn summary rewrite. First person. Outcome-led. Ready to paste."
 }
 
-Return exactly 6–8 companies in the companies array. Every company must be currently hiring — verified by your search.`;
+Return exactly 6–8 companies. Each should be a genuinely strong match for this profile in ${location}${city ? ` / ${city}` : ''} — product companies, SaaS firms, consulting firms, and high-growth startups. Mix well-known names with some sharper picks most people wouldn't think of.`;
 
   try {
     const res = await fetch('/api/next-move', {
