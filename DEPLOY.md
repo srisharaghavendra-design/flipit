@@ -32,7 +32,7 @@ These match the project that serves flipit.fyi today. You should not have to cha
 
 | Setting | Value |
 |---|---|
-| Framework | Other (no framework). `vercel.json` in the repo sets this |
+| Framework | Other. `vercel.json` turns on Fluid Compute and sends every path through one function |
 | Root directory | repository root, not `legacy/flipit` |
 | Node.js version | 20.x (from `package.json`) |
 | Build | none. Vercel installs dependencies and publishes `api/index.js` |
