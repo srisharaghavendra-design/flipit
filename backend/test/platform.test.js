@@ -624,9 +624,17 @@ test('marketer home runs the demo without the consoles', { timeout: 300000 }, as
     await page.goto(H + '/');
     await page.locator('button[value="maria"]').click();
     await page.locator('h1', { hasText: 'Hey Maria' }).waitFor();
+    const helloPlace = await page.evaluate(() => {
+      const hello = document.querySelector('#hello').getBoundingClientRect();
+      const box = document.querySelector('#composer').getBoundingClientRect();
+      return { helloBottom: hello.bottom, boxTop: box.top, align: getComputedStyle(document.querySelector('#hello-wrap')).textAlign };
+    });
+    assert.ok(helloPlace.helloBottom <= helloPlace.boxTop + 1, 'Hey Maria sits above the ask box');
+    assert.equal(helloPlace.align, 'center');
     assert.equal(await page.locator('#ask').inputValue(), '');
     assert.equal(await page.locator('#ask').getAttribute('placeholder'), 'Tag @mops…');
     assert.match(await page.locator('#saved').innerText(), /Saved today: 0m vs old tools/);
+    await page.locator('#campaigns .card').nth(2).waitFor();
     assert.equal(await page.locator('#chips button').count(), 4);
     assert.equal(await page.locator('[data-act="approve"]').count(), 0);
     assert.equal(await page.locator('#campaigns .card').count(), 3);
@@ -649,6 +657,9 @@ test('marketer home runs the demo without the consoles', { timeout: 300000 }, as
 
     await page.locator('#chips').getByRole('button', { name: 'Who can I email in Illinois' }).click();
     await page.locator('#answer .headline').getByText('36 people you can email').waitFor();
+    await page.locator('#answer .subline').getByText('30 of them are CIOs who opened last month').waitFor();
+    await page.locator('#bump').getByText('+20 min').waitFor();
+    assert.match(await page.locator('#saved').innerText(), /Saved today: 20m vs old tools/);
     await page.locator('#answer summary', { hasText: 'More' }).click();
     await page.locator('#answer .reply').getByText('36 opted-in').waitFor();
     await page.locator('#answer .from').getByText('Webex').waitFor();
@@ -671,11 +682,16 @@ test('marketer home runs the demo without the consoles', { timeout: 300000 }, as
     await page.locator('#undo').waitFor();
     await page.locator('#answer .headline').getByText('Invite sent to 30 CIOs').waitFor();
     await page.locator('#bump').getByText('+35 min').waitFor();
+    assert.match(await page.locator('#saved').innerText(), /Saved today: 55m vs old tools/);
     await page.locator('#answer summary', { hasText: 'More' }).click();
     await page.locator('#answer .reply').getByText(/^Sent the Chicago invite to 30/).waitFor();
     await page.locator('#campaigns').getByRole('link', { name: /Chicago security roundtable/ }).click();
     await page.locator('#flight').waitFor();
     await page.locator('h1', { hasText: 'Chicago security roundtable' }).waitFor();
+    assert.equal(await page.locator('#hello-wrap').isHidden(), true);
+    await page.locator('#camp-chips').getByRole('button', { name: 'Upload file' }).waitFor();
+    await page.locator('#camp-chips').getByRole('button', { name: 'Weekly report' }).waitFor();
+    await page.locator('#camp-chips').getByRole('button', { name: 'Why did this change' }).waitFor();
     await page.locator('#your-turn').getByText('Upload the attendee file').waitFor();
     await page.setViewportSize({ width: 390, height: 844 });
     await noOverflow();
@@ -707,11 +723,11 @@ test('marketer home runs the demo without the consoles', { timeout: 300000 }, as
     await page.locator('#answer .headline').getByText('Waiting on Chris').waitFor();
     await page.locator('#answer summary', { hasText: 'More' }).click();
     await page.locator('#answer .reply').getByText('Waiting on Chris').waitFor();
-    await page.locator('#needs').getByText('Waiting on Chris · nudge').waitFor();
-    await page.locator('#nudge').waitFor();
+    await page.locator('#needs h2').getByText('Fill 3 SOW details').waitFor();
+    assert.equal(await page.locator('#nudge').count(), 0);
     assert.equal(await page.locator('body').getByText('$42,000').count(), 0);
     assert.equal(await page.locator('#answer .reply').getByText('BAN-').count(), 0);
-    await page.locator('[data-act="fill"]').click();
+    await page.locator('#needs [data-act="fill"]').click();
     await page.locator('#our_pm').waitFor();
     await page.locator('#sow-note').getByText('Waiting on you: PM, PO, venue contact').waitFor();
     await page.locator('#our_pm').fill('Maria Alvarez');
@@ -728,6 +744,10 @@ test('marketer home runs the demo without the consoles', { timeout: 300000 }, as
       return style.color + ' ' + style.opacity;
     });
     assert.match(sowInk, /rgb\(28,\s*27,\s*25\) 1/);
+    await page.locator('#nudge').waitFor();
+    await page.locator('#your-turn h2').getByText('Waiting on Chris · nudge').waitFor();
+    await page.locator('#view').getByText('Maria Alvarez · PO-2044 · Jordan Hale').waitFor();
+    await page.locator('[data-edit="sow"]').waitFor();
 
     await Promise.all([
       page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
@@ -772,6 +792,10 @@ test('marketer home runs the demo without the consoles', { timeout: 300000 }, as
     await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').waitFor();
     assert.equal(await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').count(), 1);
     await page.locator('#why').getByText("Jordan Hale's email, 14 Oct").waitFor();
+    const venueWhy = await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').innerText();
+    assert.equal(venueWhy, "Jordan Hale · Moved the Chicago security roundtable to 19 Mar · Jordan Hale's email, 14 Oct");
+    assert.equal(await page.locator('#why').getByText('Minted and').count(), 0);
+    assert.match(await page.locator('#why').innerText(), /Chris M\. · Approved \$180,000 · code ready/);
     assert.equal(await page.locator('#why').getByText('does not own').count(), 0);
     assert.equal(await page.locator('#why').getByText('EM-JH-1014').count(), 0);
     assert.equal(await page.locator('#view').getByText('EM-JH-1014').count(), 0);
