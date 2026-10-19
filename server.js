@@ -1,0 +1,159 @@
+// @mops platform – zero-dependency Node server. One JSON data layer (data.json), agents in agents.js.
+// LLM tool-calling when MOPS_API_KEY is set (OpenAI-compatible: xAI / OpenAI); otherwise rule router calling the SAME tools.
+const http=require('http'),fs=require('fs'),path=require('path');const mk=require('./agents.js');const{esc,fmt}=mk;
+const DATA_DIR=process.env.MOPS_DATA_DIR||__dirname;fs.mkdirSync(DATA_DIR,{recursive:true});const DB=path.join(DATA_DIR,'data.json');if(!fs.existsSync(DB))fs.copyFileSync(path.join(__dirname,'data.seed.json'),DB);
+let db=JSON.parse(fs.readFileSync(DB));const save=()=>fs.writeFileSync(DB,JSON.stringify(db));
+const KEY=process.env.MOPS_API_KEY,BASE=process.env.MOPS_API_BASE||'https://api.x.ai/v1',MODEL=process.env.MOPS_MODEL||'grok-4';
+// Mail never leaves the machine. The hosted demo always uses the internal SMTP catcher.
+// An external MOPS_SMTP_URL is ignored on purpose.
+let sender={name:'local-outbox',send(){}};
+if(process.env.MOPS_SMTP_URL){try{const host=new URL(process.env.MOPS_SMTP_URL).hostname;if(!['127.0.0.1','localhost','::1'].includes(host))console.error('Refusing external SMTP. Demo mail stays on the local catcher.');}catch{console.error('Ignoring invalid MOPS_SMTP_URL');}}
+if(process.env.MOPS_INTERNAL_SMTP==='1'){try{const nm=require('nodemailer');const tr=nm.createTransport({host:'127.0.0.1',port:+(process.env.SMTP_PORT||2525),secure:false,ignoreTLS:true});sender={name:'internal-smtp',send:m=>tr.sendMail({from:process.env.MOPS_FROM||'mops@mops.local',to:m.to,subject:m.subject,text:m.body}).catch(e=>console.error('smtp',e.message))};}catch(e){console.error('internal smtp unavailable',e.message);}}
+const ctx={sender,dayMs:Number(process.env.MOPS_DAY_MS)||86400000};
+let A=mk(db,ctx);
+const T=id=>db.threads.find(t=>t.id===id);
+const STACK=[['Eloqua','Email agent','Segments from plain English, consent suppression, send, nurture, opens/clicks','build_segment, draft_email, send_email, schedule_nurture'],
+['Power BI / Tableau','Insight agent','Ask a question, get computed numbers + chart with cited records','query_insight'],
+['Campaign code tool','Ops agent','Generates codes, writes to data layer, syncs mock CRM','create_campaign_code'],
+['Budget forms / email approvals','Ops agent','Budget request, $150K threshold, approve/reject','budget_request, decide_budget'],
+['Word SOW templates','Ops agent','SOW generated from thread context, .doc download','generate_sow'],
+['List upload tool','Ops agent','CSV clean, dedupe, match to accounts, exceptions','clean_upload'],
+['Cvent / RainFocus (basics)','Event agent','Event record + hosted registration page writing to data layer','create_event, event_status'],
+['Partner portal (MDF lookup)','Ops agent','MDF claim status on the thread','mdf_status'],
+['Eloqua⇄SFDC sync monitoring','Sync doctor','Finds failed lead syncs, explains why, fixes and retries, escalates what it cannot fix','diagnose_sync'],
+['Eloqua lead scoring program','Scoring agent','Fit + decaying engagement score, written to CRM','lead_score'],
+['Manual campaign influence','Attribution agent','Evidence-based influence on opportunities, even-split model','credit_campaign'],
+['Reverse ETL (Census/Hightouch)','Seller agent','Target accounts as CRM tasks + seller notifications','push_target_list'],
+['Status meetings / campaign trackers','Autopilot','Live campaign state, proactive updates, next-best-action recommendations, low-risk ops by default','autopilot_tick, approve_item'],
+['Email / chat follow-ups','Living threads','Every action saved to its thread; context reused','all']];
+// ---------- tool schema for LLM ----------
+const P=(o,req=[])=>({type:'object',properties:Object.fromEntries(Object.entries(o).map(([k,v])=>[k,typeof v==='string'?{type:'string',description:v}:v])),required:req});
+const SCHEMA={build_segment:['Build a contact segment from natural language',P({query:'e.g. CIOs in India enterprise accounts who opted in'},['query'])],
+draft_email:['Draft an email to a segment',P({segment_id:'SEG-xxx (optional: latest on thread)',topic:'topic'})],
+send_email:['Send a drafted email; consent suppression enforced automatically',P({email_id:'EM-xxx (optional)'})],
+schedule_nurture:['Schedule a nurture sequence after an email',P({email_id:'EM-xxx',steps:{type:'array',items:{type:'number'},description:'day offsets'}})],
+query_insight:['Answer an analytics question with computed numbers and a chart',P({question:'the question'},['question'])],
+create_campaign_code:['Create campaign code for this campaign thread and sync to CRM',P({})],
+budget_request:['Create a budget request (>$150K needs approval)',P({amount:{type:'number'},justification:'why'})],
+decide_budget:['Approve or reject a pending budget request',P({budget_id:'BR-xxx',decision:{type:'string',enum:['approve','reject']}},['budget_id','decision'])],
+generate_sow:['Generate a statement of work document',P({vendor:'vendor',scope:'scope',amount:{type:'number'}})],
+clean_upload:['Clean/dedupe/match an attendee or lead CSV',P({csv:'CSV text with header'},['csv'])],
+mdf_status:['MDF claim status',P({})],create_event:['Create an event + hosted registration page',P({name:'',date:'YYYY-MM-DD',city:'',capacity:{type:'number'}})],
+event_status:['Registrations for the event on this thread',P({})],
+diagnose_sync:['Find leads that failed to sync to CRM, explain causes; fix=true to fix and retry',P({fix:{type:'boolean'}})],
+lead_score:['Score contacts at an account (fit + engagement) and say who is hot',P({account:'account name (optional on account thread)'})],
+credit_campaign:['Credit a campaign as influence on an opportunity, evidence-based',P({opp_id:'OPP-xxxx (optional on account thread)',campaign:'campaign name or keyword'},['campaign'])],
+push_target_list:['Push ranked target accounts to sellers as CRM tasks and notify them',P({top:{type:'number'}})]};
+function run(name,args,thread){if(!A[name])return{error:'unknown tool '+name};try{const r=A[name]({...args,thread});if(!r.error)r.tool=name;return r;}catch(e){return{error:e.message}}}
+// ---------- rule router (offline demo; exercises every module) ----------
+function rules(text,thread,csv){const q=text.toLowerCase();const out=[];const go=(n,a={})=>out.push(run(n,a,thread));
+ const money=(q.match(/\$?\s?(\d+(?:\.\d+)?)\s?(k|m)\b/)||[]);const amt=money[1]?money[1]*(money[2]==='m'?1e6:1e3):undefined;
+ const id=(p)=>(text.match(new RegExp(p+'-\\d+','i'))||[])[0]?.toUpperCase();
+ if(csv||/upload|attendee list|clean (this|the) list/.test(q)){go('clean_upload',{csv:csv||text.split('\n').slice(1).join('\n')});return out;}
+ if(/sfdc|salesforce|crm|sync/.test(q)&&/why|didn|fail|missing|fix|retry|reach/.test(q)){go('diagnose_sync',{fix:/\bfix|retry/.test(q)});return out;}
+ if(/\bhot\b|warm|who.*(engaged|interested)|lead score|score/.test(q)){go('lead_score',{account:(text.match(/(?:at|for|in)\s+([A-Z][\w&. ]+?)(?:\?|$|[,.])/)||[])[1]});return out;}
+ if(/\bcredit|attribut|influence/.test(q)){go('credit_campaign',{opp_id:id('OPP'),campaign:(text.match(/credit\s+(?:the\s+)?(.+?)\s+(?:on|to|for)\b/i)||text.match(/(?:for|to)\s+(?:the\s+)?(.+?)$/i)||[])[1]});return out;}
+ if(/target list|push .*(seller|sales)|target accounts/.test(q)){go('push_target_list',{top:(q.match(/top\s+(\d+)/)||[])[1]});return out;}
+ if(/approve/.test(q)&&(id('FU')||id('SH'))){go('approve_item',{id:id('FU')||id('SH')});return out;}
+ if(/autopilot|status update|what.?s next/.test(q)){const r=A.autopilot_tick({thread});out.push(r?{...r,tool:'autopilot_tick'}:{kind:'Autopilot',title:'No change since last check'});if(r)out.push(...r.recs);return out;}
+ if(/\b(approve|reject)\b/.test(q)&&id('BR')){go('decide_budget',{budget_id:id('BR'),decision:/approve/.test(q)?'approve':'reject'});return out;}
+ if(/send/.test(q)&&id('EM')){go('send_email',{email_id:id('EM')});if(/nurture/.test(q))go('schedule_nurture',{email_id:id('EM')});return out;}
+ if(/segment|email|nurture|invite/.test(q)&&!/how|which|engagement|open rate/.test(q)){const segq=(text.match(/(?:to|segment(?: of)?|for)\s+(.+?)(?:\s+(?:about|and send|and schedule|then)|[.?!]|$)/i)||[])[1]||text;
+  go('build_segment',{query:segq});if(/email|invite|send|nurture/.test(q)){go('draft_email',{topic:(text.match(/about\s+(.+?)(?:[.,]| and |$)/i)||[])[1]});
+  if(/\bsend\b/.test(q))go('send_email');if(/nurture/.test(q))go('schedule_nurture');}return out;}
+ if(/code/.test(q))go('create_campaign_code');
+ if(/budget/.test(q))go('budget_request',{amount:amt});
+ if(/\bsow\b|statement of work/.test(q))go('generate_sow',{vendor:(text.match(/(?:with|vendor)\s+([A-Z][\w&. ]+?)(?:\s+for|\s+at|[,.]|$)/)||[])[1],amount:/budget/.test(q)?undefined:amt});
+ if(/mdf/.test(q))go('mdf_status');
+ if(/registrations?|who registered|signups/.test(q)&&!/create|set ?up/.test(q))go('event_status');
+ else if(/event|registration page|roundtable/.test(q)&&/create|set ?up|launch|plan/.test(q))go('create_event',{capacity:(q.match(/(\d+)\s*(guests|seats|people)/)||[])[1],date:(text.match(/\d{4}-\d{2}-\d{2}/)||[])[0]});
+ if(!out.length&&/how|which|what|show|pipeline|report|chart|roi|engagement|top|by /.test(q))go('query_insight',{question:text});
+ if(!out.length)out.push({kind:'Help',title:'I can do these here',body:'Try: "segment CIOs in India enterprise accounts who opted in and email them about SASE, send and nurture" · "pipeline by channel" · "create a campaign code" · "budget request $200K" · "SOW with Lotus Events" · "set up the event for 40 guests" · "who registered?" · "MDF status" · "why did these leads not reach SFDC?" · "who is hot at Acme?" · "credit the roundtable on this opp" · "push the target list to sellers" · or attach a CSV.'});
+ return out;}
+// ---------- LLM loop ----------
+async function llm(text,thread,csv){const tools=Object.entries(SCHEMA).map(([n,[d,p]])=>({type:'function',function:{name:n,description:d,parameters:p}}));
+ const recent=thread.messages.slice(-12).map(m=>`${m.who}: ${m.text}${(m.artifacts||[]).map(a=>` [${a.kind}: ${a.title}]`).join('')}`).join('\n');
+ const msgs=[{role:'system',content:`You are @mops, the field marketing operator for Northwind Networks (fictional). You replace Eloqua, Power BI, Cvent, campaign-code, SOW and upload tools by calling functions over one data layer. Thread: "${thread.title}" (${thread.type} ${thread.refId}). Never ask for info already in the thread or data. Act with tools, then reply in <=3 short sentences.\nThread so far:\n${recent}`},{role:'user',content:text+(csv?'\n[CSV attached – pass it to clean_upload]':'')}];
+ const arts=[];for(let i=0;i<6;i++){const r=await fetch(BASE+'/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+KEY},body:JSON.stringify({model:MODEL,messages:msgs,tools})});
+  const j=await r.json();if(!r.ok)throw new Error(JSON.stringify(j).slice(0,200));const m=j.choices[0].message;msgs.push(m);
+  if(!m.tool_calls?.length)return{reply:m.content,arts};
+  for(const tc of m.tool_calls){let a={};try{a=JSON.parse(tc.function.arguments||'{}')}catch{}if(tc.function.name==='clean_upload'&&csv)a.csv=csv;const res=run(tc.function.name,a,thread);arts.push(res);msgs.push({role:'tool',tool_call_id:tc.id,content:JSON.stringify({title:res.title,body:res.body,data:res.data,error:res.error})});}}
+ return{reply:'Done.',arts};}
+const VIA=['Outlook','Webex','Slack','Meeting','Partner portal'];
+async function post(threadId,who,text,csv,via){const t=T(threadId);if(!t)throw new Error('no thread');const m={who,text,at:new Date().toISOString()};if(VIA.includes(via))m.via=via;t.messages.push(m);
+ if(!/@mops/i.test(text)){save();return t;}const t0=Date.now();const body=text.replace(/@mops/ig,'').trim();let reply,arts,mode='rules';
+ if(KEY){try{({reply,arts}=await llm(body,t,csv));mode='llm';}catch(e){console.error('LLM failed, falling back',e.message);}}
+ if(mode==='rules'){arts=rules(body,t,csv);reply=arts.filter(a=>!a.error).map(a=>a.title).join(' · ')||arts.map(a=>a.error).join(' ');}
+ t.messages.push({who:'@mops',mode,text:reply,artifacts:arts,ms:Date.now()-t0,at:new Date().toISOString()});save();return t;}
+// ---------- efficiency ledger (baselines are placeholders, see baselines.json) ----------
+function baselines(){return JSON.parse(fs.readFileSync(path.join(__dirname,'baselines.json')));}
+function ledger(){const BL=baselines(),k2t={};for(const[id,t]of Object.entries(BL.tasks))t.kinds.forEach(k=>k2t[k]=id);const out=[];
+ for(const th of db.threads)th.messages.forEach((m,i)=>{if(m.who!=='@mops')return;const seen=new Set();for(const a of m.artifacts||[]){if(a.error)continue;const key=a.kind==='Delegated'?'Delegated:'+(a.risk||'low'):a.kind;const task=k2t[key];if(!task||seen.has(task))continue;seen.add(task);
+  const b=BL.tasks[task],asked=m.mode!=='delegated'&&m.mode!=='autopilot';const touches=asked?1:0,human=asked?b.mopsHumanMinutes:Math.min(b.mopsHumanMinutes,BL.touchMinutes);const mops=human+(m.ms??1500)/60000;
+  out.push({task,label:b.label,thread:th.id,at:m.at,auto:!asked,baselineMinutes:b.baselineMinutes,baselineHandoffs:b.baselineHandoffs,baselineToolSwitches:b.baselineToolSwitches,baselineSteps:b.baselineSteps,mopsMinutes:+mops.toFixed(2),mopsTouches:touches,mopsMachineMs:m.ms??null,ratio:+(b.baselineMinutes/mops).toFixed(1)});}});return out;}
+function efficiency(){const since=Date.now()-7*864e5,L=ledger().filter(e=>new Date(e.at)>=since),BL=baselines(),by={};for(const e of L){const g=by[e.task]||(by[e.task]={task:e.task,label:e.label,n:0,baseline:0,mops:0,touches:0,baselineSteps:0,switchesAvoided:0});g.n++;g.baseline+=e.baselineMinutes;g.mops+=e.mopsMinutes;g.touches+=e.mopsTouches;g.baselineSteps+=e.baselineSteps;g.switchesAvoided+=e.baselineToolSwitches;}
+ const tasks=Object.values(by).map(g=>({...g,mops:+g.mops.toFixed(1),ratio:+(g.baseline/g.mops).toFixed(1)})).sort((a,b)=>b.baseline-a.baseline);const base=L.reduce((s,e)=>s+e.baselineMinutes,0),mops=L.reduce((s,e)=>s+e.mopsMinutes,0);
+ return{placeholder:true,window:'last 7 days',label:BL._label,tasks,entries:L.length,ratio:mops?+(base/mops).toFixed(1):0,savedMinutes:Math.round(base-mops),baselineMinutes:base,mopsMinutes:+mops.toFixed(1),switchesAvoided:L.reduce((s,e)=>s+e.baselineToolSwitches,0),handoffsAvoided:L.reduce((s,e)=>s+e.baselineHandoffs,0),touches:L.reduce((s,e)=>s+e.mopsTouches,0),baselineSteps:L.reduce((s,e)=>s+e.baselineSteps,0),config:BL.tasks};}
+// ---------- nurture scheduler ----------
+function tickNurture(force){let n=0;for(const s of db.sequences){const st=s.steps.find(x=>x.status==='scheduled');if(!st||(!force&&new Date(st.dueAt)>new Date()))continue;
+ const prev=db.outbox.filter(m=>m.emailId===s.emailId&&!m.step);const aud=prev.filter(m=>st.rule==='all non-openers'?!m.opened:!m.clicked);
+ for(const m of aud){const x=db.contacts.find(c=>c.id===m.contactId);if(x.consent!=='opted_in')continue;db.outbox.push({...m,id:'M'+(db.outbox.length+1),subject:st.subject,step:st.n,seq:s.id,at:new Date().toISOString(),opened:false,clicked:false});sender.send(m);}
+ st.status='sent';st.sent=aud.length;n++;T(s.threadId)?.messages.push({who:'@mops',mode:'scheduler',text:`Nurture ${s.id} step ${st.n} sent to ${aud.length} (${st.rule}).`,artifacts:[],at:new Date().toISOString()});}
+ if(n)save();return n;}
+function autopilot(){let n=0;for(const t of db.threads.filter(t=>t.type==='campaign')){const r=A.autopilot_tick({thread:t});if(!r)continue;n++;
+ t.messages.push({who:'@mops',mode:'autopilot',text:r.title,artifacts:[r,...r.recs],at:new Date().toISOString()});}if(n)save();return n;}
+// Delegation policy: @mops decides low/medium-risk items itself (seller follow-ups, budget shifts <= limit). Budgets over $150K and big shifts still need the human.
+function delegate(limit){limit=limit||Number(process.env.MOPS_DELEGATE_LIMIT)||25000;const by={};
+ for(const f of (db.followups||[]).filter(x=>x.status==='pending')){const r=A.approve_item({id:f.id});if(!r.error)(by[f.threadId]=by[f.threadId]||[]).push({...r,kind:'Delegated',risk:'low',title:r.title.replace(/^FU-\d+: /,'')});}
+ for(const sh of (db.shifts||[]).filter(x=>x.status==='pending'&&x.amount<=limit)){const c=db.campaigns.find(x=>x.id===sh.from);const r=A.approve_item({id:sh.id});if(!r.error)(by['T-'+c.id]=by['T-'+c.id]||[]).push({...r,kind:'Delegated',risk:'medium',title:r.title.replace(/^SH-\d+: /,''),data:{...r.data,amount:sh.amount,to:sh.to}});}
+ let n=0;for(const[tid,arts]of Object.entries(by)){const t=T(tid);if(!t)continue;n+=arts.length;t.messages.push({who:'@mops',mode:'delegated',text:'Decided within your rules',artifacts:arts,at:new Date().toISOString()});}
+ if(n)save();return n;}
+setInterval(()=>tickNurture(false),15000);if(process.env.MOPS_AUTOPILOT!=='0')setInterval(autopilot,Number(process.env.MOPS_AUTOPILOT_MS)||60000);
+// ---------- pages ----------
+function sowHtml(s){const c=db.campaigns.find(x=>x.id===s.campaignId);return`<html><head><meta charset="utf-8"><title>${s.id}</title><style>body{font-family:Calibri,Arial;max-width:760px;margin:40px auto;line-height:1.5}h1{color:#4f46e5}td{padding:6px 10px;border:1px solid #ccc}</style></head><body>
+<h1>Statement of Work ${s.id}</h1><p><b>Client:</b> Northwind Networks (fictional) &nbsp; <b>Vendor:</b> ${esc(s.vendor)}</p><table><tr><td>Campaign</td><td>${esc(c?c.name:'-')}</td></tr><tr><td>Campaign code</td><td>${esc(s.code)}</td></tr><tr><td>Region</td><td>${esc(c?c.region:'-')}</td></tr><tr><td>Fee</td><td>${fmt(s.amount)}</td></tr></table>
+<h3>1. Scope</h3><p>${esc(s.scope)}</p><h3>2. Deliverables</h3><ul><li>Project plan within 5 business days</li><li>Execution per scope</li><li>Attendee/lead file in Northwind upload format within 48h</li><li>Post-activity report</li></ul><h3>3. Payment</h3><p>50% on signature, 50% on acceptance. Invoices must quote ${esc(s.code)}.</p><h3>4. Acceptance</h3><p>Field marketing owner sign-off.</p><p><br>Northwind Networks: ______________ &nbsp;&nbsp; ${esc(s.vendor)}: ______________</p><p style="color:#888;font-size:12px">Generated by @mops ${s.at.slice(0,10)}</p></body></html>`;}
+function regPage(e,msg){return`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>${esc(e.name)}</title><style>body{font-family:Inter,system-ui;background:linear-gradient(135deg,#0f172a,#312e81);color:#fff;min-height:100vh;margin:0;display:grid;place-items:center}.c{background:#fff;color:#0f172a;border-radius:18px;padding:32px;width:380px;box-shadow:0 20px 60px #0006}h1{margin:0 0 4px;font-size:22px}p{color:#64748b;margin:0 0 18px}input{width:100%;box-sizing:border-box;padding:11px;margin:6px 0;border:1px solid #cbd5e1;border-radius:10px;font-size:14px}button{width:100%;padding:12px;border:0;border-radius:10px;background:#4f46e5;color:#fff;font-weight:600;margin-top:10px;cursor:pointer}.ok{background:#dcfce7;color:#166534;padding:10px;border-radius:10px;margin-bottom:10px}label{font-size:13px;color:#334155}</style></head><body><form class="c" method="post">
+<div style="color:#4f46e5;font-weight:700;font-size:13px">NORTHWIND NETWORKS</div><h1>${esc(e.name)}</h1><p>${esc(e.date)} · ${esc(e.city)} · ${e.capacity-e.registrations.length} seats left</p>${msg?`<div class="ok" id="ok">${msg}</div>`:''}
+<input name="name" placeholder="Full name" required><input name="email" type="email" placeholder="Work email" required><input name="company" placeholder="Company"><input name="title" placeholder="Job title"><label><input type="checkbox" name="consent" style="width:auto"> Email me about Northwind events</label><button>Register</button></form></body></html>`;}
+// ---------- http ----------
+const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'};
+const body=req=>new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>r(b))});
+const J=(res,o,c=200)=>{res.writeHead(c,{'content-type':'application/json'});res.end(JSON.stringify(o))};
+const HUB=require('./backend/hub.js');const guard=require('./backend/guard.js');require('./backend/lib.js');
+// Messages that reach @mops on any surface (email, Webex, Engine room) also land in the app's campaign thread.
+require('./backend/agent.js').attach(({surface,sender,text,reply})=>{const t=T('T-K1');if(!t)return;const at=new Date().toISOString();t.messages.push({who:sender,via:{email:'Outlook',webex:'Webex',app:'App'}[surface]||surface,text,at},{who:'@mops',mode:'rules',text:reply,artifacts:[],at});save();});
+http.createServer(async(req,res)=>{const u=new URL(req.url,'http://x');const p=u.pathname;try{
+ if(await guard.handle(req,res,p))return;
+ if(p==='/health'||p==='/healthz')return J(res,{ok:true,service:'mops',company:'Northwind Networks'});
+ if(await HUB.handle(req,res,p,u))return;
+ if(p==='/api/state')return J(res,{company:db.company,mode:KEY?'llm':'rules',model:KEY?MODEL:null,sender:sender.name,stack:STACK,threads:db.threads.map(t=>({id:t.id,title:t.title,type:t.type,n:t.messages.length})),
+  counts:{accounts:db.accounts.length,contacts:db.contacts.length,optedIn:db.contacts.filter(c=>c.consent==='opted_in').length,campaigns:db.campaigns.length,leads:db.leads.length,events:db.events.length,registrations:db.events.reduce((s,e)=>s+e.registrations.length,0),budgets:db.budgets.length,sows:db.sows.length,segments:db.segments.length,emailsSent:db.outbox.length,crmSync:db.crmSync.length}});
+ if(p.startsWith('/api/thread/'))return J(res,T(p.split('/')[3])||{});
+ if(p==='/api/post'&&req.method==='POST'){const b=JSON.parse(await body(req));return J(res,await post(b.threadId,b.who||'Srisha R.',b.text,b.csv,b.via))}
+ if(p==='/api/tool'&&req.method==='POST'){const b=JSON.parse(await body(req));const t=T(b.threadId);const r=run(b.tool,b.args||{},t);t.messages.push({who:'@mops',mode:'direct',text:r.title||r.error,artifacts:[r],at:new Date().toISOString()});save();return J(res,r)}
+ const m=p.match(/^\/api\/budget\/(BR-\d+)\/(approve|reject)$/);if(m&&req.method==='POST'){const r=A.decide_budget({budget_id:m[1],decision:m[2]});const b=db.budgets.find(x=>x.id===m[1]);if(b&&!r.error)T(b.threadId).messages.push({who:'@mops',mode:'direct',text:r.title,artifacts:[r],at:new Date().toISOString()});save();return J(res,r,r.error?400:200)}
+ if(p==='/api/delegate'&&req.method==='POST')return J(res,{decided:delegate()});
+ if(p==='/api/autopilot/run'&&req.method==='POST')return J(res,{updated:autopilot()});
+ if(p==='/api/nurture/run'&&req.method==='POST')return J(res,{stepsSent:tickNurture(true)});
+ if(p==='/api/efficiency')return J(res,efficiency());
+ if(p==='/api/ledger')return J(res,ledger());
+ if(p==='/api/outbox')return J(res,db.outbox.slice(-200).reverse());
+ if(p==='/api/data')return J(res,{campaigns:db.campaigns,budgets:db.budgets,events:db.events.map(e=>({...e,registrations:e.registrations.length})),sequences:db.sequences,crmSync:db.crmSync,syncLog:db.syncLog,opps:db.opps,crm:db.crm,notifications:db.notifications,mdf:db.mdf,uploads:db.uploads,followups:db.followups||[],shifts:db.shifts||[],leads:db.leads.map(l=>[l.created,l.pipeline||0,l.campaignId,l.accountId]),accounts:db.accounts.map(a=>[a.id,a.name,a.region]),intent:(db.intent6s||[]).slice(0,40),web:(db.adobeWeb||[]).slice(0,40),consent:['opted_in','unknown','opted_out'].map(k=>[k,db.contacts.filter(c=>c.consent===k).length])});
+ if(p==='/api/reset'&&req.method==='POST'){db=JSON.parse(fs.readFileSync(path.join(__dirname,'data.seed.json')));A=mk(db,ctx);save();return J(res,{ok:1})}
+ let s;if((s=p.match(/^\/sow\/(SOW-\d+)\.(doc|html)$/))){const w=db.sows.find(x=>x.id===s[1]);if(!w){res.writeHead(404);return res.end()}
+  res.writeHead(200,s[2]==='doc'?{'content-type':'application/msword','content-disposition':`attachment; filename="${w.id}.doc"`}:{'content-type':'text/html'});return res.end(sowHtml(w))}
+ if((s=p.match(/^\/r\/([\w-]+)$/))){const e=db.events.find(x=>x.slug===s[1]);if(!e){res.writeHead(404);return res.end('No event')}
+  if(req.method==='POST'){const f=new URLSearchParams(await body(req));const email=(f.get('email')||'').toLowerCase().trim();let msg;
+   if(e.registrations.find(r=>r.email===email))msg='You are already registered.';else if(e.registrations.length>=e.capacity)msg='Sorry, the event is full.';else{
+    const dom=email.split('@')[1];const a=db.accounts.find(a=>a.domain===dom);let ct=db.contacts.find(c=>c.email===email);const consent=f.get('consent')?'opted_in':(ct?.consent||'unknown');
+    if(!ct){const nm=(f.get('name')||'').split(' ');ct={id:'C'+(1001+db.contacts.length),first:nm[0],last:nm.slice(1).join(' '),email,title:f.get('title')||'Unknown',accountId:a?.id||null,consent,consentDate:new Date().toISOString().slice(0,10)};if(a)db.contacts.push(ct);}else if(f.get('consent')){ct.consent='opted_in';ct.consentDate=new Date().toISOString().slice(0,10);}
+    e.registrations.push({name:f.get('name'),email,company:f.get('company'),account:a?.name||null,contactId:a?ct.id:null,consent,at:new Date().toISOString()});
+    if(a&&e.campaignId)db.leads.push({id:'L'+(5001+db.leads.length),contactId:ct.id,accountId:a.id,campaignId:e.campaignId,stage:'MQL',pipeline:0,created:new Date().toISOString().slice(0,10)});
+    const th=db.threads.find(t=>t.refId===e.campaignId);th?.messages.push({who:'@mops',mode:'event',text:`New registration: ${f.get('name')} (${a?a.name:'unmatched company'}) – ${e.registrations.length}/${e.capacity}`,artifacts:[],at:new Date().toISOString()});save();msg='You are registered! See you there.';}
+   res.writeHead(200,{'content-type':'text/html'});return res.end(regPage(e,msg))}
+  res.writeHead(200,{'content-type':'text/html'});return res.end(regPage(e))}
+ if((s=p.match(/^\/t\/(o|c)\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[2]);if(mm){mm.opened=true;if(s[1]==='c')mm.clicked=true;save();}res.writeHead(s[1]==='c'?302:200,s[1]==='c'?{location:'/r/'+(db.events[0]?.slug||'')}:{'content-type':'image/gif'});return res.end()}
+ if((s=p.match(/^\/outbox\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[1]);res.writeHead(200,{'content-type':'text/html'});return res.end(`<div style="font-family:system-ui;max-width:620px;margin:30px auto"><p><b>To:</b> ${esc(mm.to)}<br><b>Subject:</b> ${esc(mm.subject)}</p><pre style="white-space:pre-wrap;font-family:inherit">${esc(mm.body)}</pre><a href="/t/c/${mm.id}">Reserve my seat</a><img src="/t/o/${mm.id}" width=1 height=1></div>`)}
+ const f=path.join(__dirname,'public',p==='/'?'index.html':p);if(f.startsWith(path.join(__dirname,'public'))&&fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});return res.end(fs.readFileSync(f))}
+ res.writeHead(404);res.end('not found');}catch(e){console.error(e);J(res,{error:e.message},500)}}).listen(process.env.PORT||8787,'0.0.0.0',()=>console.log(`@mops on :${process.env.PORT||8787} mode=${KEY?'llm':'rules'} sender=${sender.name}`));

@@ -1,0 +1,7 @@
+Name,Email,Company,Title
+priya iyer,priya.iyer@sakuraenergy.example,Sakura Energy,CIO
+Rohan Nair,rohan.nair@orbitenergy.example,,CTO
+Rohan Nair,ROHAN.NAIR@orbitenergy.example,,CTO
+Existing Contact,yuki.rao5@coralpharma.example,,
+Bad Row,not-an-email,Nowhere,
+Jane Doe,jane@unknownco.com,Unknown Co,VP IT

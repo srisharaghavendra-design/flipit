@@ -1,0 +1,28 @@
+# Render Blueprint. Creates one web service that runs every @mops process.
+# Persistent disk keeps the databases. The app re-seeds fictional data on each boot.
+services:
+  - type: web
+    name: flipit-mops
+    runtime: docker
+    region: singapore
+    plan: 1c-2g
+    healthCheckPath: /health
+    disk:
+      name: mops-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DEMO_PASSCODE
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: MOPS_DATA_DIR
+        value: /var/data
+      - key: MOPS_RUNS_DIR
+        value: /var/data/runs
+      - key: MOPS_INTERNAL_SMTP
+        value: "1"
+      - key: MOPS_RESEED
+        value: "1"
+      - key: MOPS_PUBLIC
+        value: https://www.flipit.fyi

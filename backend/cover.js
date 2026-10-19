@@ -1,0 +1,64 @@
+// "Covered for you": a proactive watcher. It scans live data (triggered by events + a timer), spots issues/opportunities,
+// acts inside the autopilot risk limits, and records each action with before/after and an undo.
+const nodemailer=require('nodemailer');const{PORTS,call}=require('./lib');const core=require('./core');
+const RISK={maxAutoSendAudience:+(process.env.COVER_MAX_SEND||200),sendUndoWindowMs:+(process.env.COVER_SEND_DELAY_MS||120000),delegatedBudget:+(process.env.MOPS_DELEGATE_LIMIT||25000),followUpHours:48};
+const REPS=['Dev Rao','Anika Shah','Kenji Mori','Lena Ward'];const repMail=n=>n.toLowerCase().replace(/\s+/g,'.')+'@northwind.example';
+const mailer=nodemailer.createTransport({host:'127.0.0.1',port:PORTS.smtp,secure:false,ignoreTLS:true});
+const bus=e=>require('./hub').bus(e);const money=n=>'$'+Math.round(n/1000)+'K';
+const has=key=>core.db.prepare('SELECT id FROM covered WHERE key=?').get(key);
+function record(it){const id='COV-'+String((core.db.prepare('SELECT count(*) n FROM covered').get().n)+1).padStart(3,'0');
+  core.db.prepare('INSERT INTO covered(id,rule,title,risk,status,before,after,actions,undo,key,at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(id,it.rule,it.title,it.risk,it.status,JSON.stringify(it.before),JSON.stringify(it.after),JSON.stringify(it.actions||[]),JSON.stringify(it.undo||null),it.key,new Date().toISOString());
+  bus({svc:'cover',kind:'covered',msg:`🛡 ${it.status==='suggested'?'Suggested':'Covered'}: ${it.title}`,data:{id,rule:it.rule},trace:id});return id}
+const RULES={
+ async pace(T){const evs=await call('engine','/events');const today=new Date().toISOString().slice(0,10);
+  for(const e of evs.filter(e=>e.date>today)){const key='pace:'+e.id;if(has(key))continue;const total=Date.parse(e.date)-Date.parse(e.created_at),gone=Date.now()-Date.parse(e.created_at);const need=Math.round(e.capacity*0.7*Math.min(1,gone/total));
+   if(e.registrations>=need*0.6||need<5)continue;
+   const ex=await call('engine','/export');const reg=new Set(ex.registrations.filter(r=>r.event_id===e.id).map(r=>r.contact_id));const opened=new Set(ex.sends.filter(s=>s.campaign_id===e.campaign_id&&s.opened_at).map(s=>s.contact_id));
+   const ids=[...opened].filter(x=>!reg.has(x));const em=Object.fromEntries(ex.contacts.map(c=>[c.id,c]));const emails=ids.map(i=>em[i]?.email).filter(Boolean);if(!emails.length)continue;
+   const risk=emails.length<=RISK.maxAutoSendAudience?'low':'medium';const seg=await call('engine','/segments',{body:{name:`${e.name}: opened, not registered`,rules:{all:[{field:'email',op:'in',value:emails}]},actor:'autopilot'}},T);
+   await call('engine','/templates',{body:{id:'TPL-REMIND-'+e.id,name:'Reminder '+e.name,subject:'{{first}}, seats are going for {{event_name}}',html:`<div style="font-family:Arial;max-width:560px"><p>Hi {{first}},</p><p>You opened our invite to <b>{{event_name}}</b> (${e.city}, ${e.date}). A few seats are left — hold one in 20 seconds:</p><p><a href="{{event_link}}">Reserve my seat</a></p></div>`}},T);
+   let after,undo,status;if(risk==='low'){const s=await call('engine',`/campaigns/${e.campaign_id}/schedule`,{body:{segmentId:seg.id,templateId:'TPL-REMIND-'+e.id,extra:{event_name:e.name,event_link:`${require('./lib').PUBLIC}/svc/engine/r/${e.slug}`},delayMs:RISK.sendUndoWindowMs,actor:'autopilot'}},T);
+     status='scheduled';undo={type:'cancel_send',id:s.id};after={text:`Reminder to ${emails.length} people who opened but didn't register, scheduled ${new Date(s.dueAt).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})} IST. Consent re-checked at send.`,segment:seg.id,scheduled:s.id}}
+   else{status='suggested';after={text:`Reminder to ${emails.length} openers drafted (above the ${RISK.maxAutoSendAudience}-person auto-send limit): approve to send.`,segment:seg.id}}
+   record({rule:'Registrations behind pace',key,risk,status,title:`${e.name}: ${e.registrations}/${e.capacity} registered, pace needs ~${need}`,before:{text:`${e.registrations} registered, ${Math.round((Date.parse(e.date)-Date.now())/864e5)} days to go; ${emails.length} people opened the invite but didn't register.`},after,undo,actions:['segment '+seg.id,'template TPL-REMIND-'+e.id,status==='scheduled'?'scheduled send':'awaiting approval']})}},
+ async stale(T){const crm=await call('crm','/export');const cut=Date.now()-RISK.followUpHours*3600e3;
+  for(const l of crm.Lead.filter(l=>l.OwnerName&&['MQL','Open'].includes(l.Status)&&Date.parse(l.LastModifiedDate)<cut)){const key='stale:'+l.Id+':'+l.LastModifiedDate;if(has(key))continue;
+   const from=l.OwnerName,pool=REPS.filter(r=>r!==from&&!['Kenji Mori','Lena Ward'].includes(r)),to=pool[(rr++)%pool.length];const hrs=Math.round((Date.now()-Date.parse(l.LastModifiedDate))/3600e3);
+   await mailer.sendMail({from:'"@mops" <mops@mops.local>',to:repMail(from),cc:repMail(to),subject:`Lead untouched ${hrs}h: ${l.FirstName} ${l.LastName} (${l.Company})`,text:`Hi ${from.split(' ')[0]},\n\n${l.FirstName} ${l.LastName}, ${l.Title} at ${l.Company}, has been an MQL with you for ${hrs}h with no activity (score ${Math.round(l.Score__c)}). Per the 48h SLA I've reassigned it to ${to}. Reply "@mops give it back" if you're on it.\n\n— @mops`});
+   await call('crm',`/services/data/v59.0/sobjects/Lead/${l.Id}?as=mops-autopilot`,{method:'PATCH',body:{OwnerName:to}},'noflake');if(l.External_Id__c)await call('engine',`/leads/${l.External_Id__c}/owner`,{body:{owner:to,actor:'autopilot'}},T);
+   record({rule:'Lead not followed up in 48h',key,risk:'low',status:'done',title:`${l.FirstName} ${l.LastName} (${l.Company}) sat ${hrs}h with ${from}`,before:{text:`Owner ${from}, status ${l.Status}, last touched ${hrs}h ago.`},after:{text:`Nudged ${from} by email and reassigned to ${to} in CRM.`},undo:{type:'reassign',crmId:l.Id,ext:l.External_Id__c,owner:from},actions:['email nudge','CRM owner change']})}},
+ async underspend(T){const camps=await call('engine','/campaigns');const live=camps.filter(c=>c.status==='Live'&&c.budget>0);const wh=await call('warehouse','/query/top_campaigns').catch(()=>({rows:[]}));
+  const best=live.map(c=>({c,eff:(+(wh.rows.find(r=>r.code===c.code)?.sourced_pipeline||0))/c.budget})).sort((a,b)=>b.eff-a.eff)[0];if(!best)return;
+  const prior=list().filter(x=>x.rule==='Budget underspend'&&x.status!=='undone');const recv=new Set(prior.map(x=>x.undo?.from)),src=new Set(prior.map(x=>x.undo?.to));if(src.has(best.c.id))return;if(prior.some(x=>Date.now()-Date.parse(x.at)<864e5))return; // at most one autopilot reallocation per day
+  for(const c of live.filter(c=>c.spend/c.budget<0.6&&c.id!==best.c.id&&!recv.has(c.id))){const key='under:'+c.id;if(has(key))continue;const unspent=c.budget-c.spend;const amt=Math.min(RISK.delegatedBudget,Math.round(unspent*0.25/1000)*1000);if(amt<5000)continue;
+   const before={text:`${c.code} has spent ${Math.round(c.spend/c.budget*100)}% (${money(c.spend)} of ${money(c.budget)}); ${best.c.code} returns the most pipeline per dollar.`};
+   if(amt<=RISK.delegatedBudget&&amt<=unspent){await call('engine','/budget/shift',{body:{from:c.id,to:best.c.id,amount:amt,actor:'autopilot'}},T);
+     record({rule:'Budget underspend',key,risk:'medium',status:'done',title:`Moved ${money(amt)} from ${c.name} to ${best.c.name}`,before,after:{text:`${money(amt)} reallocated (within the ${money(RISK.delegatedBudget)} delegated limit). Both campaigns re-synced to CRM.`},undo:{type:'shift',from:best.c.id,to:c.id,amount:amt},actions:['budget shift','CRM sync']})}
+   break}},
+ async uploads(T){const ups=(await call('engine','/uploads')).filter(u=>u.status==='staged');
+  for(const u of ups){const key='upload:'+u.id;if(has(key))continue;const d=await call('engine','/uploads/'+u.id);const bad=d.rows.filter(r=>(r.data.region||'India')!=='US'&&!/^(y|yes|true|opted_in|1)$/i.test(r.data.consent||''));
+   const res=await call('engine',`/uploads/${u.id}/process`,{body:{quarantine:bad.map(r=>r.id),reason:'no consent recorded (opt-in jurisdiction)',actor:'autopilot'}},T);
+   record({rule:'Missing consent on upload',key,risk:'low',status:'done',title:`${u.name}: quarantined ${res.quarantined} of ${u.rows} rows without consent`,before:{text:`${u.rows} rows staged; ${bad.length} have no consent and are in opt-in jurisdictions (DPDP/GDPR/PDPA/…).`},after:{text:`Imported ${res.imported}; ${res.quarantined} held in quarantine so they can't be emailed or synced.`},undo:{type:'release',id:u.id},actions:['quarantine','import clean rows']})}},
+ async codes(T){const[camps,crm]=await Promise.all([call('engine','/campaigns'),call('crm','/export')]);const have=new Set(crm.Campaign.map(c=>c.External_Id__c));
+  for(const c of camps.filter(c=>!have.has(c.id)&&!['Pending approval','Rejected'].includes(c.status))){const key='code:'+c.id;if(has(key))continue;
+   const age=Date.now()-Date.parse(c.created_at);if(age<60000)continue;await call('engine',`/campaigns/${c.id}/status`,{body:{status:c.status}},T);await call('engine','/sync/drain',{body:{timeoutMs:10000}},T);
+   record({rule:'Campaign code missing in CRM',key,risk:'low',status:'done',title:`${c.code} (${c.name}) was missing in CRM, created it`,before:{text:`Engine has ${c.id} / ${c.code}; CRM had no matching campaign, so members and opportunities couldn't attach.`},after:{text:`Created in CRM with code ${c.code}; members will sync on the next cycle.`},undo:{type:'crm_delete',ext:c.id},actions:['CRM upsert']})}},
+ async postEvent(T){const evs=await call('engine','/events');const today=new Date().toISOString().slice(0,10);
+  for(const e of evs.filter(e=>e.date<today&&e.registrations>0)){const key='post:'+e.id;if(has(key))continue;const q=(await call('warehouse','/query/campaign?p='+e.campaign_id).catch(()=>({rows:[]}))).rows[0]||{};
+   const ex=await call('engine','/export');const mem=ex.members.filter(m=>m.campaign_id===e.campaign_id);const att=mem.filter(m=>m.status==='Attended').length,noshow=mem.filter(m=>m.status==='Registered').length;
+   await call('engine','/templates',{body:{id:'DRAFT-FU-'+e.id,name:'DRAFT follow-up '+e.name,subject:'Thanks for joining {{event_name}}',html:`<p>Hi {{first}},</p><p>Thank you for joining us at ${e.name} in ${e.city}. As promised, here are the slides and the zero-trust readiness checklist. Would a 30-minute follow-up with our architect next week help?</p>`}},T);
+   record({rule:'Post-event follow-up',key,risk:'low',status:'done',title:`${e.name} ended: report + follow-up draft ready`,before:{text:`Event ended ${e.date}. ${e.registrations} registered.`},after:{text:`Report: ${att} attended, ${noshow} no-shows, ${q.mqls??'–'} MQLs, ${q.sourced_pipeline?money(+q.sourced_pipeline):'$0K'} pipeline sourced. Follow-up email drafted (DRAFT-FU-${e.id}), not sent: waiting for your OK.`,report:{attended:att,noShows:noshow,...q}},undo:{type:'delete_template',id:'DRAFT-FU-'+e.id},actions:['warehouse report','draft email']})}}};
+let scanning=false,rr=0;
+async function scan(why='manual'){if(scanning)return{busy:true};scanning=true;const T='COVER'+Date.now().toString(36).slice(-4).toUpperCase();const before=core.db.prepare('SELECT count(*) n FROM covered').get().n;const errors={};
+  try{for(const[k,f]of Object.entries(RULES)){try{await f(T)}catch(e){errors[k]=e.message}}}finally{scanning=false}
+  const n=core.db.prepare('SELECT count(*) n FROM covered').get().n-before;if(n)bus({svc:'cover',kind:'scan',msg:`watcher scan (${why}): ${n} new item(s) covered`,data:{},trace:T});return{newItems:n,errors}}
+async function undo(id){const it=core.db.prepare('SELECT * FROM covered WHERE id=?').get(id);if(!it)throw new Error('not found');if(it.status==='undone')throw new Error('already undone');const u=JSON.parse(it.undo||'null');if(!u)throw new Error('nothing to undo');
+  if(u.type==='cancel_send')await call('engine',`/scheduled/${u.id}/cancel`,{body:{actor:'srisha'}});
+  if(u.type==='reassign'){await call('crm',`/services/data/v59.0/sobjects/Lead/${u.crmId}?as=mops-autopilot`,{method:'PATCH',body:{OwnerName:u.owner}},'noflake');if(u.ext)await call('engine',`/leads/${u.ext}/owner`,{body:{owner:u.owner}})}
+  if(u.type==='shift')await call('engine','/budget/shift',{body:{from:u.from,to:u.to,amount:u.amount,actor:'srisha (undo)'}});
+  if(u.type==='release')await call('engine',`/uploads/${u.id}/release`,{body:{actor:'srisha'}});
+  if(u.type==='crm_delete')await call('crm',`/services/data/v59.0/sobjects/Campaign/External_Id__c/${u.ext}`,{method:'DELETE'});
+  if(u.type==='delete_template')await call('engine','/templates/'+u.id,{method:'DELETE'});
+  core.db.prepare("UPDATE covered SET status='undone',undone_at=? WHERE id=?").run(new Date().toISOString(),id);bus({svc:'cover',kind:'undo',msg:`↩ undone: ${it.title}`,data:{id},trace:id});return{ok:true}}
+const list=()=>core.db.prepare('SELECT * FROM covered ORDER BY at DESC').all().map(r=>({...r,before:JSON.parse(r.before),after:JSON.parse(r.after),actions:JSON.parse(r.actions),undo:JSON.parse(r.undo||'null')}));
+module.exports={scan,undo,list,RISK};
