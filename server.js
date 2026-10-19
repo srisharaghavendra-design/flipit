@@ -6,6 +6,7 @@ const http=require('http'),fs=require('fs'),path=require('path');const mk=requir
 const DATA_DIR=process.env.MOPS_DATA_DIR||__dirname;fs.mkdirSync(DATA_DIR,{recursive:true});const DB=path.join(DATA_DIR,'data.json');if(!fs.existsSync(DB))fs.copyFileSync(path.join(__dirname,'data.seed.json'),DB);
 // Literal paths so the Vercel file tracer ships the UI, seed, and fixtures with this server.
 fs.statSync(path.join(__dirname,'ui/index.html'));
+fs.statSync(path.join(__dirname,'ui/home.html'));
 fs.statSync(path.join(__dirname,'ui/engine.html'));
 fs.statSync(path.join(__dirname,'ui/data.html'));
 fs.statSync(path.join(__dirname,'ui/chart.min.js'));
@@ -186,7 +187,8 @@ async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;
  try{
  if(await guard.handle(req,res,p))return;
  if(p.startsWith('/platform')||p.startsWith('/api/platform'))return require('./platform').handle(req,res,u);
- if(p==='/')return servePage(res,path.join(__dirname,'ui','index.html'));
+ if(p==='/')return servePage(res,path.join(__dirname,'ui','home.html'));
+ if(p==='/classic'||p==='/classic/')return servePage(res,path.join(__dirname,'ui','index.html'));
  if(p==='/engine'||p==='/engine/')return servePage(res,path.join(__dirname,'ui','engine.html'));
  if(p==='/engine/data'||p==='/engine/data/')return servePage(res,path.join(__dirname,'ui','data.html'));
  await ready();

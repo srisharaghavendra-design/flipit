@@ -22,7 +22,8 @@ async function signIn(who){
   context.close=async()=>{try{carried=await page.evaluate(()=>localStorage.getItem('mopsLog')||'')}catch(e){}return orig()};
   await page.goto(H+'/');
   await page.locator(`button[value="${who}"]`).click();
-  await page.waitForSelector('h1');
+  await page.goto(H+'/classic');
+  await page.waitForSelector('#ask');
   return {context,page};
 }
 function card(page,city){return page.locator('article.card',{has:page.locator('p.meta',{hasText:new RegExp('^'+city+' ·')})}).first()}
@@ -278,7 +279,7 @@ test('browser: Mei sees both cities and finishes the Singapore ABM request',{tim
     await sydney.locator('h2 a').click();
     await page.waitForFunction(()=>location.hash.includes('C'));
     assert.match(await page.locator('body').innerText(),/Australia|AUD/);
-    await page.goto(H+'/#/');
+    await page.goto(H+'/classic#/');
     await page.locator('article.card',{hasText:'Singapore'}).first().waitFor();
     await setField(sydney,'campaign_name','Sydney harbour retyped');
     await setField(sydney,'budget','96000');

@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Northwind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f3f2ef;
+  --card: #fff;
+  --ink: #1c1b19;
+  --muted: #6b675f;
+  --line: #e6e2da;
+  --accent: #0f6e56;
+  --accent-soft: #e7f4ef;
+  --you: #3d3a34;
+  --wait: #8a5a12;
+  --wait-soft: #f8f1e4;
+  --shadow: 0 1px 2px rgba(28, 27, 25, .04), 0 16px 40px rgba(28, 27, 25, .05);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 16px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; min-height: 100vh; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+h1 { font-size: 44px; line-height: 1.05; letter-spacing: -.045em; font-weight: 620; margin: 8px 0 8px; }
+h2 { font-size: 18px; letter-spacing: -.02em; margin: 0 0 12px; }
+p { margin: 0; }
+header {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+  padding: 14px 28px;
+  background: rgba(243, 242, 239, .92);
+  backdrop-filter: blur(12px);
+}
+.logo { color: var(--ink); text-decoration: none; font-weight: 680; letter-spacing: -.03em; font-size: 18px; display: inline-flex; align-items: center; gap: 8px; }
+.logo i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); display: block; }
+#saved { margin: 0; color: var(--muted); font-size: 14px; }
+#saved b { color: var(--ink); font-weight: 640; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
+#schedule { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+#schedule button { border: 0; background: transparent; border-radius: 999px; padding: 6px 12px; color: var(--muted); }
+#schedule button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 640; }
+#report, #reset, .primary, .ghost {
+  border-radius: 999px; padding: 8px 14px; border: 1px solid transparent;
+}
+#report, .primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 620; }
+#reset, .ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+#who { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; max-width: 100%; }
+main { width: min(920px, 100%); margin: 0 auto; padding: 12px 24px 80px; }
+.lede { color: var(--muted); font-size: 17px; margin-bottom: 22px; }
+#composer {
+  background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+  box-shadow: var(--shadow); padding: 18px 18px 14px; margin-bottom: 18px;
+}
+#ask {
+  width: 100%; border: 0; resize: vertical; outline: none; background: transparent;
+  min-height: 72px; font-size: 18px; line-height: 1.4;
+}
+body.home #ask { min-height: 116px; font-size: 22px; }
+.composer-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+#channel { border: 0; background: var(--bg); border-radius: 999px; padding: 8px 12px; }
+#chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+#chips[hidden], #answer[hidden], #drawer[hidden], #shade[hidden] { display: none !important; }
+.chip {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 8px 14px; color: var(--ink);
+}
+.chip:hover { border-color: #cfcabe; }
+#answer { margin: 0 0 18px; }
+#answer article {
+  background: var(--card); border-radius: 22px; border: 1px solid var(--line);
+  padding: 18px 20px; box-shadow: var(--shadow);
+  animation: rise .4s ease;
+}
+.from { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 650; margin-bottom: 8px; }
+.reply { font-size: 17px; }
+.behind {
+  margin-top: 10px; padding: 0; border: 0; background: none; color: var(--muted);
+  font-size: 13px; text-decoration: underline; text-underline-offset: 3px;
+}
+#downloads { display: flex; flex-wrap: wrap; gap: 10px; margin: -6px 0 18px; }
+#downloads:empty { display: none; }
+#downloads a { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; text-decoration: none; font-weight: 600; }
+.section { margin: 28px 0; }
+.stack { display: grid; gap: 12px; }
+.card {
+  display: block; background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+  padding: 18px 20px; box-shadow: var(--shadow); color: inherit; text-decoration: none;
+}
+.card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.meta { color: var(--muted); margin-top: 4px; }
+.status { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 650; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.status.wait { background: var(--wait-soft); color: var(--wait); }
+.status.plain { background: #eceae6; color: var(--you); }
+.need-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.strip { display: flex; flex-wrap: wrap; gap: 8px 10px; list-style: none; padding: 0; margin: 14px 0 0; }
+.strip li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); min-width: 0; }
+.strip .name { color: var(--ink); }
+.who { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 7px; }
+.who.you { background: #eceae4; color: var(--you); }
+.who.mops { background: var(--accent-soft); color: var(--accent); }
+.mark {
+  width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #d9d4cb;
+  display: inline-grid; place-items: center; color: transparent; font-size: 10px; flex: none;
+}
+li.done { color: var(--ink); }
+li.done .mark { background: var(--accent); border-color: var(--accent); color: #fff; }
+li.done.you .mark { background: var(--you); border-color: var(--you); }
+li.just .mark { animation: pop .45s ease; }
+.lanes { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 16px; }
+.lane { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 18px 18px 8px; box-shadow: var(--shadow); min-width: 0; }
+.lane.you { background: #faf9f7; }
+.lane h2 { display: flex; align-items: center; gap: 8px; }
+.steps { list-style: none; padding: 0; margin: 0; }
+.steps li { padding: 12px 0; border-top: 1px solid var(--line); min-width: 0; }
+.steps li.just p { animation: rise .45s ease; }
+.steps p { margin: 0; }
+.quiet { color: var(--muted); }
+.sow { display: grid; gap: 8px; margin-top: 10px; }
+.sow label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.sow input { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; width: 100%; font-size: 16px; }
+#sow-note { font-size: 14px; }
+.stats { display: flex; flex-wrap: wrap; gap: 12px; }
+.stats article { flex: 1 1 140px; min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
+.stats span { display: block; color: var(--muted); font-size: 13px; }
+.stats b { display: block; font-size: 22px; letter-spacing: -.03em; font-weight: 640; overflow-wrap: anywhere; }
+.why { display: grid; gap: 10px; }
+.why article { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
+.source { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.back { color: var(--muted); text-decoration: none; font-size: 14px; }
+#err { color: #8d2d2d; min-height: 1.2em; }
+#shade { position: fixed; inset: 0; background: rgba(28, 27, 25, .2); z-index: 19; }
+#drawer {
+  position: fixed; top: 0; right: 0; height: 100%; width: min(440px, 100%);
+  background: #fff; z-index: 20; padding: 22px 22px 40px; overflow: auto;
+  border-left: 1px solid var(--line); box-shadow: -16px 0 40px rgba(28, 27, 25, .08);
+}
+#drawer h2 { margin-top: 12px; }
+#drawer h3 { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+#drawer pre { white-space: pre-wrap; word-break: break-word; background: var(--bg); border-radius: 14px; padding: 12px; font-size: 12px; line-height: 1.45; max-width: 100%; }
+.kicker { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+@media (max-width: 800px) {
+  h1 { font-size: 34px; }
+  header { padding: 12px 16px; }
+  .tools { margin-left: 0; width: 100%; }
+  main { padding: 8px 16px 64px; }
+  .lanes { grid-template-columns: 1fr; }
+  body.home #ask { font-size: 18px; min-height: 96px; }
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body class="home">
+<header>
+  <a class="logo" href="#/"><i></i>Northwind</a>
+  <p id="saved">Saved today: …</p>
+  <div class="tools">
+    <div id="schedule" role="group" aria-label="Report schedule">
+      <button type="button" data-period="weekly" aria-pressed="true">Weekly</button>
+      <button type="button" data-period="monthly" aria-pressed="false">Monthly</button>
+    </div>
+    <button id="report" type="button">Weekly report</button>
+    <select id="who" aria-label="Switch user"></select>
+    <button id="reset" type="button">Start over</button>
+  </div>
+</header>
+<main>
+  <form id="composer">
+    <label class="visually-hidden" for="ask" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Ask</label>
+    <textarea id="ask" placeholder="Tag @mops…"></textarea>
+    <div class="composer-row">
+      <select id="channel" aria-label="Channel">
+        <option>Email</option>
+        <option>Webex</option>
+        <option selected>App</option>
+      </select>
+      <button id="send" type="submit">Ask</button>
+    </div>
+    <div id="chips">
+      <button type="button" class="chip" data-ask="@mops who can I email in Illinois">Who can I email in Illinois</button>
+      <button type="button" class="chip" data-ask="@mops send the Chicago invite to CIOs in Illinois who opened last month">Send the Chicago invite</button>
+      <button type="button" class="chip" data-ask="@mops new budget: Chicago security roundtable, $180K">File the Chicago budget</button>
+      <button type="button" class="chip" data-ask="@mops why did the Chicago venue change">Why did the venue change</button>
+    </div>
+  </form>
+  <section id="answer" hidden></section>
+  <div id="downloads"></div>
+  <div id="view"></div>
+  <p id="err"></p>
+</main>
+<div id="shade" hidden></div>
+<aside id="drawer" hidden>
+  <button id="drawer-close" class="ghost" type="button">Close</button>
+  <h2>Behind the scenes</h2>
+  <div id="trace"></div>
+</aside>
+<script>
+const storedChannel = localStorage.getItem('mops-channel');
+if (storedChannel) document.querySelector('#channel').value = storedChannel;
+
+const NOISE = /Loaded the fictional Northwind book|Scored from title|Minted the campaign code|Recorded \$|Recorded opted_in|opted_out|unknown consent|Approved \$180,000 because Chris|does not own|Recorded an open from the tracking pixel|Recorded a click from the redirect|Recorded a (?:open|click|send) on /;
+const STEPS = [
+  ['budget', 'Budget', 'you'],
+  ['code', 'Code', 'mops'],
+  ['sow', 'SOW', 'you'],
+  ['invite', 'Invite', 'mops'],
+  ['upload', 'Upload', 'you'],
+  ['report', 'Report', 'mops']
+];
+
+const state = { user: null, users: [], metrics: {}, campaigns: [], packets: [], sends: [], uploads: [], why: [], dash: null, mqls: 0, last: null };
+let busy = false;
+let seenDone = null;
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function money(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+function hours(min) {
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h && m) return h + 'h ' + m + 'm';
+  if (h) return h + 'h';
+  return m + 'm';
+}
+function savedLabel(metrics) {
+  const mods = Object.values(metrics || {}).filter(b => b && typeof b.minutes === 'number');
+  if (!mods.length) return 'Saved today: …';
+  const all = mods.reduce((s, b) => s + b.minutes, 0);
+  const ran = mods.filter(b => b.runs);
+  const minutes = ran.length ? ran.reduce((s, b) => s + b.minutes, 0) : all;
+  return 'Saved today: ' + hours(minutes) + ' vs old tools';
+}
+function dayLabel(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return '';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return Number(m[3]) + ' ' + months[Number(m[2]) - 1];
+}
+function channel() { return document.querySelector('#channel').value || 'App'; }
+function chiPacket() { return (state.packets || []).find(p => p.campaignId === 'CAMP-CHI') || null; }
+function chiSend() { return (state.sends || []).find(s => s.campaign_id === 'CAMP-CHI' && s.recipients > 0) || null; }
+function uploaded() { return (state.uploads || []).some(u => u.accepted > 0); }
+function reportDone() { return !!(state.metrics.insights && state.metrics.insights.runs); }
+function onChicago() { return (location.hash || '#/').indexOf('#/chicago') === 0; }
+
+async function api(url, opt) {
+  const r = await fetch(url, Object.assign({ headers: { 'content-type': 'application/json' } }, opt));
+  const j = await r.json().catch(() => ({ ok: false, error: 'Bad response' }));
+  if (!r.ok || j.ok === false) throw new Error(j.error || ('Request failed ' + r.status));
+  return j;
+}
+function showErr(e) { const n = document.querySelector('#err'); if (n) n.textContent = (e && e.message) || String(e); }
+
+function chicagoProgress() {
+  const packet = chiPacket();
+  const send = chiSend();
+  const done = {
+    budget: !!(packet && packet.status === 'approved'),
+    code: !!(packet && packet.campaignCode),
+    sow: !!(packet && Array.isArray(packet.open) && packet.open.length === 0),
+    invite: !!send,
+    upload: uploaded(),
+    report: reportDone()
+  };
+  return STEPS.map(([key, label, who]) => ({ id: 'chi:' + key, key, label, who, done: !!done[key] }));
+}
+function otherProgress(c) {
+  const send = (state.sends || []).find(s => s.campaign_id === c.id && s.recipients > 0);
+  const done = { budget: true, code: true, sow: false, invite: !!send, upload: false, report: false };
+  return STEPS.map(([key, label, who]) => ({ id: c.id + ':' + key, key, label, who, done: !!done[key] }));
+}
+function flightSteps() {
+  const packet = chiPacket();
+  const send = chiSend();
+  return [
+    { id: 'chi:venue', done: true },
+    { id: 'chi:draft', done: !!packet },
+    { id: 'chi:code', done: !!(packet && packet.campaignCode) },
+    { id: 'chi:invite', done: !!send },
+    { id: 'chi:report', done: reportDone() },
+    { id: 'chi:upload', done: uploaded() },
+    { id: 'chi:sow', done: !!(packet && Array.isArray(packet.open) && packet.open.length === 0) },
+    { id: 'chi:budget', done: !!(packet && packet.status === 'approved') }
+  ];
+}
+function snapshotDone() {
+  const ids = flightSteps().filter(s => s.done).map(s => s.id);
+  visibleCampaigns().forEach(c => {
+    const steps = c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c);
+    steps.forEach(s => { if (s.done) ids.push(s.id); });
+  });
+  return ids;
+}
+function justNow(steps) {
+  if (!seenDone) { seenDone = new Set(snapshotDone()); return new Set(); }
+  const just = new Set();
+  steps.forEach(s => { if (s.done && !seenDone.has(s.id)) just.add(s.id); });
+  snapshotDone().forEach(id => seenDone.add(id));
+  return just;
+}
+function strip(steps, just) {
+  return '<ol class="strip">' + steps.map(s => {
+    const cls = (s.who === 'you' ? 'you' : 'mops') + (s.done ? ' done' : '') + (just.has(s.id) ? ' just' : '');
+    return '<li class="' + cls + '"><span class="who ' + (s.who === 'you' ? 'you' : 'mops') + '">' + (s.who === 'you' ? 'You' : '@mops') + '</span><span class="name">' + esc(s.label) + '</span><span class="mark" aria-hidden="true">' + (s.done ? '✓' : '') + '</span></li>';
+  }).join('') + '</ol>';
+}
+function visibleCampaigns() {
+  const regions = new Set((state.user && state.user.regions) || []);
+  const rows = (state.campaigns || []).filter(c => c.id === 'CAMP-CHI' || regions.has(c.region));
+  rows.sort((a, b) => a.id === 'CAMP-CHI' ? -1 : b.id === 'CAMP-CHI' ? 1 : String(a.name).localeCompare(String(b.name)));
+  const chi = rows.filter(c => c.id === 'CAMP-CHI');
+  const rest = rows.filter(c => c.id !== 'CAMP-CHI');
+  return chi.concat(rest).slice(0, 12);
+}
+function needsCards() {
+  const packet = chiPacket();
+  const cards = [];
+  if (packet && packet.status === 'pending' && state.user && state.user.role === 'approver') {
+    cards.push({ text: 'Chicago security roundtable is ' + money(packet.amountUsd) + ' and waiting on you.', acts: [{ act: 'approve', label: 'Approve' }] });
+  }
+  if (packet && packet.open && packet.open.length) {
+    cards.push({ text: 'Three details only you know for the Chicago roundtable.', acts: [{ act: 'fill', label: 'Fill 3 details' }] });
+  }
+  if (!uploaded()) cards.push({ text: 'Upload the Chicago attendee file.', acts: [{ act: 'upload', label: 'Upload file', id: 'upload' }] });
+  return cards.slice(0, 3);
+}
+function cardStatus(c) {
+  if (c.id === 'CAMP-CHI') {
+    const packet = chiPacket();
+    if (packet && packet.status === 'pending') return '<span class="status wait">Waiting on Chris</span>';
+    if (packet && packet.status === 'approved') return '<span class="status">Approved</span>';
+  }
+  return '<span class="status plain">' + esc(c.status || 'Live') + '</span>';
+}
+
+function homeHtml(just) {
+  const first = ((state.user && state.user.name) || 'Maria').split(' ')[0];
+  const needs = needsCards();
+  const needHtml = needs.length
+    ? needs.map(card => '<article class="card"><p>' + esc(card.text) + '</p><div class="need-actions">' + card.acts.map(a => '<button class="primary" type="button" data-act="' + a.act + '"' + (a.id && !onChicago() ? ' id="' + a.id + '"' : '') + '>' + esc(a.label) + '</button>').join('') + '</div></article>').join('')
+    : '<p class="quiet">Nothing is waiting on you.</p>';
+  const camps = visibleCampaigns().map(c => {
+    const steps = c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c);
+    const inner = '<div class="card-top"><h2>' + esc(c.name) + '</h2>' + cardStatus(c) + '</div><p class="meta">' + esc([c.city, dayLabel(c.start_date)].filter(Boolean).join(' · ')) + '</p>' + strip(steps, just);
+    return c.id === 'CAMP-CHI' ? '<a class="card" href="#/chicago">' + inner + '</a>' : '<article class="card">' + inner + '</article>';
+  }).join('');
+  return '<h1>Hey ' + esc(first) + '</h1><p class="lede">One ask. @mops drafts, sends, and files. You only step in when it needs you.</p>'
+    + '<section class="section" id="needs"><h2>Needs you</h2><div class="stack">' + needHtml + '</div></section>'
+    + '<section class="section"><h2>My campaigns</h2><div class="stack" id="campaigns">' + camps + '</div></section>';
+}
+
+function pct(part, whole) { return whole ? Math.round((part / whole) * 100) : 0; }
+function sourceLabel(row) {
+  const special = (row.source === 'EM-JH-1014' || /Jordan Hale's email/i.test(row.why || '')) ? "Jordan Hale's email, 14 Oct" : '';
+  const via = row.channel && row.channel !== 'system' ? row.channel : '';
+  if (special) return via ? special + ' · ' + via : special;
+  return via;
+}
+function whyHtml() {
+  const rows = (state.why || []).filter(r => r.why && !NOISE.test(r.why));
+  const venue = rows.find(r => /Moved the Chicago security roundtable to 19 Mar/.test(r.why));
+  const top = rows.slice(0, 8);
+  if (venue && top.indexOf(venue) < 0) top.push(venue);
+  if (!top.length) return '<p class="quiet">Nothing has changed yet.</p>';
+  return top.map(r => {
+    const src = sourceLabel(r);
+    return '<article><p>' + esc(r.why) + '</p>' + (src ? '<p class="source">' + esc(src) + '</p>' : '') + '</article>';
+  }).join('');
+}
+function sowBlock() {
+  const packet = chiPacket();
+  const fields = (packet && packet.sow && packet.sow.fields) || {};
+  let note = 'File the budget first.';
+  if (packet && packet.open && packet.open.length === 0) note = 'Saved, SOW ready for review';
+  else if (packet && packet.open && packet.open.length) {
+    const short = { our_pm: 'PM', po_number: 'PO', venue_contact: 'venue contact' };
+    note = 'Waiting on you: ' + packet.open.map(f => f.short || short[f.key] || f.label).join(', ');
+  }
+  return '<div class="sow"><p id="sow-note">' + esc(note) + '</p>'
+    + '<label>Our project manager<input id="our_pm" value="' + esc(fields.our_pm || '') + '"></label>'
+    + '<label>Purchase order<input id="po_number" value="' + esc(fields.po_number || '') + '"></label>'
+    + '<label>Venue contact<input id="venue_contact" value="' + esc(fields.venue_contact || '') + '"></label>'
+    + '<button id="save" class="primary" type="button">Save</button></div>';
+}
+function approveBlock() {
+  const packet = chiPacket();
+  if (!packet) return '<p class="quiet">Approve comes after the budget is filed.</p>';
+  if (packet.status === 'approved') return '<p>Approved. ' + esc(packet.ban || '') + ' · ' + esc(packet.campaignCode || '') + '</p>';
+  if (state.user && state.user.role === 'approver') return '<button class="primary" type="button" data-act="approve">Approve</button>';
+  return '<span class="status wait">Waiting on Chris</span>';
+}
+function behind(trace) { return ' <button type="button" class="behind" data-trace="' + trace + '">Behind the scenes</button>'; }
+function campaignHtml(just) {
+  const packet = chiPacket();
+  const send = chiSend();
+  const chi = (state.dash && state.dash.chicago) || {};
+  const sent = send ? send.recipients : 0;
+  const opens = send ? send.opens : 0;
+  const clicks = send ? send.clicks : 0;
+  const openLine = send ? (opens + ' of ' + sent + ' opened (' + pct(opens, sent) + '%)') : 'Not yet';
+  const clickLine = send ? (clicks + ' of ' + sent + ' clicked (' + pct(clicks, sent) + '%)') : 'Not yet';
+  const left = money((chi.budget || 0) - (chi.actual || 0));
+  const spent = packet && packet.status === 'approved' ? '<article><span>Spent so far</span><b>Spent so far ' + money(chi.actual || 0) + '</b></article>' : '';
+  const mops = [
+    { id: 'chi:venue', text: 'Moved the roundtable to River North Club on 19 Mar.', trace: 'venue', done: true },
+    { id: 'chi:draft', text: packet ? ('Drafted the ' + money(packet.amountUsd) + ' budget and the agreement.') : 'The budget and the agreement wait for your ask.', trace: 'draft', done: !!packet },
+    { id: 'chi:code', text: packet && packet.campaignCode ? ('Minted the code. ' + packet.campaignCode) : 'The code is minted when Chris approves.', trace: 'code', done: !!(packet && packet.campaignCode) },
+    { id: 'chi:invite', text: send ? ('Sent the invite to ' + sent + ' people.') : 'The invite waits for your ask.', trace: 'invite', done: !!send },
+    { id: 'chi:report', text: reportDone() ? 'Wrote the weekly report.' : 'The weekly report is ready when you ask.', trace: 'report', done: reportDone() }
+  ];
+  const youUpload = uploaded()
+    ? '<p>The attendee file is in.</p>'
+    : '<p>Upload the attendee file.</p><button id="upload" class="primary" type="button" data-act="upload">Upload file</button>';
+  return '<p><a class="back" href="#/">All campaigns</a></p><h1>Chicago security roundtable</h1><p class="lede">Your part is three small things. @mops carries the rest.</p>'
+    + '<section class="section" id="flight"><div class="lanes">'
+    + '<div class="lane you"><h2><span class="who you">You</span></h2><ol class="steps">'
+    + '<li class="' + (uploaded() ? 'done' : '') + (just.has('chi:upload') ? ' just' : '') + '">' + youUpload + '</li>'
+    + '<li class="' + (packet && packet.open && packet.open.length === 0 ? 'done' : '') + (just.has('chi:sow') ? ' just' : '') + '"><p>Three details on the agreement.</p>' + sowBlock() + '</li>'
+    + '<li class="' + (packet && packet.status === 'approved' ? 'done' : '') + (just.has('chi:budget') ? ' just' : '') + '"><p>Approve the budget.</p>' + approveBlock() + '</li>'
+    + '</ol></div>'
+    + '<div class="lane mops"><h2><span class="who mops">@mops</span></h2><ol class="steps">'
+    + mops.map(s => '<li class="' + (s.done ? 'done' : '') + (just.has(s.id) ? ' just' : '') + '"><p>' + esc(s.text) + behind(s.trace) + '</p></li>').join('')
+    + '</ol></div></div></section>'
+    + '<section class="section"><h2>Live numbers</h2><div id="numbers" class="stats">'
+    + '<article><span>Sent</span><b>' + sent.toLocaleString('en-US') + '</b></article>'
+    + '<article><span>Opened</span><b>' + esc(openLine) + '</b></article>'
+    + '<article><span>Clicked</span><b>' + esc(clickLine) + '</b></article>'
+    + '<article><span>MQLs</span><b id="mqls">' + Number(state.mqls || 0).toLocaleString('en-US') + '</b></article>'
+    + '<article><span>Pipeline</span><b>Pipeline ' + money(chi.pipeline || 0) + '</b></article>'
+    + '<article><span>Budget left</span><b>Budget left ' + left + '</b></article>'
+    + spent
+    + '</div>' + (send ? '<p style="margin-top:12px"><button id="simulate" class="ghost" type="button" data-act="simulate">See opens and clicks</button></p>' : '') + '</section>'
+    + '<section class="section"><h2>What changed and why</h2><div id="why" class="why">' + whyHtml() + '</div></section>';
+}
+
+function render() {
+  const camp = onChicago();
+  document.body.classList.toggle('home', !camp);
+  document.body.classList.toggle('camp', camp);
+  document.querySelector('#chips').hidden = camp;
+  const steps = camp ? flightSteps().concat(chicagoProgress()) : visibleCampaigns().flatMap(c => c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c));
+  const just = justNow(steps);
+  document.querySelector('#view').innerHTML = camp ? campaignHtml(just) : homeHtml(just);
+  document.querySelector('#saved').textContent = savedLabel(state.metrics);
+  if (sessionStorage.getItem('mops-focus') === 'sow' && camp) {
+    sessionStorage.removeItem('mops-focus');
+    const el = document.querySelector('#our_pm');
+    if (el) el.focus();
+  }
+}
+
+function paintAnswer(body) {
+  const node = document.querySelector('#answer');
+  node.hidden = false;
+  node.innerHTML = '<article><span class="from">' + esc(body.channel || channel()) + '</span><p class="reply">' + esc(body.reply || '') + '</p><button type="button" class="behind" data-trace="last">Behind the scenes</button></article>';
+}
+function paintDownloads(list) {
+  document.querySelector('#downloads').innerHTML = (list || []).map(d => '<a href="' + esc(d.href) + '">' + esc(d.label) + '</a>').join('');
+}
+function uploadSentence(result) {
+  const held = result.held || [];
+  const heldBits = held.map(row => (row.name || 'Someone') + ' (' + (row.reason || 'held') + ')').join('; ');
+  const owners = (result.owners || []).map(o => o.label).filter(Boolean).join('. ');
+  const retry = result.retried ? ' Salesforce was busy, retried automatically.' : '';
+  return result.accepted + ' campaign members. ' + owners + '. Held ' + held.length + (heldBits ? ': ' + heldBits : '') + '.' + retry;
+}
+
+function serviceName(apiPath) {
+  const p = String(apiPath || '');
+  if (p.indexOf('/crm') >= 0) return 'Salesforce';
+  if (p.indexOf('/engage') >= 0) return 'Engage';
+  if (p.indexOf('/spend') >= 0) return 'Plan';
+  if (p.indexOf('/insights') >= 0) return 'Insights';
+  if (p.indexOf('/brain') >= 0) return 'Brain';
+  if (p.indexOf('/data') >= 0) return 'Data';
+  return 'Northwind';
+}
+function trimValue(value, depth) {
+  if (depth > 4) return '…';
+  if (Array.isArray(value)) {
+    const cut = value.slice(0, 6).map(v => trimValue(v, depth + 1));
+    if (value.length > 6) cut.push('… ' + (value.length - 6) + ' more');
+    return cut;
+  }
+  if (value && typeof value === 'object') {
+    const out = {};
+    Object.entries(value).forEach(([k, v]) => {
+      if (k === 'html' || k === 'before_json' || k === 'after_json') { out[k] = '…'; return; }
+      out[k] = trimValue(v, depth + 1);
+    });
+    return out;
+  }
+  if (typeof value === 'string' && value.length > 180) return value.slice(0, 180) + '…';
+  return value;
+}
+function drawerHtml(trace) {
+  const calls = trace.calls || [];
+  const services = [...new Set(calls.map(c => serviceName(c.api)))];
+  const audit = trace.audit || (trace.result && trace.result.why) || '';
+  return '<p class="kicker">' + esc(services.join(' · ') || 'Northwind') + '</p>'
+    + '<h3>Payload</h3><pre>' + esc(JSON.stringify(trimValue(trace.payload, 0), null, 2)) + '</pre>'
+    + (calls.length ? '<h3>Calls</h3><pre>' + esc(calls.map(c => c.api + ' · ' + (c.ms || 0) + 'ms').join('\n')) + '</pre>' : '')
+    + '<h3>What was written</h3><pre>' + esc(JSON.stringify(trimValue(trace.written, 0), null, 2)) + '</pre>'
+    + (audit ? '<h3>Audit</h3><p>' + esc(audit) + '</p>' : '');
+}
+async function traceFor(kind) {
+  if (kind === 'last' && state.last) {
+    const body = state.last.body || {};
+    return { calls: body.calls || [], payload: { text: state.last.text, channel: state.last.channel }, written: body.result, audit: body.reply || '' };
+  }
+  if (kind === 'venue') {
+    const log = await api('/api/platform/data/log?q=venue&limit=5');
+    const row = (log.rows || []).find(r => /venue/i.test(r.why || '')) || (log.rows || [])[0] || {};
+    return { calls: [{ api: 'GET /api/platform/data/log', ms: log.ms || 0 }], payload: { q: 'venue' }, written: log.rows, audit: row.why || '' };
+  }
+  if (kind === 'draft' || kind === 'code') {
+    const packets = await api('/api/platform/spend/packets');
+    return { calls: [{ api: 'GET /api/platform/spend/packets', ms: packets.ms || 0 }], payload: { campaign: 'Chicago security roundtable' }, written: packets.packets, audit: kind === 'code' ? 'The code is minted when Chris approves.' : 'Filed the Chicago budget.' };
+  }
+  if (kind === 'invite') {
+    const sends = await api('/api/platform/engage/sends');
+    return { calls: [{ api: 'GET /api/platform/engage/sends', ms: sends.ms || 0 }], payload: { campaign: 'Chicago security roundtable' }, written: sends.sends, audit: 'Sent the Chicago invite.' };
+  }
+  if (kind === 'report') {
+    const dash = await api('/api/platform/insights/dashboard');
+    return { calls: [{ api: 'GET /api/platform/insights/dashboard', ms: dash.ms || 0 }], payload: { region: 'Americas' }, written: dash.chicago, audit: 'Weekly numbers for the Chicago roundtable.' };
+  }
+  if (kind === 'upload') {
+    const [uploads, queue] = await Promise.all([api('/api/platform/crm/uploads'), api('/api/platform/crm/queue')]);
+    const audit = ((queue.retried || [])[0] || {}).last_error || 'Uploaded the Chicago attendee file.';
+    return { calls: [{ api: 'POST /api/platform/crm/uploads', ms: 0 }, { api: 'GET /api/platform/crm/queue', ms: queue.ms || 0 }], payload: {}, written: { uploads: uploads.uploads, queue: queue.jobs }, audit };
+  }
+  return { calls: [], payload: {}, written: {}, audit: '' };
+}
+async function openDrawer(kind) {
+  const drawer = document.querySelector('#drawer');
+  const shade = document.querySelector('#shade');
+  drawer.hidden = false;
+  shade.hidden = false;
+  document.querySelector('#trace').innerHTML = '<p class="quiet">Looking…</p>';
+  try {
+    const trace = await traceFor(kind);
+    document.querySelector('#trace').innerHTML = drawerHtml(trace);
+  } catch (e) {
+    document.querySelector('#trace').innerHTML = '<p>' + esc(e.message || String(e)) + '</p>';
+  }
+}
+function closeDrawer() {
+  document.querySelector('#drawer').hidden = true;
+  document.querySelector('#shade').hidden = true;
+}
+
+async function load() {
+  const [session, users, metrics, camps, packets, sends, uploads, why, dash] = await Promise.all([
+    api('/api/session'),
+    api('/api/login/users'),
+    api('/api/platform/metrics'),
+    api('/api/platform/data/tables/campaigns?limit=100'),
+    api('/api/platform/spend/packets'),
+    api('/api/platform/engage/sends'),
+    api('/api/platform/crm/uploads?campaign=CAMP-CHI'),
+    api('/api/platform/brain/why?q=Chicago&limit=80'),
+    api('/api/platform/insights/dashboard')
+  ]);
+  state.user = session.user;
+  state.users = users.users || [];
+  state.metrics = metrics;
+  state.campaigns = camps.rows || [];
+  state.packets = packets.packets || [];
+  state.sends = sends.sends || [];
+  state.uploads = uploads.uploads || [];
+  state.why = why.rows || [];
+  state.dash = dash;
+  const send = chiSend();
+  state.mqls = 0;
+  if (send && send.segment_id) {
+    const board = await api('/api/platform/engage/scores?segment=' + encodeURIComponent(send.segment_id));
+    state.mqls = board.mqls || 0;
+  }
+}
+function fillUsers() {
+  const sel = document.querySelector('#who');
+  sel.innerHTML = state.users.map(u => '<option value="' + esc(u.id) + '">' + esc(u.name) + '</option>').join('');
+  if (state.user) sel.value = state.user.id;
+}
+function setSchedule(period) {
+  const next = period === 'monthly' ? 'monthly' : 'weekly';
+  localStorage.setItem('mops-schedule', next);
+  document.querySelectorAll('#schedule button').forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.period === next ? 'true' : 'false'));
+  document.querySelector('#report').textContent = next === 'monthly' ? 'Monthly report' : 'Weekly report';
+}
+
+async function runAsk(text) {
+  if (busy) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  const send = document.querySelector('#send');
+  send.disabled = true;
+  try {
+    const body = await api('/api/platform/ask', { method: 'POST', body: JSON.stringify({ text, channel: channel() }) });
+    state.last = { text, channel: channel(), body };
+    paintAnswer(body);
+    paintDownloads(body.downloads);
+    document.querySelector('#ask').value = '';
+    await load();
+    render();
+  } catch (e) { showErr(e); }
+  finally { busy = false; send.disabled = false; }
+}
+async function doUpload() {
+  if (busy) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  try {
+    const result = await api('/api/platform/crm/uploads', { method: 'POST', body: JSON.stringify({ channel: channel(), text: 'Upload the Chicago attendee file' }) });
+    const queue = await api('/api/platform/crm/queue');
+    if (!result.retried && queue.retried && queue.retried.length) result.retried = queue.retried.length;
+    const reply = uploadSentence(result);
+    const body = { channel: channel(), reply, calls: [{ api: 'POST /api/platform/crm/uploads', ms: result.ms || 0 }, { api: 'GET /api/platform/crm/queue', ms: queue.ms || 0 }], result: { upload: result, queue } };
+    state.last = { text: 'Upload the Chicago attendee file', channel: channel(), body };
+    paintAnswer(body);
+    await load();
+    render();
+  } catch (e) { showErr(e); }
+  finally { busy = false; }
+}
+async function doApprove() {
+  if (busy) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  try {
+    const result = await api('/api/platform/spend/approve', { method: 'POST', body: JSON.stringify({ campaignId: 'CAMP-CHI', channel: channel(), text: '@mops approve Chicago' }) });
+    const reply = 'Chris M. approved ' + money(result.amountUsd) + ' for the Chicago security roundtable. BAN ' + result.ban + '. Code ' + result.campaignCode + '.';
+    const body = { channel: channel(), reply, calls: [{ api: 'POST /api/platform/spend/approve', ms: result.ms || 0 }], result };
+    state.last = { text: '@mops approve Chicago', channel: channel(), body };
+    paintAnswer(body);
+    await load();
+    render();
+  } catch (e) { showErr(e); }
+  finally { busy = false; }
+}
+async function doSimulate() {
+  if (busy) return;
+  const send = chiSend();
+  if (!send) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  try {
+    const result = await api('/api/platform/engage/sends/' + encodeURIComponent(send.id) + '/simulate', { method: 'POST', body: JSON.stringify({ opens: true, clicks: true }) });
+    state.last = { text: 'See opens and clicks', channel: channel(), body: { channel: channel(), reply: 'Opens and clicks are in.', calls: [{ api: 'POST /api/platform/engage/sends/' + send.id + '/simulate', ms: result.ms || 0 }], result } };
+    await load();
+    render();
+  } catch (e) { showErr(e); }
+  finally { busy = false; }
+}
+async function saveSow() {
+  if (busy) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  try {
+    const answers = {
+      our_pm: document.querySelector('#our_pm').value,
+      po_number: document.querySelector('#po_number').value,
+      venue_contact: document.querySelector('#venue_contact').value
+    };
+    await api('/api/platform/spend/sow', { method: 'POST', body: JSON.stringify({ campaignId: 'CAMP-CHI', answers, channel: channel() }) });
+    await load();
+    render();
+  } catch (e) { showErr(e); }
+  finally { busy = false; }
+}
+
+document.querySelector('#composer').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const text = document.querySelector('#ask').value.trim();
+  if (!text) { document.querySelector('#err').textContent = 'Type a question, or pick a suggestion.'; return; }
+  runAsk(text);
+});
+document.querySelector('#channel').addEventListener('change', () => localStorage.setItem('mops-channel', channel()));
+document.querySelector('#schedule').addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-period]');
+  if (btn) setSchedule(btn.dataset.period);
+});
+document.querySelector('#report').addEventListener('click', () => {
+  const monthly = document.querySelector('#schedule [data-period="monthly"]').getAttribute('aria-pressed') === 'true';
+  runAsk(monthly ? '@mops monthly report for the portfolio' : '@mops weekly report for Americas');
+});
+document.querySelector('#reset').addEventListener('click', async () => {
+  if (!confirm('Start the demo over? This clears what @mops did today.')) return;
+  try {
+    await api('/api/platform/reset', { method: 'POST', body: '{}' });
+    location.reload();
+  } catch (e) { showErr(e); }
+});
+document.querySelector('#who').addEventListener('change', async () => {
+  try {
+    await api('/api/login', { method: 'POST', body: JSON.stringify({ user: document.querySelector('#who').value }) });
+    location.reload();
+  } catch (e) { showErr(e); }
+});
+document.querySelector('#drawer-close').addEventListener('click', closeDrawer);
+document.querySelector('#shade').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeDrawer(); });
+document.addEventListener('click', ev => {
+  const chip = ev.target.closest('[data-ask]');
+  if (chip) { ev.preventDefault(); document.querySelector('#ask').value = chip.dataset.ask; runAsk(chip.dataset.ask); return; }
+  const behindBtn = ev.target.closest('.behind');
+  if (behindBtn) { openDrawer(behindBtn.dataset.trace || 'last'); return; }
+  const act = ev.target.closest('[data-act]');
+  if (!act) {
+    if (ev.target && ev.target.id === 'save') saveSow();
+    return;
+  }
+  if (act.dataset.act === 'upload') return doUpload();
+  if (act.dataset.act === 'approve') return doApprove();
+  if (act.dataset.act === 'simulate') return doSimulate();
+  if (act.dataset.act === 'fill') {
+    sessionStorage.setItem('mops-focus', 'sow');
+    if (!onChicago()) location.hash = '#/chicago';
+    else { sessionStorage.removeItem('mops-focus'); const el = document.querySelector('#our_pm'); if (el) el.focus(); }
+  }
+});
+window.addEventListener('hashchange', () => { if (state.user) render(); });
+
+const savedPeriod = localStorage.getItem('mops-schedule') || 'weekly';
+setSchedule(savedPeriod);
+
+(async function boot() {
+  try {
+    await load();
+    fillUsers();
+    render();
+  } catch (e) { showErr(e); }
+})();
+</script>
+</body>
+</html>

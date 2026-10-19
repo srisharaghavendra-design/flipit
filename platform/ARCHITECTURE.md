@@ -1,6 +1,6 @@
 # Northwind Marketing Cloud
 
-One local platform replaces the marketing tool stack. `npm start`, then sign in and open `/platform`. The store is SQLite. `PLATFORM_DB=postgres` plus `PLATFORM_DATABASE_URL` selects the Postgres driver in `platform/db.js`. The same migrations run, with `BIGSERIAL` and `$1` placeholders.
+One local platform replaces the marketing tool stack. `npm start`, then sign in. `/` is the marketer home. `/platform` is the console behind it. The store is SQLite. `PLATFORM_DB=postgres` plus `PLATFORM_DATABASE_URL` selects the Postgres driver in `platform/db.js`. The same migrations run, with `BIGSERIAL` and `$1` placeholders.
 
 ## What replaces what
 

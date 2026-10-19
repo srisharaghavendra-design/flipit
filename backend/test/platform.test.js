@@ -593,3 +593,161 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     stack.stop();
   }
 });
+
+test('marketer home runs the demo without the consoles', { timeout: 300000 }, async () => {
+  const { chromium } = require('playwright');
+  const { start } = require('../stack');
+  const shot = '/opt/cursor/artifacts/screenshots';
+  fs.mkdirSync(shot, { recursive: true });
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mops-home-ui-'));
+  const env = {
+    MOPS_PORT: '9890', ENGINE_PORT: '9891', CRM_PORT: '9892', MAIL_PORT: '9893', SMTP_PORT: '3590', WH_PORT: '9894',
+    MOPS_PUBLIC: 'http://127.0.0.1:9890', MOPS_DATA_DIR: dataDir, MOPS_RUNS_DIR: path.join(dataDir, 'runs'),
+    MOPS_AUTOPILOT: '0', PLATFORM_DB: 'sqlite', ELT_MS: '0'
+  };
+  const stack = await start(env, { quiet: true });
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page.setDefaultTimeout(90000);
+  const failures = [];
+  page.on('response', (res) => { if (res.status() >= 500) failures.push(res.status() + ' ' + res.url()); });
+  page.on('pageerror', (err) => failures.push(String(err)));
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame() && /\/platform(\/|$)/.test(new URL(frame.url()).pathname)) failures.push('visited ' + frame.url());
+  });
+  const H = 'http://127.0.0.1:9890';
+  async function noOverflow() {
+    const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    assert.ok(extra <= 1, 'horizontal overflow ' + extra);
+  }
+  try {
+    await page.goto(H + '/');
+    await page.locator('button[value="maria"]').click();
+    await page.locator('h1', { hasText: 'Hey Maria' }).waitFor();
+    assert.equal(await page.locator('#ask').inputValue(), '');
+    assert.equal(await page.locator('#ask').getAttribute('placeholder'), 'Tag @mops…');
+    assert.match(await page.locator('#saved').innerText(), /Saved today: 3h 15m vs old tools/);
+    assert.equal(await page.locator('#chips button').count(), 4);
+    assert.equal(await page.locator('[data-act="approve"]').count(), 0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await noOverflow();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: path.join(shot, 'home-maria.png'), fullPage: true });
+
+    await page.locator('#channel').selectOption('Webex');
+    await page.reload();
+    await page.locator('h1', { hasText: 'Hey Maria' }).waitFor();
+    assert.equal(await page.locator('#channel').inputValue(), 'Webex');
+
+    await page.locator('#chips').getByRole('button', { name: 'Who can I email in Illinois' }).click();
+    await page.locator('#answer .reply').getByText('36 opted-in').waitFor();
+    await page.locator('#answer .from').getByText('Webex').waitFor();
+    await page.locator('#answer').getByRole('button', { name: 'Behind the scenes' }).click();
+    await page.locator('#drawer .kicker').getByText('Data', { exact: true }).waitFor();
+    await page.locator('#drawer').getByText('/api/platform/data/emailable').waitFor();
+    await page.screenshot({ path: path.join(shot, 'home-drawer.png') });
+    await page.locator('#drawer-close').click();
+    await page.locator('#drawer').waitFor({ state: 'hidden' });
+
+    await page.locator('#chips').getByRole('button', { name: 'Send the Chicago invite' }).click();
+    await page.locator('#answer .reply').getByText(/^Sent the Chicago invite to 30/).waitFor();
+    await page.locator('#campaigns').getByRole('link', { name: /Chicago security roundtable/ }).click();
+    await page.locator('#flight').waitFor();
+    await page.locator('h1', { hasText: 'Chicago security roundtable' }).waitFor();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await noOverflow();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    assert.equal(await page.locator('#mqls').innerText(), '0');
+    await page.locator('#simulate').click();
+    await page.locator('#numbers').getByText('14 of 30 opened (47%)').waitFor();
+    await page.locator('#numbers').getByText('4 of 30 clicked (13%)').waitFor();
+    await page.waitForFunction(() => document.querySelector('#mqls').textContent.trim() === '4');
+
+    await page.locator('#upload').click();
+    await page.locator('#answer .reply').getByText('3 campaign members').waitFor();
+    const uploaded = await page.locator('#answer .reply').innerText();
+    assert.match(uploaded, /Held 4/);
+    assert.match(uploaded, /Nina Vale/);
+    assert.match(uploaded, /Jake Moss \(AE\): 8 Chicago accounts, 1 campaign member/);
+    assert.match(uploaded, /Rosa Diaz \(SDR\): 0 Chicago accounts, 2 campaign members/);
+    assert.match(uploaded, /Salesforce was busy, retried automatically/);
+
+    await page.locator('a.logo').click();
+    await page.locator('h1', { hasText: 'Hey Maria' }).waitFor();
+    await page.locator('#chips').getByRole('button', { name: 'File the Chicago budget' }).click();
+    await page.locator('#answer .reply').getByText('Waiting on Chris').waitFor();
+    assert.equal(await page.locator('body').getByText('$42,000').count(), 0);
+    assert.equal(await page.locator('#answer .reply').getByText('BAN-').count(), 0);
+    await page.locator('[data-act="fill"]').click();
+    await page.locator('#our_pm').waitFor();
+    await page.locator('#sow-note').getByText('Waiting on you: PM, PO, venue contact').waitFor();
+    await page.locator('#our_pm').fill('Maria Alvarez');
+    await page.locator('#po_number').fill('PO-2044');
+    await page.locator('#venue_contact').fill('Jordan Hale');
+    await page.locator('#save').click();
+    await page.locator('#sow-note').getByText('Saved, SOW ready for review').waitFor();
+    assert.equal(await page.locator('#our_pm').inputValue(), 'Maria Alvarez');
+    assert.equal(await page.locator('#po_number').inputValue(), 'PO-2044');
+    assert.equal(await page.locator('#venue_contact').inputValue(), 'Jordan Hale');
+
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      page.locator('#who').selectOption('chris')
+    ]);
+    await page.locator('#sow-note').getByText('Saved, SOW ready for review').waitFor();
+    assert.equal(await page.locator('#who').inputValue(), 'chris');
+    assert.equal(await page.locator('#our_pm').inputValue(), 'Maria Alvarez');
+    assert.equal(await page.locator('#po_number').inputValue(), 'PO-2044');
+    assert.equal(await page.locator('#venue_contact').inputValue(), 'Jordan Hale');
+    await page.locator('[data-act="approve"]').click();
+    await page.locator('#answer .reply').getByText('BAN-FY26Q3-4100-0001').waitFor();
+    await page.locator('#answer .reply').getByText('FY26Q3-USA-EVT-0101').waitFor();
+    await page.locator('#numbers').getByText('Spent so far $0').waitFor();
+    assert.equal(await page.locator('body').getByText('$42,000').count(), 0);
+    await page.locator('#numbers').getByText('Pipeline $640,000').waitFor();
+    await page.locator('#numbers').getByText('Budget left $180,000').waitFor();
+    await page.screenshot({ path: path.join(shot, 'home-chicago.png'), fullPage: true });
+
+    await page.locator('#report').click();
+    await page.locator('#downloads').getByRole('link', { name: 'Download PowerPoint' }).waitFor();
+    await page.locator('#downloads').getByRole('link', { name: 'Download PDF' }).waitFor();
+    const weeklyPpt = await page.request.get(H + '/api/platform/insights/reports/weekly.pptx?region=Americas');
+    const weeklyPdf = await page.request.get(H + '/api/platform/insights/reports/weekly.pdf?region=Americas');
+    assert.equal(weeklyPpt.status(), 200);
+    assert.equal(weeklyPdf.status(), 200);
+    assert.equal((await weeklyPpt.body()).slice(0, 2).toString(), 'PK');
+    assert.equal((await weeklyPdf.body()).slice(0, 5).toString(), '%PDF-');
+    assert.match((await weeklyPdf.body()).toString('latin1'), /On track/);
+    await page.locator('#schedule').getByRole('button', { name: 'Monthly' }).click();
+    assert.equal(await page.locator('#report').innerText(), 'Monthly report');
+    await page.locator('#report').click();
+    await page.locator('#downloads a[href*="monthly.pptx"]').waitFor();
+    await page.locator('#downloads a[href*="monthly.pdf"]').waitFor();
+
+    await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').waitFor();
+    assert.equal(await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').count(), 1);
+    await page.locator('#why').getByText("Jordan Hale's email, 14 Oct").waitFor();
+    assert.equal(await page.locator('#why').getByText('does not own').count(), 0);
+    assert.equal(await page.locator('#why').getByText('EM-JH-1014').count(), 0);
+    assert.equal(await page.locator('#view').getByText('EM-JH-1014').count(), 0);
+    assert.equal(await page.locator('#view').getByText('CAMP-CHI').count(), 0);
+
+    page.once('dialog', d => d.accept());
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      page.locator('#reset').click()
+    ]);
+    await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').waitFor();
+    assert.equal(await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').count(), 1);
+    assert.equal(await page.locator('#why').getByText('does not own').count(), 0);
+    assert.equal(await page.locator('#why').getByText('Sent the Chicago invite').count(), 0);
+    await page.locator('#ask').fill('@mops send the Chicago invite to CIOs in Illinois who opened last month');
+    await page.locator('#send').click();
+    await page.locator('#answer .reply').getByText(/^Sent the Chicago invite to 30/).waitFor();
+    assert.equal((await page.locator('#err').innerText()).trim(), '');
+    assert.deepEqual(failures, []);
+  } finally {
+    await browser.close();
+    stack.stop();
+  }
+});
