@@ -4,6 +4,15 @@ if(process.env.VERCEL&&!process.env.MOPS_DATA_DIR)process.env.MOPS_DATA_DIR='/tm
 if(process.env.VERCEL&&!process.env.MOPS_RUNS_DIR)process.env.MOPS_RUNS_DIR='/tmp/mops/runs';
 const http=require('http'),fs=require('fs'),path=require('path');const mk=require('./agents.js');const{esc,fmt}=mk;
 const DATA_DIR=process.env.MOPS_DATA_DIR||__dirname;fs.mkdirSync(DATA_DIR,{recursive:true});const DB=path.join(DATA_DIR,'data.json');if(!fs.existsSync(DB))fs.copyFileSync(path.join(__dirname,'data.seed.json'),DB);
+// Literal paths so the Vercel file tracer ships the UI, seed, and fixtures with this server.
+fs.statSync(path.join(__dirname,'ui/index.html'));
+fs.statSync(path.join(__dirname,'ui/engine.html'));
+fs.statSync(path.join(__dirname,'ui/chart.min.js'));
+fs.statSync(path.join(__dirname,'data.seed.json'));
+fs.statSync(path.join(__dirname,'baselines.json'));
+fs.statSync(path.join(__dirname,'backend/test/fixtures/abm_target_list.csv'));
+fs.statSync(path.join(__dirname,'backend/test/fixtures/booth_badge_scans.xlsx'));
+fs.statSync(path.join(__dirname,'backend/test/fixtures/event_attendees_export.xlsx'));
 let db=JSON.parse(fs.readFileSync(DB));const save=()=>fs.writeFileSync(DB,JSON.stringify(db));
 const KEY=process.env.MOPS_API_KEY,BASE=process.env.MOPS_API_BASE||'https://api.x.ai/v1',MODEL=process.env.MOPS_MODEL||'grok-4';
 // Mail never leaves the process. An external MOPS_SMTP_URL is ignored on purpose.
@@ -158,7 +167,12 @@ async function handleRequest(req,res){await ready();const HUB=require('./backend
  if((s=p.match(/^\/outbox\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[1]);res.writeHead(200,{'content-type':'text/html'});return res.end(`<div style="font-family:system-ui;max-width:620px;margin:30px auto"><p><b>To:</b> ${esc(mm.to)}<br><b>Subject:</b> ${esc(mm.subject)}</p><pre style="white-space:pre-wrap;font-family:inherit">${esc(mm.body)}</pre><a href="/t/c/${mm.id}">Reserve my seat</a><img src="/t/o/${mm.id}" width=1 height=1></div>`)}
  const root=path.join(__dirname,'ui');const f=path.join(root,p==='/'?'index.html':p);if(f.startsWith(root)&&fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});return res.end(fs.readFileSync(f))}
  res.writeHead(404);res.end('not found');}catch(e){console.error(e);if(!res.headersSent)J(res,{error:e.message},500)}}
-function listen(){const{listenServices}=require('./backend/lib.js');const port=process.env.PORT||process.env.MOPS_PORT||8787;
-  return ready().then(()=>{http.createServer(handleRequest).listen(port,'0.0.0.0',()=>console.log(`@mops on :${port} mode=${KEY?'llm':'rules'} sender=${sender.name}`));if(!process.env.VERCEL)listenServices()})}
+function listen(){if(listen.done)return listen.done;const{listenServices}=require('./backend/lib.js');
+  const port=process.env.MOPS_LISTEN_PORT!=null&&process.env.MOPS_LISTEN_PORT!==''?Number(process.env.MOPS_LISTEN_PORT):Number(process.env.PORT||process.env.MOPS_PORT||8787);
+  const srv=http.createServer(handleRequest);if(srv.unref)srv.unref();
+  srv.on('error',e=>{console.error(e);if(require.main===module)process.exit(1)});
+  // Vercel imports this file and adopts the process only if listen() runs during that import.
+  srv.listen(port,'0.0.0.0',()=>console.log(`@mops on :${port} mode=${KEY?'llm':'rules'} sender=${sender.name}`));
+  listen.done=process.env.VERCEL?Promise.resolve():ready().then(()=>listenServices());return listen.done}
 module.exports={handleRequest,listen,ready};
-if(require.main===module)listen().catch(e=>{console.error(e);process.exit(1)});
+listen().catch(e=>{console.error(e);if(require.main===module)process.exit(1)});

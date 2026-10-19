@@ -2,12 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "fluid": true,
   "functions": {
-    "api/index.js": {
-      "maxDuration": 300,
-      "includeFiles": "{ui/**,data.seed.json,baselines.json,backend/test/fixtures/**}"
+    "server.js": {
+      "maxDuration": "max"
     }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index?__path=$1" }
-  ]
+  }
 }

@@ -32,13 +32,13 @@ These match the project that serves flipit.fyi today. You should not have to cha
 
 | Setting | Value |
 |---|---|
-| Framework | Other. `vercel.json` turns on Fluid Compute and sends every path through one function |
+| Framework | Other, or Node. Leave detection on. `server.js` calls `listen()` as the file loads, which is how Vercel adopts it as the one function |
 | Root directory | repository root, not `legacy/flipit` |
 | Node.js version | 20.x (from `package.json`) |
-| Build | none. Vercel installs dependencies and publishes `api/index.js` |
-| Output | the function in `api/index.js`. Do not set an output directory |
+| Build | none. Vercel installs dependencies and publishes `server.js` |
+| Output | do not set an output directory. `public/robots.txt` is the only static file; the app is served by the function, behind the passcode |
 | Production branch | the branch Vercel already deploys for flipit.fyi (normally `main`) |
-| Function timeout | 300 seconds, set in `vercel.json` (the longest the free Hobby plan allows) |
+| Function timeout | `max` in `vercel.json`, which is the longest this Hobby project allows. With Fluid Compute that is 300 seconds |
 | Domain | `flipit.fyi` and `www.flipit.fyi` stay attached. Do not edit DNS |
 
 DNS today, which you leave alone:
