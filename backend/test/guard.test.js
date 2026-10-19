@@ -52,12 +52,16 @@ test('a public visitor needs the passcode; health, tracking and loopback do not'
   }
 });
 
-test('with no passcode the app is open', async () => {
+test('with no DEMO_PASSCODE the default is northwind and the page says so', async () => {
   const prev = process.env.DEMO_PASSCODE;
   delete process.env.DEMO_PASSCODE;
   try {
     const home = await hit('/');
-    assert.equal(home.handled, false);
+    assert.equal(home.res.status, 401);
+    assert.match(home.res.body, /northwind/);
+    const good = await hit('/gate', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'passcode=northwind' });
+    assert.equal(good.res.status, 303);
+    assert.ok(good.res.headers['set-cookie'].includes(tokenFor('northwind')));
   } finally {
     if (prev == null) delete process.env.DEMO_PASSCODE; else process.env.DEMO_PASSCODE = prev;
   }

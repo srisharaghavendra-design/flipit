@@ -1,0 +1,12 @@
+{
+  "framework": null,
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 300,
+      "includeFiles": "{ui/**,data.seed.json,baselines.json,backend/test/fixtures/**}"
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index?__path=$1" }
+  ]
+}

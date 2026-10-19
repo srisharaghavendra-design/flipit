@@ -1,9 +1,8 @@
 // "Covered for you": a proactive watcher. It scans live data (triggered by events + a timer), spots issues/opportunities,
 // acts inside the autopilot risk limits, and records each action with before/after and an undo.
-const nodemailer=require('nodemailer');const{PORTS,call}=require('./lib');const core=require('./core');
+const{call}=require('./lib');const core=require('./core');const{deliver}=require('./mail');
 const RISK={maxAutoSendAudience:+(process.env.COVER_MAX_SEND||200),sendUndoWindowMs:+(process.env.COVER_SEND_DELAY_MS||120000),delegatedBudget:+(process.env.MOPS_DELEGATE_LIMIT||25000),followUpHours:48};
 const REPS=['Dev Rao','Anika Shah','Kenji Mori','Lena Ward'];const repMail=n=>n.toLowerCase().replace(/\s+/g,'.')+'@northwind.example';
-const mailer=nodemailer.createTransport({host:'127.0.0.1',port:PORTS.smtp,secure:false,ignoreTLS:true});
 const bus=e=>require('./hub').bus(e);const money=n=>'$'+Math.round(n/1000)+'K';
 const has=key=>core.db.prepare('SELECT id FROM covered WHERE key=?').get(key);
 function record(it){const id='COV-'+String((core.db.prepare('SELECT count(*) n FROM covered').get().n)+1).padStart(3,'0');
@@ -24,7 +23,7 @@ const RULES={
  async stale(T){const crm=await call('crm','/export');const cut=Date.now()-RISK.followUpHours*3600e3;
   for(const l of crm.Lead.filter(l=>l.OwnerName&&['MQL','Open'].includes(l.Status)&&Date.parse(l.LastModifiedDate)<cut)){const key='stale:'+l.Id+':'+l.LastModifiedDate;if(has(key))continue;
    const from=l.OwnerName,pool=REPS.filter(r=>r!==from&&!['Kenji Mori','Lena Ward'].includes(r)),to=pool[(rr++)%pool.length];const hrs=Math.round((Date.now()-Date.parse(l.LastModifiedDate))/3600e3);
-   await mailer.sendMail({from:'"@mops" <mops@mops.local>',to:repMail(from),cc:repMail(to),subject:`Lead untouched ${hrs}h: ${l.FirstName} ${l.LastName} (${l.Company})`,text:`Hi ${from.split(' ')[0]},\n\n${l.FirstName} ${l.LastName}, ${l.Title} at ${l.Company}, has been an MQL with you for ${hrs}h with no activity (score ${Math.round(l.Score__c)}). Per the 48h SLA I've reassigned it to ${to}. Reply "@mops give it back" if you're on it.\n\n— @mops`});
+   deliver({from:'"@mops" <mops@mops.local>',to:repMail(from),cc:repMail(to),subject:`Lead untouched ${hrs}h: ${l.FirstName} ${l.LastName} (${l.Company})`,text:`Hi ${from.split(' ')[0]},\n\n${l.FirstName} ${l.LastName}, ${l.Title} at ${l.Company}, has been an MQL with you for ${hrs}h with no activity (score ${Math.round(l.Score__c)}). Per the 48h SLA I've reassigned it to ${to}. Reply "@mops give it back" if you're on it.\n\n— @mops`});
    await call('crm',`/services/data/v59.0/sobjects/Lead/${l.Id}?as=mops-autopilot`,{method:'PATCH',body:{OwnerName:to}},'noflake');if(l.External_Id__c)await call('engine',`/leads/${l.External_Id__c}/owner`,{body:{owner:to,actor:'autopilot'}},T);
    record({rule:'Lead not followed up in 48h',key,risk:'low',status:'done',title:`${l.FirstName} ${l.LastName} (${l.Company}) sat ${hrs}h with ${from}`,before:{text:`Owner ${from}, status ${l.Status}, last touched ${hrs}h ago.`},after:{text:`Nudged ${from} by email and reassigned to ${to} in CRM.`},undo:{type:'reassign',crmId:l.Id,ext:l.External_Id__c,owner:from},actions:['email nudge','CRM owner change']})}},
  async underspend(T){const camps=await call('engine','/campaigns');const live=camps.filter(c=>c.status==='Live'&&c.budget>0);const wh=await call('warehouse','/query/top_campaigns').catch(()=>({rows:[]}));

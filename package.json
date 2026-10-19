@@ -3,22 +3,18 @@
   "version": "0.5.0",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": "20.x"
   },
   "scripts": {
-    "start": "node backend/boot.js",
+    "start": "node server.js",
     "demo": "node backend/demo.js",
-    "test": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js",
-    "test:backend": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js",
+    "test": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js",
+    "test:backend": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js",
     "stop": "sh backend/stop.sh",
     "demo:run": "node backend/demo.js --run"
   },
   "dependencies": {
-    "@duckdb/node-api": "^1.5.6-r.1",
     "better-sqlite3": "^11.10.0",
-    "mailparser": "^3.9.46",
-    "nodemailer": "^10.1.7",
-    "smtp-server": "^3.20.2",
     "xlsx": "^0.18.5"
   },
   "allowScripts": {

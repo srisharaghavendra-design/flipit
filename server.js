@@ -1,14 +1,14 @@
-// @mops platform – zero-dependency Node server. One JSON data layer (data.json), agents in agents.js.
+// @mops platform. One JSON data layer (data.json), agents in agents.js, and the five backend services in this same process.
 // LLM tool-calling when MOPS_API_KEY is set (OpenAI-compatible: xAI / OpenAI); otherwise rule router calling the SAME tools.
+if(process.env.VERCEL&&!process.env.MOPS_DATA_DIR)process.env.MOPS_DATA_DIR='/tmp/mops';
+if(process.env.VERCEL&&!process.env.MOPS_RUNS_DIR)process.env.MOPS_RUNS_DIR='/tmp/mops/runs';
 const http=require('http'),fs=require('fs'),path=require('path');const mk=require('./agents.js');const{esc,fmt}=mk;
 const DATA_DIR=process.env.MOPS_DATA_DIR||__dirname;fs.mkdirSync(DATA_DIR,{recursive:true});const DB=path.join(DATA_DIR,'data.json');if(!fs.existsSync(DB))fs.copyFileSync(path.join(__dirname,'data.seed.json'),DB);
 let db=JSON.parse(fs.readFileSync(DB));const save=()=>fs.writeFileSync(DB,JSON.stringify(db));
 const KEY=process.env.MOPS_API_KEY,BASE=process.env.MOPS_API_BASE||'https://api.x.ai/v1',MODEL=process.env.MOPS_MODEL||'grok-4';
-// Mail never leaves the machine. The hosted demo always uses the internal SMTP catcher.
-// An external MOPS_SMTP_URL is ignored on purpose.
-let sender={name:'local-outbox',send(){}};
-if(process.env.MOPS_SMTP_URL){try{const host=new URL(process.env.MOPS_SMTP_URL).hostname;if(!['127.0.0.1','localhost','::1'].includes(host))console.error('Refusing external SMTP. Demo mail stays on the local catcher.');}catch{console.error('Ignoring invalid MOPS_SMTP_URL');}}
-if(process.env.MOPS_INTERNAL_SMTP==='1'){try{const nm=require('nodemailer');const tr=nm.createTransport({host:'127.0.0.1',port:+(process.env.SMTP_PORT||2525),secure:false,ignoreTLS:true});sender={name:'internal-smtp',send:m=>tr.sendMail({from:process.env.MOPS_FROM||'mops@mops.local',to:m.to,subject:m.subject,text:m.body}).catch(e=>console.error('smtp',e.message))};}catch(e){console.error('internal smtp unavailable',e.message);}}
+// Mail never leaves the process. An external MOPS_SMTP_URL is ignored on purpose.
+let sender={name:'in-process-catcher',send(m){try{require('./backend/mail').deliver({from:process.env.MOPS_FROM||'mops@mops.local',to:m.to,subject:m.subject,text:m.body})}catch(e){console.error('mail',e.message)}}};
+if(process.env.MOPS_SMTP_URL)console.error('Refusing external SMTP. Demo mail stays in the in-process catcher.');
 const ctx={sender,dayMs:Number(process.env.MOPS_DAY_MS)||86400000};
 let A=mk(db,ctx);
 const T=id=>db.threads.find(t=>t.id===id);
@@ -108,7 +108,8 @@ function delegate(limit){limit=limit||Number(process.env.MOPS_DELEGATE_LIMIT)||2
  for(const sh of (db.shifts||[]).filter(x=>x.status==='pending'&&x.amount<=limit)){const c=db.campaigns.find(x=>x.id===sh.from);const r=A.approve_item({id:sh.id});if(!r.error)(by['T-'+c.id]=by['T-'+c.id]||[]).push({...r,kind:'Delegated',risk:'medium',title:r.title.replace(/^SH-\d+: /,''),data:{...r.data,amount:sh.amount,to:sh.to}});}
  let n=0;for(const[tid,arts]of Object.entries(by)){const t=T(tid);if(!t)continue;n+=arts.length;t.messages.push({who:'@mops',mode:'delegated',text:'Decided within your rules',artifacts:arts,at:new Date().toISOString()});}
  if(n)save();return n;}
-setInterval(()=>tickNurture(false),15000);if(process.env.MOPS_AUTOPILOT!=='0')setInterval(autopilot,Number(process.env.MOPS_AUTOPILOT_MS)||60000);
+const nurtureTimer=setInterval(()=>tickNurture(false),15000);if(nurtureTimer.unref)nurtureTimer.unref();
+if(process.env.MOPS_AUTOPILOT!=='0'){const ap=setInterval(autopilot,Number(process.env.MOPS_AUTOPILOT_MS)||60000);if(ap.unref)ap.unref()}
 // ---------- pages ----------
 function sowHtml(s){const c=db.campaigns.find(x=>x.id===s.campaignId);return`<html><head><meta charset="utf-8"><title>${s.id}</title><style>body{font-family:Calibri,Arial;max-width:760px;margin:40px auto;line-height:1.5}h1{color:#4f46e5}td{padding:6px 10px;border:1px solid #ccc}</style></head><body>
 <h1>Statement of Work ${s.id}</h1><p><b>Client:</b> Northwind Networks (fictional) &nbsp; <b>Vendor:</b> ${esc(s.vendor)}</p><table><tr><td>Campaign</td><td>${esc(c?c.name:'-')}</td></tr><tr><td>Campaign code</td><td>${esc(s.code)}</td></tr><tr><td>Region</td><td>${esc(c?c.region:'-')}</td></tr><tr><td>Fee</td><td>${fmt(s.amount)}</td></tr></table>
@@ -120,10 +121,10 @@ function regPage(e,msg){return`<!doctype html><html><head><meta name="viewport" 
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'};
 const body=req=>new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>r(b))});
 const J=(res,o,c=200)=>{res.writeHead(c,{'content-type':'application/json'});res.end(JSON.stringify(o))};
-const HUB=require('./backend/hub.js');const guard=require('./backend/guard.js');require('./backend/lib.js');
+const guard=require('./backend/guard.js');const{ready}=require('./backend/ready.js');
 // Messages that reach @mops on any surface (email, Webex, Engine room) also land in the app's campaign thread.
 require('./backend/agent.js').attach(({surface,sender,text,reply})=>{const t=T('T-K1');if(!t)return;const at=new Date().toISOString();t.messages.push({who:sender,via:{email:'Outlook',webex:'Webex',app:'App'}[surface]||surface,text,at},{who:'@mops',mode:'rules',text:reply,artifacts:[],at});save();});
-http.createServer(async(req,res)=>{const u=new URL(req.url,'http://x');const p=u.pathname;try{
+async function handleRequest(req,res){await ready();const HUB=require('./backend/hub.js');const u=new URL(req.url,'http://x');const p=u.pathname;try{
  if(await guard.handle(req,res,p))return;
  if(p==='/health'||p==='/healthz')return J(res,{ok:true,service:'mops',company:'Northwind Networks'});
  if(await HUB.handle(req,res,p,u))return;
@@ -155,5 +156,9 @@ http.createServer(async(req,res)=>{const u=new URL(req.url,'http://x');const p=u
   res.writeHead(200,{'content-type':'text/html'});return res.end(regPage(e))}
  if((s=p.match(/^\/t\/(o|c)\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[2]);if(mm){mm.opened=true;if(s[1]==='c')mm.clicked=true;save();}res.writeHead(s[1]==='c'?302:200,s[1]==='c'?{location:'/r/'+(db.events[0]?.slug||'')}:{'content-type':'image/gif'});return res.end()}
  if((s=p.match(/^\/outbox\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[1]);res.writeHead(200,{'content-type':'text/html'});return res.end(`<div style="font-family:system-ui;max-width:620px;margin:30px auto"><p><b>To:</b> ${esc(mm.to)}<br><b>Subject:</b> ${esc(mm.subject)}</p><pre style="white-space:pre-wrap;font-family:inherit">${esc(mm.body)}</pre><a href="/t/c/${mm.id}">Reserve my seat</a><img src="/t/o/${mm.id}" width=1 height=1></div>`)}
- const f=path.join(__dirname,'public',p==='/'?'index.html':p);if(f.startsWith(path.join(__dirname,'public'))&&fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});return res.end(fs.readFileSync(f))}
- res.writeHead(404);res.end('not found');}catch(e){console.error(e);J(res,{error:e.message},500)}}).listen(process.env.PORT||8787,'0.0.0.0',()=>console.log(`@mops on :${process.env.PORT||8787} mode=${KEY?'llm':'rules'} sender=${sender.name}`));
+ const root=path.join(__dirname,'ui');const f=path.join(root,p==='/'?'index.html':p);if(f.startsWith(root)&&fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});return res.end(fs.readFileSync(f))}
+ res.writeHead(404);res.end('not found');}catch(e){console.error(e);if(!res.headersSent)J(res,{error:e.message},500)}}
+function listen(){const{listenServices}=require('./backend/lib.js');const port=process.env.PORT||process.env.MOPS_PORT||8787;
+  return ready().then(()=>{http.createServer(handleRequest).listen(port,'0.0.0.0',()=>console.log(`@mops on :${port} mode=${KEY?'llm':'rules'} sender=${sender.name}`));if(!process.env.VERCEL)listenServices()})}
+module.exports={handleRequest,listen,ready};
+if(require.main===module)listen().catch(e=>{console.error(e);process.exit(1)});

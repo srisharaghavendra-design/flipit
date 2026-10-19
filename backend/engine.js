@@ -1,7 +1,8 @@
 // @mops marketing engine: replaces Eloqua (contacts, segments, consent, email), the campaign/budget workflow,
 // Cvent-style registration, signal-based lead scoring, and the CRM sync connector. Own SQLite database.
-const path=require('path'),fs=require('fs'),crypto=require('crypto'),Database=require('better-sqlite3'),nodemailer=require('nodemailer');
-const{PORTS,URLS,PUBLIC,DATA,now,emitter,parseCSV,service,err,openapi}=require('./lib');
+const path=require('path'),fs=require('fs'),crypto=require('crypto'),Database=require('better-sqlite3');
+const{PORTS,PUBLIC,DATA,now,emitter,parseCSV,service,err,openapi,call}=require('./lib');
+const mail=require('./mail');
 const emit=emitter('engine');const db=new Database(path.join(DATA,'engine.db'));db.pragma('journal_mode=WAL');
 const SECRET=process.env.MOPS_SECRET||'dev-only-secret';const APPROVAL_LIMIT=+(process.env.MOPS_APPROVAL_LIMIT||150000);
 db.exec(`CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY,name TEXT,region TEXT,segment TEXT,industry TEXT,domain TEXT);
@@ -81,8 +82,8 @@ function payload(object,id){if(object==='Campaign'){const c=one('SELECT * FROM c
 const TBL={Campaign:'campaigns',CampaignMember:'members',Lead:'leads'};const MAX_ATTEMPTS=+(process.env.SYNC_MAX_ATTEMPTS||5);let busy=false;
 async function syncTick(){if(busy)return;busy=true;try{const jobs=all("SELECT * FROM sync_jobs WHERE status='pending' AND next_at<=? ORDER BY id LIMIT 25",Date.now());
   await Promise.all(jobs.map(async j=>{const[t,ext,body]=payload(j.object,j.local_id);try{
-    const r=await fetch(`${URLS.crm}/services/data/v59.0/sobjects/${t}/External_Id__c/${encodeURIComponent(ext)}`,{method:'PATCH',headers:{'content-type':'application/json','x-mops-trace':j.trace||''},body:JSON.stringify(body)});
-    const out=await r.json();if(!r.ok)throw Object.assign(new Error(`${r.status} ${out.error}`),{status:r.status});
+    const out=await call('crm',`/services/data/v59.0/sobjects/${t}/External_Id__c/${encodeURIComponent(ext)}`,{method:'PATCH',body,trace:j.trace||'',ok:true});
+    if(out.__http>=400)throw Object.assign(new Error(`${out.__http} ${out.error||''}`),{status:out.__http});
     run(`UPDATE ${TBL[j.object]} SET crm_id=? WHERE id=?`,out.id,j.local_id);if(j.object==='Lead')run('UPDATE leads SET synced_at=? WHERE id=?',now(),j.local_id);
     run("DELETE FROM sync_jobs WHERE object=? AND local_id=? AND status='done'",j.object,j.local_id);run("UPDATE sync_jobs SET status='done',done_at=?,attempts=attempts+1 WHERE id=?",now(),j.id);
     emit('sync',`→ CRM ${t} ${j.local_id} ⇒ ${out.id}${j.attempts?` (after ${j.attempts} retr${j.attempts>1?'ies':'y'})`:''}`,{object:t},j.trace)}
@@ -90,8 +91,8 @@ async function syncTick(){if(busy)return;busy=true;try{const jobs=all("SELECT * 
     if(dead){run("DELETE FROM sync_jobs WHERE object=? AND local_id=? AND status='dead'",j.object,j.local_id);run("UPDATE sync_jobs SET status='dead',attempts=?,last_error=? WHERE id=?",a,e.message,j.id);emit('error',`✖ ${j.object} ${j.local_id} moved to failure queue: ${e.message}`,{},j.trace)}
     else{run('UPDATE sync_jobs SET attempts=?,next_at=?,last_error=? WHERE id=?',a,Date.now()+wait,e.message,j.id);emit('retry',`↻ ${j.object} ${j.local_id} failed (${e.message}); retry ${a} in ${Math.round(wait)}ms`,{},j.trace)}}}));
   }finally{busy=false}}
-async function pull(trace){const since=one("SELECT v FROM kv WHERE k='crm_cursor'")?.v||'1970';const r=await fetch(`${URLS.crm}/services/data/v59.0/changes?since=${encodeURIComponent(since)}`,{headers:{'x-mops-trace':trace||''}});
-  if(!r.ok)throw err(r.status,'CRM changes feed '+r.status);const ch=await r.json();let applied=0,conflicts=0;
+async function pull(trace){const since=one("SELECT v FROM kv WHERE k='crm_cursor'")?.v||'1970';const ch=await call('crm',`/services/data/v59.0/changes?since=${encodeURIComponent(since)}`,{trace:trace||'',ok:true});
+  if(ch.__http>=400)throw err(ch.__http,'CRM changes feed '+ch.__http);let applied=0,conflicts=0;
   for(const L of ch.Lead){const l=one('SELECT * FROM leads WHERE id=?',L.External_Id__c);if(!l)continue;const unsynced=l.synced_at&&l.updated_at>l.synced_at;
     // Rule: sales owns status/owner/conversion (CRM wins); marketing owns the score (engine wins, value pushed back).
     if(L.Score__c!=null&&Math.round(L.Score__c)!==Math.round(l.score)){run('INSERT INTO conflicts(object,local_id,field,local_val,remote_val,winner,rule,at) VALUES(?,?,?,?,?,?,?,?)','Lead',l.id,'Score__c',l.score,L.Score__c,'engine','marketing owns score'+(unsynced?' (both sides changed)':''),now());conflicts++;
@@ -100,7 +101,6 @@ async function pull(trace){const since=one("SELECT v FROM kv WHERE k='crm_cursor
       run('UPDATE leads SET status=?,owner=?,opp_id=?,synced_at=? WHERE id=?',L.Status,L.OwnerName,L.ConvertedOpportunityId,now(),l.id);applied++;emit('sync',`← CRM Lead ${l.id}: ${L.Status}${L.OwnerName?' · '+L.OwnerName:''}${L.ConvertedOpportunityId?' · opp '+L.ConvertedOpportunityId:''}`,{},trace)}}
   run("INSERT OR REPLACE INTO kv VALUES('crm_cursor',?)",ch.cursor);if(applied||conflicts)audit('crm-sync','pull',null,{applied,conflicts,opps:ch.Opportunity.length},trace);return{applied,conflicts,opportunities:ch.Opportunity.length}}
 // ---------- email ----------
-const mailer=nodemailer.createTransport({host:'127.0.0.1',port:PORTS.smtp,secure:false,ignoreTLS:true,pool:true,maxConnections:5});
 const sign=s=>crypto.createHmac('sha256',SECRET).update(s).digest('base64url').slice(0,16);
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function render(tpl,c,send,extra){const B=PUBLIC+'/svc/engine';const unsub=`${B}/u/${send.id}.${sign(send.id)}`;
@@ -115,12 +115,12 @@ async function sendCampaign({campaignId,segmentId,rules,templateId,extra={}},tra
   for(const c of list){const g=canEmail(c);const sid=nextId('send','S',6);out.byLaw[g.law]=(out.byLaw[g.law]||0)+1;
     if(!g.ok){run('INSERT INTO sends(id,campaign_id,contact_id,template_id,status,reason,law) VALUES(?,?,?,?,?,?,?)',sid,campaignId,c.id,tpl.id,'suppressed',g.reason,g.law);out.suppressed++;out.reasons[g.reason]=(out.reasons[g.reason]||0)+1;continue}
     const m=render(tpl,c,{id:sid},extra);
-    try{const info=await mailer.sendMail({from:'"Northwind Networks" <events@northwind.example>',to:c.email,subject:m.subject,html:m.html+`<p style="font-size:11px;color:#888">Northwind Networks · 1 Example Way, Bengaluru · <a href="${m.unsub}">Unsubscribe</a></p>`,
+    try{const info=mail.deliver({from:'"Northwind Networks" <events@northwind.example>',to:c.email,subject:m.subject,html:m.html+`<p style="font-size:11px;color:#888">Northwind Networks · 1 Example Way, Bengaluru · <a href="${m.unsub}">Unsubscribe</a></p>`,
         headers:{'List-Unsubscribe':`<${m.unsub}>`,'List-Unsubscribe-Post':'List-Unsubscribe=One-Click','X-Mops-Campaign':camp.code,'X-Mops-Send':sid,'X-Mops-Trace':trace||''}});
       run('INSERT INTO sends(id,campaign_id,contact_id,template_id,status,law,smtp_id,sent_at) VALUES(?,?,?,?,?,?,?,?)',sid,campaignId,c.id,tpl.id,'sent',g.law,info.messageId,now());out.sent++;
       upsertMember(campaignId,c.id,'Sent',trace)}catch(e){run('INSERT INTO sends(id,campaign_id,contact_id,template_id,status,reason,law) VALUES(?,?,?,?,?,?,?)',sid,campaignId,c.id,tpl.id,'failed',e.message,g.law);out.failed++}}
   emit('consent',`consent check: ${out.sent} allowed, ${out.suppressed} suppressed (${Object.entries(out.reasons).map(([k,v])=>v+' '+k).join(', ')||'none'})`,out.byLaw,trace);
-  emit('smtp',`handed ${out.sent} emails to SMTP :${PORTS.smtp}`,{},trace);audit('srisha','email.send',campaignId,out,trace);return out}
+  emit('smtp',`handed ${out.sent} emails to the in-process catcher`,{},trace);audit('srisha','email.send',campaignId,out,trace);return out}
 function upsertMember(cid,contact,status,trace){const RANK={Sent:1,Opened:2,Clicked:3,Registered:4,Attended:5};const m=one('SELECT * FROM members WHERE campaign_id=? AND contact_id=?',cid,contact);
   if(m){if((RANK[status]||0)>(RANK[m.status]||0)){run('UPDATE members SET status=?,updated_at=? WHERE id=?',status,now(),m.id);enqueue('CampaignMember',m.id,trace)}return m.id}
   const id=nextId('mem','CM',6);run('INSERT INTO members VALUES(?,?,?,?,?,?,?)',id,cid,contact,status,null,now(),now());enqueue('CampaignMember',id,trace);return id}
@@ -181,7 +181,7 @@ async function seed(trace){for(const t of['accounts','contacts','consent_ledger'
     Lead:leads.map(l=>({External_Id__c:l.id,Email:l.email,FirstName:l.first,LastName:l.last,Company:l.company,Title:l.title,Status:l.status,Score__c:l.score,CampaignExt:l.campaign_id,...(l.owner?{OwnerName:l.owner,LastModifiedDate:l.updated_at,LastModifiedById:l.owner}:{})})),
     CampaignMember:mems.map(m=>({External_Id__c:m.id,CampaignExt:m.campaign_id,ContactExt:m.contact_id,Email:m.email,Status:m.status})),
     Opportunity:S.leads.filter(l=>l.stage==='Opportunity'&&l.pipeline).map(l=>({Name:acct[l.accountId]+' – opportunity',Amount:l.pipeline,StageName:'Proposal',AccountName:acct[l.accountId],LeadExt:l.id,CampaignExt:l.campaignId,CloseDate:'2026-12-31',CreatedDate:l.created+'T00:00:00.000Z'}))};
-  await fetch(URLS.crm+'/admin/reset',{method:'POST'});const r=await(await fetch(URLS.crm+'/admin/bulk-load',{method:'POST',headers:{'content-type':'application/json','x-mops-trace':trace||''},body:JSON.stringify(body)})).json();
+  await call('crm','/admin/reset',{method:'POST',body:{}});const r=await call('crm','/admin/bulk-load',{method:'POST',body,trace:trace||''});
   db.transaction(()=>{for(const[k,id]of Object.entries(r.map)){const[t,ext]=k.split(':');if(TBL[t])run(`UPDATE ${TBL[t]} SET crm_id=? WHERE id=?`,id,ext);if(t==='Opportunity')run('UPDATE leads SET opp_id=? WHERE id=?',id,ext)}})();
   run("INSERT OR REPLACE INTO kv VALUES('crm_cursor',?)",now());audit('system','seed',null,{contacts:one('SELECT count(*) n FROM contacts').n,crmLoaded:r.loaded},trace);
   emit('seed',`seeded ${one('SELECT count(*) n FROM contacts').n} contacts, ${camps.length} campaigns; bulk-loaded ${r.loaded} CRM records`,{},trace);return{ok:true,crmLoaded:r.loaded}}
@@ -282,13 +282,14 @@ S_.post('/campaigns/:id/schedule',c=>{const id=nextId('sch','SCH-');const due=Da
   audit(c.body.actor||'srisha','send.schedule',id,{due:new Date(due).toISOString()},c.trace);emit('campaign',`send ${id} scheduled for ${new Date(due).toLocaleTimeString()} (undo window)`,{},c.trace);return{id,dueAt:due}});
 S_.post('/scheduled/:id/cancel',c=>{const r=run("UPDATE scheduled_sends SET status='cancelled' WHERE id=? AND status='scheduled'",c.params.id);if(!r.changes)throw err(409,'already sent or cancelled');audit(c.body.actor||'srisha','send.cancel',c.params.id,{},c.trace);emit('campaign',`scheduled send ${c.params.id} cancelled`,{},c.trace);return{ok:true}});
 S_.get('/scheduled',()=>all('SELECT * FROM scheduled_sends ORDER BY at DESC'));
-setInterval(async()=>{for(const s of all("SELECT * FROM scheduled_sends WHERE status='scheduled' AND due_at<=?",Date.now())){run("UPDATE scheduled_sends SET status='sending' WHERE id=?",s.id);try{const r=await sendCampaign({...JSON.parse(s.body),campaignId:s.campaign_id},s.id);run("UPDATE scheduled_sends SET status='sent',result=? WHERE id=?",JSON.stringify(r),s.id)}catch(e){run("UPDATE scheduled_sends SET status='failed',result=? WHERE id=?",e.message,s.id)}}},1000);
+const schedTimer=setInterval(async()=>{for(const s of all("SELECT * FROM scheduled_sends WHERE status='scheduled' AND due_at<=?",Date.now())){run("UPDATE scheduled_sends SET status='sending' WHERE id=?",s.id);try{const r=await sendCampaign({...JSON.parse(s.body),campaignId:s.campaign_id},s.id);run("UPDATE scheduled_sends SET status='sent',result=? WHERE id=?",JSON.stringify(r),s.id)}catch(e){run("UPDATE scheduled_sends SET status='failed',result=? WHERE id=?",e.message,s.id)}}},1000);if(schedTimer.unref)schedTimer.unref();
 S_.post('/leads/:id/owner',c=>{run('UPDATE leads SET owner=?,updated_at=? WHERE id=?',c.body.owner,now(),c.params.id);audit(c.body.actor||'srisha','lead.reassign',c.params.id,{owner:c.body.owner},c.trace);return{ok:true}});
 S_.get('/leads',c=>all(`SELECT l.*,c.email FROM leads l JOIN contacts c ON c.id=l.contact_id ${c.query.status?'WHERE l.status=?':''} ORDER BY l.updated_at LIMIT 500`,...(c.query.status?[c.query.status]:[])));
 S_.del('/templates/:id',c=>{run('DELETE FROM templates WHERE id=?',c.params.id);audit('srisha','template.delete',c.params.id,{},c.trace);return{ok:true}});
 S_.get('/templates/:id',c=>one('SELECT * FROM templates WHERE id=?',c.params.id)||{__status:404});
 S_.post('/admin/seed',c=>seed(c.trace));
 S_.post('/admin/sync-interval',c=>{clearInterval(timer);timer=setInterval(syncTick,+c.body.ms||400);return{ok:true}});
-let timer=setInterval(syncTick,+(process.env.SYNC_MS||400));setInterval(()=>pull().catch(()=>{}),+(process.env.PULL_MS||15000));
-S_.listen().then(async()=>{if(!one('SELECT count(*) n FROM contacts').n){for(let i=0;i<40;i++){try{await seed();break}catch(e){await new Promise(r=>setTimeout(r,250))}}}});
-module.exports={nlToRules,compile,canEmail,fyq};
+let timer=setInterval(syncTick,+(process.env.SYNC_MS||400));if(timer.unref)timer.unref();
+const pullTimer=setInterval(()=>pull().catch(()=>{}),+(process.env.PULL_MS||15000));if(pullTimer.unref)pullTimer.unref();
+async function boot(){if(one('SELECT count(*) n FROM contacts').n)return{ok:true,already:true};let last;for(let i=0;i<40;i++){try{return await seed()}catch(e){last=e;await new Promise(r=>setTimeout(r,250))}}throw last}
+module.exports={nlToRules,compile,canEmail,fyq,boot,seed};

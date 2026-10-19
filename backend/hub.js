@@ -1,11 +1,11 @@
 // Hub (inside server.js on :8787): event bus + SSE stream for the Engine room, health aggregation, a reverse proxy to every
 // service (/svc/<name>/...), and the orchestrator that turns @mops tags into real calls across the services.
-const fs=require('fs'),path=require('path'),http=require('http');const{URLS,PUBLIC,call}=require('./lib');
-const SVCS={engine:{label:'@mops Engine',replaces:'Eloqua · campaign ops · Cvent'},crm:{label:'CRM (fake SFDC)',replaces:'Salesforce stand-in'},mail:{label:'Mail (SMTP)',replaces:'Email delivery'},warehouse:{label:'Warehouse',replaces:'Snowflake · Power BI/Tableau'}};
+const fs=require('fs'),path=require('path');const{PUBLIC,call,invoke}=require('./lib');
+const SVCS={engine:{label:'@mops Engine',replaces:'Eloqua · campaign ops · Cvent'},crm:{label:'CRM (fake SFDC)',replaces:'Salesforce stand-in'},mail:{label:'Mail (in-process catcher)',replaces:'Email delivery'},warehouse:{label:'Warehouse',replaces:'Snowflake · Power BI/Tableau'}};
 const ring=[],clients=new Set();let seq=0;
 function bus(ev){try{ev.offset=require('./core').append(ev)}catch{}ev.id=++seq;ev.at=ev.at||new Date().toISOString();ring.push(ev);if(ring.length>800)ring.shift();const s=`data: ${JSON.stringify(ev)}\n\n`;for(const c of clients)c.write(s)}
 const hubEmit=(kind,msg,data={},trace)=>bus({svc:'hub',kind,msg,data,trace});
-async function health(){const out={};await Promise.all(Object.keys(SVCS).map(async k=>{const t0=Date.now();try{const r=await fetch(URLS[k]+'/health',{signal:AbortSignal.timeout(1500)});out[k]={...SVCS[k],...await r.json(),ms:Date.now()-t0,docs:`/svc/${k}/docs`}}catch(e){out[k]={...SVCS[k],ok:false,error:'down',docs:`/svc/${k}/docs`}}}));return out}
+async function health(){const out={};await Promise.all(Object.keys(SVCS).map(async k=>{const t0=Date.now();try{const r=await call(k,'/health');delete r.__ms;delete r.__http;out[k]={...SVCS[k],...r,ms:Date.now()-t0,docs:`/svc/${k}/docs`}}catch(e){out[k]={...SVCS[k],ok:false,error:'down',docs:`/svc/${k}/docs`}}}));return out}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const BL=()=>JSON.parse(fs.readFileSync(path.join(__dirname,'..','baselines.json')));
 let current=null;const lastMaps={};const RUNS=(process.env.MOPS_RUNS_DIR||path.join(__dirname,'runs'));fs.mkdirSync(RUNS,{recursive:true});
@@ -27,10 +27,10 @@ async function runCampaign(opts={}){if(current&&!current.done)throw new Error('a
     await step(6,'@mops send the invite','email',async t=>{const r=await call('engine',`/campaigns/${ctx.camp.id}/send`,{body:{segmentId:ctx.seg.id,templateId:'TPL-INVITE',extra:{event_name:'Zero Trust Roundtable',event_date:'12 Nov 2026',event_city:'Bengaluru',event_link:ctx.ev.url}}},t);ctx.send=r;return r});
     await step(7,'(recipients engage: real opens, clicks and unsubscribes hit the tracking endpoints)','email',async t=>{await sleep(400);const msgs=(await call('mail','/messages')).filter(m=>m.headers['x-mops-campaign']===ctx.camp.code);let o=0,k=0,u=0;ctx.clickers=[];
       for(const [i,m] of msgs.entries()){const full=await call('mail','/messages/'+m.id);const px=full.html.match(/src="([^"]+\/t\/o\/[^"]+)"/),lk=full.html.match(/href="([^"]+\/t\/c\/[^"]+)"/),un=full.headers['list-unsubscribe']?.replace(/[<>]/g,'');
-        const loc=s=>s.replace(PUBLIC,'http://127.0.0.1:'+(process.env.MOPS_PORT||8787));
-        if(i%10<7&&px){await fetch(loc(px[1]),{headers:{'x-mops-trace':t}});o++}
-        if(i%10<4&&lk){await fetch(loc(lk[1].replace(/&amp;/g,'&')),{redirect:'manual',headers:{'x-mops-trace':t}});k++;ctx.clickers.push(m.rcpt)}
-        else if(i%10===9&&un&&u<2){await fetch(loc(un),{method:'POST',headers:{'x-mops-trace':t,accept:'application/json'}});u++}}
+        const hit=async(abs,opt={})=>{const u=new URL(abs,PUBLIC);const mm=u.pathname.match(/^\/svc\/(engine|crm|mail|warehouse)(\/.*)?$/);if(!mm)throw new Error('tracking url '+u.pathname);return invoke(mm[1],opt.method||'GET',(mm[2]||'/')+u.search,{headers:opt.headers,raw:opt.body||''})};
+        if(i%10<7&&px){await hit(px[1],{headers:{'x-mops-trace':t}});o++}
+        if(i%10<4&&lk){await hit(lk[1].replace(/&amp;/g,'&'),{headers:{'x-mops-trace':t}});k++;ctx.clickers.push(m.rcpt)}
+        else if(i%10===9&&un&&u<2){await hit(un,{method:'POST',headers:{'x-mops-trace':t,accept:'application/json'}});u++}}
       return{delivered:msgs.length,opens:o,clicks:k,unsubscribes:u}});
     await step(8,'(registrations arrive through the hosted form)','event',async t=>{let n=0;for(const email of ctx.clickers.slice(0,Math.max(3,Math.ceil(ctx.clickers.length*0.6)))){await call('engine','/r/'+ctx.ev.slug,{body:{email,consent:'on'}},t);n++}
       const walk=[['Riya','Menon','riya.menon@orbitfoods.example','Orbit Foods','CIO'],['Arjun','Pillai','arjun.p@tealbank.example','Teal Bank','CISO'],['Kavya','Iyer','kavya@novaports.example','Nova Ports','IT Director']];
@@ -61,20 +61,21 @@ async function tag(text){const q=text.toLowerCase(),t='T'+Date.now().toString(36
   if(/segment|who|find/.test(q))return call('engine','/segments/preview',{body:{text}},t);
   const m=q.match(/\$?(\d+)\s*k/);if(/campaign|budget/.test(q)&&m)return call('engine','/campaigns',{body:{name:text.replace(/@mops/i,'').trim().slice(0,60),channel:/event|roundtable/.test(q)?'Events':'Digital',region:'India',budget:+m[1]*1000}},t);
   return{hint:'Try: "@mops segment CISOs in Japan", "@mops sync now", "@mops refresh the warehouse", "@mops pipeline by channel", "@mops attribution", "@mops new campaign budget $90K"'}}
-function proxy(req,res,name,rest){const u=new URL(URLS[name]);const pr=http.request({host:u.hostname,port:u.port,path:rest||'/',method:req.method,headers:{...req.headers,host:u.host}},r=>{res.writeHead(r.statusCode,r.headers);r.pipe(res)});
-  pr.on('error',()=>{res.writeHead(502,{'content-type':'application/json'});res.end(JSON.stringify({error:name+' service is not running. Start everything with: npm run demo'}))});req.pipe(pr)}
+async function proxy(req,res,name,rest){try{const raw=['POST','PATCH','PUT'].includes(req.method)?await body(req):'';const r=await invoke(name,req.method,rest||'/',{raw,headers:req.headers});
+  const h={...(r.headers||{})};if(!h['content-type']&&!h['Content-Type'])h['content-type']=r.raw&&r.raw.length&&r.raw[0]===123?'application/json':'text/plain';
+  res.writeHead(r.status,h);res.end(r.raw)}catch(e){res.writeHead(502,{'content-type':'application/json'});res.end(JSON.stringify({error:e.message}))}}
 const body=req=>new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>r(b))});
 const J=(res,o,c=200)=>{res.writeHead(c,{'content-type':'application/json'});res.end(JSON.stringify(o))};
 async function handle(req,res,p,u){
   const sv=p.match(/^\/svc\/(engine|crm|mail|warehouse)(\/.*)?$/);if(sv){proxy(req,res,sv[1],(sv[2]||'/')+(u.search||''));return true}
-  if(p==='/engine'||p==='/engine/'){res.writeHead(200,{'content-type':'text/html'});res.end(fs.readFileSync(path.join(__dirname,'..','public','engine.html')));return true}
+  if(p==='/engine'||p==='/engine/'){res.writeHead(200,{'content-type':'text/html'});res.end(fs.readFileSync(path.join(__dirname,'..','ui','engine.html')));return true}
   if(!p.startsWith('/api/engine/'))return false;const r=p.slice(12);
   if(r==='bus'&&req.method==='POST'){bus(JSON.parse(await body(req)));J(res,{ok:1});return true}
   if(r==='stream'){res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-cache',connection:'keep-alive'});res.write(`retry: 1500\n\n`);for(const e of ring.slice(-(+u.searchParams.get('backlog')||80)))res.write(`data: ${JSON.stringify(e)}\n\n`);clients.add(res);const ka=setInterval(()=>res.write(': ka\n\n'),15000);req.on('close',()=>{clients.delete(res);clearInterval(ka)});return true}
   if(r==='log'){J(res,ring.slice(-300));return true}
   if(r==='health'){J(res,await health());return true}
   if(r==='run'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');if(current&&!current.done){J(res,{error:'run in progress',run:current},409);return true}
-    const pr=runCampaign(b);if(b.wait){J(res,await pr)}else{pr.catch(()=>{});J(res,{started:true})}return true}
+    const pr=runCampaign(b);if(b.wait||process.env.VERCEL){J(res,await pr)}else{pr.catch(()=>{});J(res,{started:true})}return true}
   if(r==='run/current'){J(res,current||{});return true}
   if(r==='runs'){J(res,fs.readdirSync(RUNS).filter(f=>f.endsWith('.json')).sort().reverse().slice(0,10).map(f=>JSON.parse(fs.readFileSync(path.join(RUNS,f)))).map(({steps,...x})=>x));return true}
   if(r==='tag'&&req.method==='POST'){const b=JSON.parse(await body(req));try{const x=await require('./agent').handle({text:b.text||'',surface:b.surface||'app',sender:b.sender||'Srisha R.'});J(res,x)}catch(e){J(res,{error:e.message},500)}return true}
@@ -82,14 +83,14 @@ async function handle(req,res,p,u){
   if(r==='core'){J(res,CORE.stats());return true}
   if(r==='conversations'){J(res,CORE.db.prepare('SELECT * FROM conversations ORDER BY id DESC LIMIT 50').all());return true}
   if(r==='webhooks/webex'&&req.method==='POST'){const raw=await body(req);const x=await W.webex(raw,req.headers['x-spark-signature']);J(res,x.body,x.status);return true}
-  if(r==='demo/email'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');const nm=require('nodemailer').createTransport({host:'127.0.0.1',port:require('./lib').PORTS.smtp,secure:false,ignoreTLS:true});
-    const info=await nm.sendMail({from:'"Srisha R." <srisha@northwind.example>',to:'chris@northwind.example',cc:process.env.MOPS_INBOX||'mops@mops.local',subject:b.subject||'Partner webinar for Japan',text:b.text||'Chris, planning a partner webinar for Japan next quarter.\n\n@mops new partner webinar in Japan, budget $60K\n\nThanks,\nSrisha'});J(res,{sent:true,messageId:info.messageId});return true}
+  if(r==='demo/email'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');const info=require('./mail').deliver({from:'"Srisha R." <srisha@northwind.example>',to:'chris@northwind.example',cc:process.env.MOPS_INBOX||'mops@mops.local',subject:b.subject||'Partner webinar for Japan',text:b.text||'Chris, planning a partner webinar for Japan next quarter.\n\n@mops new partner webinar in Japan, budget $60K\n\nThanks,\nSrisha'});
+    await CORE.drain(8000);J(res,{sent:true,messageId:info.messageId});return true}
   if(r==='demo/webex'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');const raw=JSON.stringify({resource:'messages',event:'created',data:{roomId:'Y2lzY29zcGFyazovL2RlbW8',personEmail:b.from||'priya.n@northwind.example',text:b.text||'@mops what is the pipeline by channel?'}});
-    const sig=require('crypto').createHmac('sha1',process.env.MOPS_WEBEX_SECRET||'dev-webex-secret').update(raw).digest('hex');const x=await fetch(`http://127.0.0.1:${process.env.PORT||8787}/api/engine/webhooks/webex`,{method:'POST',headers:{'content-type':'application/json','x-spark-signature':sig},body:raw}).then(r=>r.json());J(res,x);return true}
+    const sig=require('crypto').createHmac('sha1',process.env.MOPS_WEBEX_SECRET||'dev-webex-secret').update(raw).digest('hex');const x=await W.webex(raw,sig);J(res,x.body,x.status);return true}
   if(r==='heal/inject'&&req.method==='POST'){J(res,await W.injectFailure());return true}
   if(r==='heal/incidents'){J(res,W.incidents);return true}
-  if(r==='loadtest'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,W.startLoad(b));return true}
-  if(r==='loadtest'){const f=path.join(RUNS,'loadtest-latest.json');const lim=W.loadLimits();J(res,{live:W.getLoad(),latest:fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):null,defaults:{contacts:lim.defaultContacts,sends:lim.defaultSends,maxContacts:lim.maxContacts,maxSends:lim.maxSends,memoryGb:lim.memoryGb}});return true}
+  if(r==='loadtest'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,await W.startLoad(b));return true}
+  if(r==='loadtest'){const f=path.join(RUNS,'loadtest-latest.json');const lim=W.loadLimits();J(res,{live:W.getLoad(),latest:fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):null,defaults:{contacts:lim.defaultContacts,sends:lim.defaultSends,maxContacts:lim.maxContacts,maxSends:lim.maxSends,memoryGb:lim.memoryGb,vercel:!!lim.vercel,label:lim.label}});return true}
   const INT=require('./intake'),MAP=require('./mapper');let mm;
   if(r==='intake'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,await INT.run(b));return true}
   mm=null;{const fx=r.match(/^fixtures\/([\w.-]+)$/);if(fx){const f=path.join(__dirname,'test','fixtures',fx[1]);if(fs.existsSync(f)){res.writeHead(200,{'content-type':'application/octet-stream'});res.end(fs.readFileSync(f))}else{res.writeHead(404);res.end()}return true}}
@@ -110,7 +111,7 @@ async function handle(req,res,p,u){
     bus({svc:'hub',kind:'answer',msg:`mapped ${out.file}: header on row ${out.headerRow}, ${out.mapping.filter(m=>m.target).length} columns → SFDC template, ${out.stats.output} rows, ${out.stats.ownersFound} owner IDs, ${out.quarantined.length} quarantined, ${out.duplicatesRemoved} duplicates removed (${out.ms}ms)`,data:{},trace:out.id});J(res,out);return true}
   mm=r.match(/^map\/(MAP-\w+)\.csv$/);if(mm){const m=lastMaps[mm[1]];res.writeHead(m?200:404,{'content-type':'text/csv','content-disposition':`attachment; filename="${(m?.file||'x').replace(/\.\w+$/,'')}-sfdc.csv"`});res.end(m?m.csv:'');return true}
   if(r==='efficiency'){J(res,W.efficiency());return true}
-  if(r==='covered'){J(res,COV.list());return true}
+  if(r==='covered'){if(!global.__mopsCoveredOnce){global.__mopsCoveredOnce=true;try{await COV.scan('startup')}catch(e){}}J(res,COV.list());return true}
   if(r==='covered/scan'&&req.method==='POST'){J(res,await COV.scan('manual'));return true}
   const um=r.match(/^covered\/(COV-\d+)\/undo$/);if(um&&req.method==='POST'){try{J(res,await COV.undo(um[1]))}catch(e){J(res,{error:e.message},409)}return true}
   if(r==='reset'&&req.method==='POST'){current=null;ring.length=0;require('./core').reset();const s=await call('engine','/admin/seed',{body:{}});await call('mail','/admin/reset',{body:{}});await call('warehouse','/elt/run',{body:{}});J(res,s);return true}

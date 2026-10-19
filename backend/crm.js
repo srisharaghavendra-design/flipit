@@ -77,4 +77,3 @@ S.post('/admin/simulate-sales',c=>{const n=+(c.body.n||6);const leads=db.prepare
     db.prepare('INSERT INTO Opportunity VALUES(?,?,?,?,?,?,?,?,?,?)').run(oid,`${l.Company} – SASE`,amt,['Discovery','Proposal','Negotiation'][i%3],l.Company,l.External_Id__c,l.CampaignExt,new Date(Date.now()+60*864e5).toISOString().slice(0,10),now(),later());
     db.prepare("UPDATE Lead SET Status='Converted',OwnerName=?,ConvertedOpportunityId=?,LastModifiedDate=?,LastModifiedById=? WHERE Id=?").run(rep,oid,later(),rep,l.Id);did.push(`${rep} converted ${l.Email} → ${oid} $${amt/1000}K`)});
   did.forEach(d=>emit('sales',d,{},c.trace));return{changed:did.length,did}});
-S.listen();

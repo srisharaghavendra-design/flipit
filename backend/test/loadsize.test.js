@@ -35,6 +35,19 @@ test('a request for 1M contacts is clamped unless explicitly allowed', () => {
   assert.equal(full.capped, false);
 });
 
+test('Vercel Hobby uses a small labelled default even on a large machine', () => {
+  const lim = limits({ VERCEL: '1' }, 64 * (1024 ** 3));
+  assert.equal(lim.vercel, true);
+  assert.ok(lim.defaultContacts <= 2000);
+  assert.ok(lim.defaultSends <= 200);
+  assert.ok(lim.maxContacts <= 8000);
+  assert.ok(lim.maxSends <= 800);
+  assert.match(lim.label, /Hobby/);
+  const clamped = resolve({ contacts: 1_000_000, sends: 100_000 }, lim);
+  assert.equal(clamped.contacts, lim.maxContacts);
+  assert.equal(clamped.capped, true);
+});
+
 test('LOAD_DEFAULT_CONTACTS and LOAD_MAX_CONTACTS override the memory guess', () => {
   const lim = limits({ LOAD_DEFAULT_CONTACTS: '100', LOAD_DEFAULT_SENDS: '10', LOAD_MAX_CONTACTS: '150', LOAD_MAX_SENDS: '20' }, 512 * 1024 * 1024);
   assert.deepEqual(resolve({}, lim), { contacts: 100, sends: 10, capped: false, limits: lim });

@@ -8,7 +8,7 @@ node seed.js          # (optional) regenerate dummy data -> data.seed.json + dat
 node server.js        # http://localhost:8787  (zero npm deps, Node 20)
 ```
 - **AI mode:** `MOPS_API_KEY=... MOPS_API_BASE=https://api.x.ai/v1 MOPS_MODEL=grok-4 node server.js` (or the OpenAI base URL and gpt-4.1). If the AI call fails, it falls back to rule mode.
-- **SMTP (optional):** `npm i nodemailer` then `MOPS_SMTP_URL=smtp://user:pass@host:587 MOPS_FROM=...`. By default messages go to the local outbox (preview at /outbox/M1).
+- **Email:** messages stay in the in-process catcher. The demo never sends real email. An `MOPS_SMTP_URL` is ignored.
 - **Nurture timing:** `MOPS_DAY_MS=10000` makes 1 "day" last 10s for demos, or use "Fast-forward nurture" in the Data panel.
 - **Reset:** the button in the UI, or `POST /api/reset`.
 - **Tests:** with the server running, run `python3 tests/e2e.py` (22 API and Playwright checks, writes shots/). `tests/mock_llm.js` is a fake AI endpoint for testing the tool-calling loop.

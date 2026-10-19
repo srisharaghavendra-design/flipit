@@ -9,10 +9,15 @@ function positive(value, fallback) {
 
 function limits(env = process.env, totalBytes = os.totalmem()) {
   const gb = totalBytes / (1024 ** 3);
+  const vercel = env.VERCEL === '1';
   let defC = 50000, defS = 5000, maxC = 100000, maxS = 10000;
-  if (gb < 1.5) { defC = 5000; defS = 500; maxC = 25000; maxS = 2500; }
+  let label = `This machine has ${gb.toFixed(1)} GB of RAM.`;
+  if (vercel) {
+    defC = 2000; defS = 200; maxC = 8000; maxS = 800;
+    label = 'Vercel Hobby: 2 GB memory and a 300 second limit. This run is sized to finish inside that.';
+  } else if (gb < 1.5) { defC = 5000; defS = 500; maxC = 25000; maxS = 2500; }
   else if (gb < 3) { defC = 20000; defS = 2000; maxC = 50000; maxS = 5000; }
-  if (env.LOAD_ALLOW_MILLION === '1') { maxC = 1000000; maxS = 100000; }
+  if (!vercel && env.LOAD_ALLOW_MILLION === '1') { maxC = 1000000; maxS = 100000; }
   const maxContacts = positive(env.LOAD_MAX_CONTACTS, maxC);
   const maxSends = positive(env.LOAD_MAX_SENDS, maxS);
   return {
@@ -20,7 +25,9 @@ function limits(env = process.env, totalBytes = os.totalmem()) {
     defaultSends: Math.min(positive(env.LOAD_DEFAULT_SENDS, defS), maxSends),
     maxContacts,
     maxSends,
-    memoryGb: +gb.toFixed(2)
+    memoryGb: +gb.toFixed(2),
+    vercel,
+    label
   };
 }
 

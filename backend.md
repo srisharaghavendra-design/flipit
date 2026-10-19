@@ -10,7 +10,7 @@
 | **Engine** (SQLite) | Eloqua, campaign ops spreadsheets, Cvent forms | Contacts, consent ledger, segments, email templates, sends, open/click tracking, unsubscribe, campaigns + codes, budgets + $150K approval rule, audit log, event registration, intent-signal scoring, CRM connector |
 | **CRM**: fake SFDC (its own SQLite) | Salesforce (a stand-in for the demo) | A Salesforce-shaped REST API: external-ID upserts, a "changes since" feed, sales-user edits, API rate limit (429) and random outages (503) |
 | **Mail** (real SMTP server on :2525) | The email delivery provider | Accepts every email over real SMTP and stores it, so nothing reaches a real person. Also receives email sent to **mops@mops.local** |
-| **Warehouse** (DuckDB) | Snowflake + Power BI/Tableau | An ELT job copies engine + CRM data into RAW tables, then rebuilds MART tables with SQL (campaign performance, multi-touch attribution, pipeline by channel, funnel, consent health). The insight agent answers from these tables |
+| **Warehouse** (SQLite, laid out like Snowflake) | Snowflake + Power BI/Tableau | An ELT job copies engine + CRM data into RAW tables, then rebuilds MART tables with SQL (campaign performance, multi-touch attribution, pipeline by channel, funnel, consent health). The insight agent answers from these tables. The hosted demo uses SQLite so it can run inside a Vercel function |
 | **Hub** (inside the app, :8787) | Glue between all the tools: Zapier, MuleSoft, and the people who copy/paste | The append-only event log + workers, the single @mops entry point, the orchestrator, the self-healing autopilot, the "Covered for you" watcher, and the Engine room |
 
 ## How it works, step by step (the "Run full campaign" button)

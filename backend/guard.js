@@ -1,12 +1,15 @@
-// Public-demo gate. Off unless DEMO_PASSCODE is set, so local tests stay open.
-// Tracking pixels, unsubscribe links and registration forms stay open: they are
-// how the in-app email demo records opens, clicks and sign-ups.
+// Public-demo gate. If DEMO_PASSCODE is unset the passcode is "northwind" and the
+// login page says so. Tracking pixels, unsubscribe links and registration forms
+// stay open: they are how the in-app email demo records opens, clicks and sign-ups.
+// Loopback is trusted only when this process is not on Vercel (local tests).
 const crypto = require('crypto');
 
 const WINDOW_MS = 10 * 60 * 1000;
 const buckets = new Map();
 
-function passcode() { return process.env.DEMO_PASSCODE || ''; }
+const DEFAULT_PASSCODE = 'northwind';
+function passcode() { return process.env.DEMO_PASSCODE || DEFAULT_PASSCODE; }
+function usingDefault() { return !process.env.DEMO_PASSCODE; }
 
 function tokenFor(pass) {
   return crypto.createHmac('sha256', String(pass)).update('mops-demo-v1').digest('base64url');
@@ -35,6 +38,7 @@ function clientIp(req) {
 
 // Other services on this machine call the hub over loopback. The public proxy never does.
 function fromLoopback(req) {
+  if (process.env.VERCEL) return false;
   const a = req.socket?.remoteAddress || '';
   return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
 }
@@ -78,14 +82,17 @@ function authed(req) {
 
 function page(msg) {
   const note = msg ? `<p class="err">${msg}</p>` : '';
+  const hint = usingDefault()
+    ? `<p>No passcode was set on the server, so this demo uses <b>northwind</b>. Set DEMO_PASSCODE in Vercel to choose your own.</p>`
+    : `<p>This is a private demo. Enter the passcode to continue.</p>`;
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Northwind demo</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#06070a;color:#f4f4f6;font-family:Inter,system-ui,sans-serif}
-form{width:min(380px,92vw);background:#ffffff0c;border:1px solid #ffffff18;border-radius:20px;padding:28px}
-h1{font-size:22px;margin:0 0 6px;letter-spacing:-.03em}p{color:#a4a4b0;font-size:14px;line-height:1.5}
+form{width:min(420px,92vw);background:#ffffff0c;border:1px solid #ffffff18;border-radius:20px;padding:28px}
+h1{font-size:22px;margin:0 0 6px;letter-spacing:-.03em}p{color:#a4a4b0;font-size:14px;line-height:1.5}b{color:#f4f4f6}
 input{width:100%;box-sizing:border-box;margin:14px 0;padding:12px 14px;border-radius:12px;border:1px solid #ffffff22;background:#0006;color:#fff;font-size:16px}
 button{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(90deg,#9d8cff,#4fe3c1);color:#06070a;font-weight:700;font-size:15px;cursor:pointer}
 .err{color:#ffb4b4}</style>
-<form method="post" action="/gate"><h1>Northwind Networks</h1><p>This is a private demo. Enter the passcode to continue.</p>${note}
+<form method="post" action="/gate"><h1>Northwind Networks</h1>${hint}${note}
 <input type="password" name="passcode" autocomplete="current-password" autofocus required placeholder="Passcode"><button>Enter demo</button></form>`;
 }
 
@@ -113,7 +120,7 @@ async function handle(req, res, pathname) {
     let given = '';
     if (ct.includes('json')) { try { given = JSON.parse(raw || '{}').passcode || ''; } catch { given = ''; } }
     else given = new URLSearchParams(raw).get('passcode') || '';
-    if (!pass || !same(given, pass)) { send(res, 401, page('That passcode is not right.'), { 'content-type': 'text/html; charset=utf-8' }); return true; }
+    if (!same(given, pass)) { send(res, 401, page('That passcode is not right.'), { 'content-type': 'text/html; charset=utf-8' }); return true; }
     send(res, 303, '', { location: '/', 'set-cookie': setCookie(res, tokenFor(pass)) });
     return true;
   }
