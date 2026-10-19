@@ -88,7 +88,7 @@ function slidesFor(period, data, when) {
     { kind: 'bars', title: 'Spend against budget', bars, note: `${money(data.spend)} spent of ${money(data.budget)} budget` },
     { kind: 'pair', title: 'Registrations and pipeline', left: data.leads + ' leads', right: money(data.pipeline) + ' pipeline', note: `Target pipeline ${money(data.goal)} · ${data.mqls} MQLs` },
     { kind: 'list', title: 'Campaigns live', items: data.names.length ? data.names : ['No live campaigns in this slice.'] },
-    { kind: 'risks', title: 'Risks and what is already fixed', items: data.risks.length ? data.risks : [{ name: 'Nothing flagged', note: 'Pace is inside the plan', fixed: true }] },
+    { kind: 'risks', title: 'Risks', items: data.risks.length ? data.risks : [{ name: 'Nothing flagged', note: 'Pace is inside the plan', fixed: true }] },
     { kind: 'list', title: "Next week's actions", items: data.actions }
   ];
   if (period === 'monthly') {
@@ -135,7 +135,7 @@ async function pptx(period, data, when) {
     } else if (s.kind === 'list') {
       slide.addText(s.items.map(t => '–  ' + t).join('\n'), { x: 0.55, y: 1.6, w: 11.5, h: 4.8, fontFace: 'Calibri', fontSize: 20, color: INK, margin: 0 });
     } else if (s.kind === 'risks') {
-      const lines = s.items.map(r => (r.fixed ? 'Fixed  ' : 'Open  ') + r.name + (r.note ? ' — ' + String(r.note).slice(0, 110) : ''));
+      const lines = s.items.map(r => (r.fixed ? 'On track  ' : 'Open  ') + r.name + (r.note ? ' — ' + String(r.note).slice(0, 110) : ''));
       slide.addText(lines.join('\n'), { x: 0.55, y: 1.6, w: 11.5, h: 5, fontFace: 'Calibri', fontSize: 18, color: INK, margin: 0 });
     }
   }
@@ -164,7 +164,7 @@ function pdf(period, data, when) {
       } else if (s.kind === 'pair') {
         cmds.push('BT', '/F1 22 Tf', '0 0 0 rg', '1 0 0 1 36 560 Tm', '(' + escPdf(s.left).slice(0, 28) + ') Tj', '1 0 0 1 320 560 Tm', '(' + escPdf(s.right).slice(0, 28) + ') Tj', '/F1 12 Tf', '0.45 0.47 0.5 rg', '1 0 0 1 36 500 Tm', '(' + escPdf(s.note).slice(0, 90) + ') Tj');
       } else {
-        const items = s.kind === 'risks' ? s.items.map(r => (r.fixed ? 'Fixed ' : 'Open ') + r.name) : s.items;
+        const items = s.kind === 'risks' ? s.items.map(r => (r.fixed ? 'On track ' : 'Open ') + r.name) : s.items;
         cmds.push('BT', '/F1 13 Tf', '0 0 0 rg');
         items.slice(0, 10).forEach((t, i) => { cmds.push('1 0 0 1 36 ' + (660 - i * 28) + ' Tm', '(' + escPdf(t).slice(0, 80) + ') Tj'); });
       }

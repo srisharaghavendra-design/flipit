@@ -18,8 +18,10 @@ function median(values) {
 }
 
 function secondsText(ms) {
-  if (ms == null) return 'not measured yet';
-  return (ms / 1000).toFixed(3) + ' seconds';
+  if (ms == null || ms < 1000) return '<1 sec';
+  const seconds = ms / 1000;
+  if (seconds < 10) return seconds.toFixed(1).replace(/\.0$/, '') + ' sec';
+  return Math.round(seconds) + ' sec';
 }
 
 async function summary() {

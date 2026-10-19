@@ -42,6 +42,16 @@ test('data core and engage finish the marketer asks', { timeout: 120000 }, async
   const why = await data.log({ q: 'venue', limit: 5 });
   assert.match(why.rows.map(r => r.why).join(' '), /Jordan Hale's email on 14 Oct/);
   assert.ok(why.rows.some(r => r.channel === 'Email' && r.source_message === 'EM-JH-1014'));
+  const rosa = await data.log({ q: 'SDR rule', limit: 3 });
+  assert.match(rosa.rows.map(r => r.why).join('\n'), /assigned by the SDR rule/);
+  assert.doesNotMatch(rosa.rows.map(r => r.why).join('\n'), /covers the Chicago accounts/);
+  const lastTpl = await db.get("SELECT subject, html FROM templates WHERE id = 'TPL-N2'");
+  assert.equal(lastTpl.subject, 'Last call for the Chicago security roundtable');
+  assert.doesNotMatch(lastTpl.subject + lastTpl.html, /\{\{campaign\}\}/);
+  const dupNames = await db.all('SELECT name FROM campaigns GROUP BY name HAVING COUNT(*) > 1');
+  assert.deepEqual(dupNames, []);
+  const names = await db.all('SELECT name FROM campaigns');
+  assert.equal(names.find(r => / abm\b/.test(r.name)), undefined);
 
   const illinois = await data.emailable({ state: 'Illinois', country: 'United States' });
   assert.equal(illinois.count, 36);
@@ -198,7 +208,7 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   const upload = await brain.ask({ text: '@mops upload this attendee file to SFDC for the Chicago roundtable', channel: 'Email', actor: 'Maria Alvarez' });
   assert.equal(upload.ok, true);
   assert.equal(upload.askId, 'upload-chicago');
-  assert.equal(upload.result.accepted, 4);
+  assert.equal(upload.result.accepted, 3);
   assert.equal(upload.result.quarantined, 3);
   assert.equal(upload.result.duplicates, 1);
   assert.equal(upload.result.retried, 1);
@@ -206,14 +216,20 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.match(upload.reply, /no consent/);
   assert.match(upload.reply, /missing email/);
   assert.match(upload.reply, /duplicate/);
-  assert.match(upload.reply, /Jake Moss \(AE\): 8 Chicago accounts, 2 campaign members/);
+  assert.match(upload.reply, /Jake Moss \(AE\): 8 Chicago accounts, 1 campaign member/);
   assert.match(upload.reply, /Rosa Diaz \(SDR\): 0 Chicago accounts, 2 campaign members/);
+  assert.match(upload.reply, /Salesforce was busy, retried automatically/);
+  assert.equal(upload.result.held.some(r => r.email === 'nina.vale@badgenorth.example' && r.reason === 'duplicate'), true);
+  for (const row of upload.result.held) {
+    if (!String(row.email || '').includes('@')) continue;
+    assert.equal(await db.get('SELECT id FROM crm_objects WHERE lower(email) = ?', [row.email]), undefined, row.email);
+  }
   const again = await brain.ask({ text: '@mops upload this attendee file to SFDC for the Chicago roundtable', channel: 'Webex', actor: 'Maria Alvarez' });
   assert.equal(again.result.idempotent, true);
   assert.match(again.reply, /Already uploaded/);
   const leads = await db.all("SELECT owner_name, title FROM crm_objects WHERE type = 'Lead' ORDER BY email");
-  assert.equal(leads.length, 4);
-  assert.equal(leads.filter(r => r.owner_name === 'Jake Moss').length, 2);
+  assert.equal(leads.length, 3);
+  assert.equal(leads.filter(r => r.owner_name === 'Jake Moss').length, 1);
   assert.equal(leads.filter(r => r.owner_name === 'Rosa Diaz').length, 2);
   const campaigns = await db.all("SELECT id FROM crm_objects WHERE type = 'Campaign' AND external_id = 'CAMP-CHI'");
   assert.equal(campaigns.length, 1);
@@ -222,10 +238,14 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   const campaignJob = queue.find(j => j.kind === 'Campaign');
   assert.equal(campaignJob.status, 'done');
   assert.equal(campaignJob.attempts, 2);
-  assert.match(campaignJob.last_error, /503/);
+  assert.match(campaignJob.last_error, /Salesforce was busy, retried automatically/);
   const owners = await brain.ask({ text: '@mops who owns the Chicago accounts', channel: 'App', actor: 'Maria Alvarez' });
-  assert.match(owners.reply, /Jake Moss \(AE\): 8 Chicago accounts, 2 campaign members/);
+  assert.match(owners.reply, /Jake Moss \(AE\): 8 Chicago accounts, 1 campaign member/);
   assert.match(owners.reply, /Rosa Diaz \(SDR\): 0 Chicago accounts, 2 campaign members/);
+  const uploadWhy = await data.log({ q: 'chicago-attendees', limit: 3 });
+  assert.match(uploadWhy.rows.map(r => r.why).join('\n'), /3 campaign members/);
+  assert.match(uploadWhy.rows.map(r => r.why).join('\n'), /Held 4/);
+  assert.match(uploadWhy.rows.map(r => r.why).join('\n'), /1 campaign member/);
   const fails = await brain.ask({ text: '@mops show the sync failures', channel: 'App', actor: 'Maria Alvarez' });
   assert.match(fails.reply, /No open failures/);
   assert.equal(fails.result.open.length, 0);
@@ -244,7 +264,8 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.doesNotMatch(budget.reply, /No second request/);
   assert.doesNotMatch(budget.reply, /BAN-/);
   assert.match(budget.reply, /Harbor North/);
-  assert.match(budget.reply, /\$42,000 of \$180,000/);
+  assert.match(budget.reply, /Waiting on you: PM, PO, venue contact/);
+  assert.doesNotMatch(budget.reply, /\$42,000/);
   assert.ok(budget.ms < 300, 'budget ' + budget.ms + 'ms');
   const denied = await brain.ask({ text: '@mops approve Chicago', channel: 'App', actor: 'Maria Alvarez', role: 'marketer' });
   assert.match(denied.reply, /Only Chris M/);
@@ -257,6 +278,8 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   const budgetAgain = await brain.ask({ text: '@mops new budget: Chicago security roundtable, $180K', channel: 'Webex', actor: 'Maria Alvarez' });
   assert.equal(budgetAgain.result.idempotent, true);
   assert.match(budgetAgain.reply, /already approved/);
+  assert.match(budgetAgain.reply, /\$42,000 of \$180,000/);
+  assert.match(budgetAgain.reply, /Waiting on you: PM, PO, venue contact/);
   const auto = await spend.file({ campaignId: 'CP-03', amount: 150000, currency: 'USD', actor: 'Maria Alvarez', channel: 'App', sourceMessage: 'test', idempotencyKey: 'test:150000' });
   assert.equal(auto.status, 'approved');
   assert.equal(auto.approver, null);
@@ -270,6 +293,7 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.match(minted.reply, /BAN-FY26Q3-4100-0001/);
   const sow = await brain.ask({ text: '@mops draft the SOW', channel: 'Email', actor: 'Maria Alvarez' });
   assert.match(sow.reply, /Harbor North Events/);
+  assert.match(sow.reply, /Waiting on you: PM, PO, venue contact/);
   assert.equal(sow.result.open.length, 3);
   const left = await brain.ask({ text: '@mops what is left in the Americas budget', channel: 'App', actor: 'Maria Alvarez' });
   const book = await spend.remaining('Americas');
@@ -299,6 +323,11 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.notEqual(file.facts.goal, file.facts.pipeline);
   assert.match(file.pdf.toString('utf8'), /Target pipeline/);
   assert.ok(file.facts.goal > file.facts.pipeline);
+  assert.equal(new Set(file.facts.names).size, file.facts.names.length);
+  assert.ok(file.facts.names.every(n => !n.includes(' abm')));
+  const pdfText = file.pdf.toString('latin1');
+  assert.match(pdfText, /On track/);
+  assert.doesNotMatch(pdfText, /Fixed/);
 
   const { reset } = require('../../platform/seed');
   await reset(db);
@@ -335,6 +364,11 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.goto(H + '/');
     await page.locator('button[value="maria"]').click();
     await page.goto(H + '/platform');
+    await page.locator('h2', { hasText: 'What @mops did today' }).waitFor();
+    await page.locator('#saved .stat').getByText('195 min', { exact: true }).waitFor();
+    assert.ok(await page.locator('#saved').getByText('<1 sec').count() >= 6);
+    await page.locator('#today').getByText(/assigned by the SDR rule|venue|River North/i).first().waitFor();
+    assert.equal(await page.locator('body').getByText('not measured yet').count(), 0);
     await page.locator('[data-module="data"][data-status="built"]').waitFor();
     await page.locator('[data-module="engage"][data-status="built"]').waitFor();
     await page.locator('[data-module="crm"][data-status="built"]').waitFor();
@@ -350,7 +384,10 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.locator('#rows').getByText('@').first().waitFor();
     await page.locator('#log').getByText(/venue|Jordan Hale|River North/i).first().waitFor();
     await page.locator('[data-proof]').click();
-    await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 6 screens \/ 11 fields \/ 20 minutes · @mops: 1 ask \/ \d/).waitFor();
+    await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 6 screens \/ 11 fields \/ 20 minutes · @mops: 1 ask \/ <1 sec/).waitFor();
+    const dataBanner = await page.locator('#elon').innerText();
+    assert.equal(dataBanner.match(/Old tool vs @mops/g).length, 1);
+    assert.doesNotMatch(dataBanner, /0\.00\d seconds/);
     await page.locator('#answer .from').getByText('App').waitFor();
     await page.locator('#answer .reply').getByText(/36 opted-in/).waitFor();
     assert.equal(await page.locator('#answer details').getAttribute('open'), null);
@@ -372,7 +409,13 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     assert.equal(pixel.status(), 200);
 
     await page.goto(H + '/platform/engage');
-    await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 9 screens \/ 16 fields \/ 35 minutes · @mops: 1 ask \/ \d/).waitFor();
+    await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 9 screens \/ 16 fields \/ 35 minutes · @mops: 1 ask \/ <1 sec/).waitFor();
+    await page.locator('text=an MQL is a score of 70 or higher').waitFor();
+    await page.locator('#templates').getByText('Last call for the Chicago security roundtable').waitFor();
+    assert.equal(await page.locator('#templates').getByText('{{campaign}}').count(), 0);
+    await page.locator('#sends').getByText('Chicago security roundtable').waitFor();
+    assert.equal(await page.locator('#sends').getByText('CAMP-CHI').count(), 0);
+    assert.equal(await page.locator('#sends').getByText('CP-02').count(), 0);
     await page.locator('#segments').getByText('CIOs in Illinois who opened last month').waitFor();
     await page.waitForFunction(() => Number.isFinite(Number(document.querySelector('[data-mql-count]').textContent)));
     const before = Number(await page.locator('[data-mql-count]').innerText());
@@ -402,23 +445,34 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
 
     await page.goto(H + '/platform/crm');
     await page.locator('[data-proof]').click();
-    await page.locator('#answer .reply').getByText(/4 campaign members/).waitFor();
+    await page.locator('#answer .reply').getByText(/3 campaign members/).waitFor();
+    await page.locator('#answer .reply').getByText(/Salesforce was busy, retried automatically/).waitFor();
     await page.locator('#answer .reply').getByText(/no consent/).waitFor();
+    await page.locator('#tally').getByText('3 campaign members loaded. Held 4.').waitFor();
     await page.locator('#held').getByText('missing email').waitFor();
+    await page.locator('#held').getByText('Nina Vale').waitFor();
     await page.locator('#held').getByText('duplicate').waitFor();
-    await page.locator('#owners').getByText('8 Chicago accounts, 2 campaign members').waitFor();
+    assert.equal(await page.locator('#objects').getByText('Nina Vale').count(), 0);
+    await page.locator('#owners').getByText('8 Chicago accounts, 1 campaign member').waitFor();
+    await page.locator('#owners').getByText('0 Chicago accounts, 2 campaign members').waitFor();
     await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 8 screens \/ 14 fields \/ 25 minutes/).waitFor();
     await page.locator('#objects').getByText('Jake Moss').first().waitFor();
-    await page.locator('#queue').getByText('503').first().waitFor();
+    await page.locator('#queue').getByText('Salesforce was busy, retried automatically').first().waitFor();
+    const queueText = await page.locator('#queue').innerText();
+    assert.doesNotMatch(queueText, /T\d{2}:\d{2}:\d{2}/);
+    assert.match(queueText, /Oct/);
     assert.equal((await page.locator('#err').innerText()).trim(), '');
     await page.screenshot({ path: path.join(shot, 'platform-crm.png'), fullPage: true });
 
     await page.goto(H + '/platform/spend');
     await page.locator('[data-proof]').click();
     await page.locator('#answer .reply').getByText('Waiting on Chris').waitFor();
+    await page.locator('#answer .reply').getByText('Waiting on you: PM, PO, venue contact').waitFor();
+    assert.equal(await page.locator('#answer .reply').getByText('$42,000').count(), 0);
     assert.equal(await page.locator('#answer .reply').getByText('BAN-').count(), 0);
     await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 7 screens \/ 18 fields \/ 40 minutes/).waitFor();
-    await page.locator('#actuals').getByText('$42,000').first().waitFor();
+    await page.locator('#sow').getByText('Waiting on you: PM, PO, venue contact').waitFor();
+    assert.equal(await page.locator('#actuals').getByText('$42,000').count(), 0);
     await page.locator('#packets').getByText('Waiting on Chris').waitFor();
     await page.locator('#our_pm').fill('Maria Alvarez');
     await page.locator('#po_number').fill('PO-2044');
@@ -434,6 +488,7 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.locator('#approve').click();
     await page.locator('#packets').getByText('BAN-FY26Q3-4100-0001').waitFor();
     await page.locator('#answer .reply').getByText(/FY26Q3-USA-EVT-0101/).waitFor();
+    await page.locator('#actuals').getByText('$42,000').first().waitFor();
     assert.equal((await page.locator('#err').innerText()).trim(), '');
     await page.screenshot({ path: path.join(shot, 'platform-spend.png'), fullPage: true });
 
@@ -459,7 +514,11 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
 
     await page.goto(H + '/platform/brain');
     await page.locator('#policy').getByText('Waiting on Chris').waitFor();
-    await page.locator('#why').getByText(/Chicago|venue|Rosa Diaz/i).first().waitFor();
+    await page.locator('#why').getByText(/assigned by the SDR rule/).waitFor();
+    assert.equal(await page.locator('#why').getByText('covers the Chicago accounts').count(), 0);
+    assert.equal(await page.locator('#why').getByText('not measured yet').count(), 0);
+    const perPerson = await page.evaluate(() => [...document.querySelectorAll('#why td')].map(n => n.textContent).filter(t => /Sent “.+” to .+ at /.test(t)));
+    assert.deepEqual(perPerson, []);
     await page.locator('[data-proof]').click();
     await page.locator('#answer .reply').waitFor();
     await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 11 screens \/ 22 fields \/ 45 minutes/).waitFor();

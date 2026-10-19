@@ -162,20 +162,37 @@ function build() {
   if (contacts.length !== 5000) throw new Error('Expected 5000 contacts, got ' + contacts.length);
 
   const dates = ['2026-08-15', '2026-11-12', '2026-03-19'];
+  const usedNames = new Set(['chicago security roundtable']);
+  function campaignTitle(city, program, start) {
+    const base = `${city} ${program}`;
+    if (!usedNames.has(base.toLowerCase())) { usedNames.add(base.toLowerCase()); return base; }
+    const quarter = `${base} ${quarterOf(start)}`;
+    if (!usedNames.has(quarter.toLowerCase())) { usedNames.add(quarter.toLowerCase()); return quarter; }
+    let n = 2;
+    while (usedNames.has(`${base} ${n}`.toLowerCase())) n += 1;
+    const next = `${base} ${n}`;
+    usedNames.add(next.toLowerCase());
+    return next;
+  }
   campaigns.push({ id: 'CAMP-CHI', name: 'Chicago security roundtable', region: 'Americas', program: 'Events', status: 'Live', owner: 'Maria Alvarez', city: 'Chicago', country: 'United States', start_date: '2026-03-18', end_date: '2026-03-19' });
+  const cityN = {};
   for (let i = 2; i <= 40; i++) {
     const region = REGIONS[(i - 2) % 4];
     const program = PROGRAMS[(i - 2) % 5];
     const start = dates[(i - 2) % 3];
-    const city = CITIES[region][(i - 2) % CITIES[region].length];
-    campaigns.push({ id: `CP-${pad(i, 2)}`, name: `${city} ${program.toLowerCase()}`, region, program, status: i % 5 === 0 ? 'Planned' : 'Live', owner: OWNERS[region], city, country: region === 'EMEA' ? 'Germany' : region === 'APJ' ? 'Singapore' : 'United States', start_date: start, end_date: start });
+    const cities = CITIES[region];
+    const n = cityN[region] || 0;
+    cityN[region] = n + 1;
+    const city = cities[n % cities.length];
+    campaigns.push({ id: `CP-${pad(i, 2)}`, name: campaignTitle(city, program, start), region, program, status: i % 5 === 0 ? 'Planned' : 'Live', owner: OWNERS[region], city, country: region === 'EMEA' ? 'Germany' : region === 'APJ' ? 'Singapore' : 'United States', start_date: start, end_date: start });
   }
 
   let act = 1;
   const addAct = (contactId, campaignId, kind, at) => {
     const id = `ACT-${pad(act++, 6)}`;
     activities.push({ id, contact_id: contactId, campaign_id: campaignId, event_id: null, kind, at, ref: 'seed' });
-    note({ at, entity: 'activities', entityId: id, op: 'insert', actor: 'Seed', channel: 'Email', sourceMessage: 'seed', why: `Recorded a ${kind} on ${campaignId}.`, after: { kind, campaignId } });
+    const campaignName = (campaigns.find(c => c.id === campaignId) || {}).name || campaignId;
+    note({ at, entity: 'activities', entityId: id, op: 'insert', actor: 'Seed', channel: 'Email', sourceMessage: 'seed', why: `Recorded a ${kind} on ${campaignName}.`, after: { kind, campaignId, campaign: campaignName } });
   };
   for (let i = 0; i < 30; i++) addAct(contacts[i].id, 'CP-02', 'open', '2026-10-02T15:00:00.000Z');
   for (let i = 38; i < 44; i++) addAct(contacts[i].id, 'CP-02', 'open', '2026-10-02T15:00:00.000Z');
@@ -266,7 +283,7 @@ const SQL = {
   score: 'UPDATE contacts SET behavior=?, score=?, stage=? WHERE id=?'
 };
 
-const SEED_VERSION = 4;
+const SEED_VERSION = 5;
 const ENVELOPES = [['Americas', 2400000], ['EMEA', 1800000], ['APJ', 1600000], ['Global', 900000]];
 
 function rows(list, cols) { return list.map(r => cols.map(k => r[k])); }
@@ -363,14 +380,14 @@ async function run(database) {
     await q.run(INSERT, pack({
       at: '2026-10-18T16:06:00.000Z', entity: 'campaigns', entityId: 'CAMP-CHI', op: 'update',
       actor: 'Maria Alvarez', channel: 'Webex', sourceMessage: 'WX-CHI-ROSA',
-      why: 'Set the owner to Rosa Diaz because Maria Alvarez said in Webex that Rosa covers the Chicago accounts.',
+      why: 'Set the campaign owner to Rosa Diaz, assigned by the SDR rule. She does not own the Chicago accounts.',
       before: { owner: 'Maria Alvarez' }, after: { owner: 'Rosa Diaz' }
     }));
 
     const created = '2026-10-18T16:07:00.000Z';
     await q.run('INSERT INTO templates(id, name, subject, html, created_at) VALUES(?,?,?,?,?)', ['TPL-CHI', 'Chicago invite', 'You are invited: Chicago security roundtable', '<p>Hi {{first}},</p><p>{{company}} is invited to {{campaign}} in {{city}}.</p><p><a href="{{link}}">Reserve a seat</a></p>', created]);
     await q.run('INSERT INTO templates(id, name, subject, html, created_at) VALUES(?,?,?,?,?)', ['TPL-N1', 'Chicago reminder', 'Still open: Chicago security roundtable', '<p>Hi {{first}},</p><p>You looked at {{campaign}}. The room in {{city}} is still open.</p><p><a href="{{link}}">Reserve a seat</a></p>', created]);
-    await q.run('INSERT INTO templates(id, name, subject, html, created_at) VALUES(?,?,?,?,?)', ['TPL-N2', 'Chicago last call', 'Last call for {{campaign}}', '<p>Hi {{first}},</p><p>Last call for {{company}} — {{campaign}} is {{city}} on 19 March.</p>', created]);
+    await q.run('INSERT INTO templates(id, name, subject, html, created_at) VALUES(?,?,?,?,?)', ['TPL-N2', 'Chicago last call', 'Last call for the Chicago security roundtable', '<p>Hi {{first}},</p><p>Last call for {{company}}. The Chicago security roundtable is in {{city}} on 19 March.</p>', created]);
     await q.run('INSERT INTO pages(id, slug, campaign_id, event_id, title) VALUES(?,?,?,?,?)', ['PG-CHI', 'chicago', 'CAMP-CHI', 'EV-CHI', 'Chicago security roundtable']);
     await q.run('INSERT INTO journeys(id, name, campaign_id, steps_json) VALUES(?,?,?,?)', ['J-CHI', 'Chicago nurture', 'CAMP-CHI', JSON.stringify([
       { type: 'send', templateId: 'TPL-N1', delayHours: 0 },

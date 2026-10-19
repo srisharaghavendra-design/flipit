@@ -98,7 +98,7 @@ const ASKS = [
       const seg = await saveChicagoSegment(ctx, calls);
       const board = await step(calls, 'GET /api/platform/engage/scores', () => engage.scores({ segmentId: seg.id }));
       const names = (board.top || []).filter(p => p.stage === 'mql').slice(0, 5).map(p => `${p.first_name} ${p.last_name} (${p.score})`);
-      const reply = `${board.mqls} of ${board.inSegment} in that segment ${board.mqls === 1 ? 'is an MQL' : 'are MQLs'} at ${board.threshold}. ${names.length ? names.join(', ') + '.' : 'Opens alone stay under the line. A click crosses it.'}`;
+      const reply = `${board.mqls} of ${board.inSegment} in that segment ${board.mqls === 1 ? 'is an MQL' : 'are MQLs'}. An MQL is a score of ${board.threshold} or higher. ${names.length ? names.join(', ') + '.' : 'Opens alone stay under the line. A click crosses it.'}`;
       return { reply, result: board };
     }
   },
@@ -155,10 +155,13 @@ const ASKS = [
         campaignId: 'CAMP-CHI', actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text, idempotencyKey: 'ask:upload-chicago'
       }));
       const owners = crm.ownerLine(result.owners);
-      const held = (result.held || []).map(row => `${row.name} (${row.reason})`).join('; ');
+      const heldRows = result.held || [];
+      const held = heldRows.map(row => `${row.name} (${row.reason})`).join('; ');
+      const counts = `${result.accepted} campaign members. ${owners}. Held ${heldRows.length}${held ? ': ' + held : ''}`;
+      const retry = result.retried ? ' Salesforce was busy, retried automatically.' : '';
       const reply = result.idempotent
-        ? `Already uploaded ${result.filename} for the Chicago roundtable. ${result.accepted} campaign members are in Salesforce. ${owners}.`
-        : `Uploaded ${result.filename} to Salesforce for the Chicago roundtable. ${result.accepted} campaign members. ${owners}. Held ${result.held.length}: ${held}. ${result.retried ? 'Retried ' + result.retried + ' transient error. ' : ''}The queue is clear.`;
+        ? `Already uploaded ${result.filename} for the Chicago roundtable. ${counts}.`
+        : `Uploaded ${result.filename} to Salesforce for the Chicago roundtable. ${counts}.${retry} The queue is clear.`;
       return { reply, result };
     }
   },
@@ -204,20 +207,25 @@ const ASKS = [
         name: 'Chicago security roundtable', amount: parsed.amount, currency: parsed.currency,
         actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text, idempotencyKey: 'ask:budget-chicago'
       }));
-      const rows = await step(calls, 'GET /api/platform/spend/actuals', () => spend.actuals());
-      const chi = rows.find(r => r.id === 'CAMP-CHI');
-      const open = result.open.map(f => f.label).join(', ');
-      const actuals = `Actuals are ${spend.money(chi.actual)} of ${spend.money(chi.budget)}.`;
-      const sow = `SOW drafted for ${result.sow.agency}. Still open, because only a person knows them: ${open}.`;
+      let actuals = '';
+      let chi = null;
+      if (result.status !== 'pending') {
+        const rows = await step(calls, 'GET /api/platform/spend/actuals', () => spend.actuals());
+        chi = rows.find(r => r.id === 'CAMP-CHI') || null;
+        if (chi) actuals = ` Actuals are ${spend.money(chi.actual)} of ${spend.money(chi.budget)}.`;
+      }
+      const sow = result.open.length
+        ? `SOW drafted for ${result.sow.agency}. ${spend.waitingLine(result.open)}.`
+        : `SOW drafted for ${result.sow.agency}.`;
       let reply;
       if (result.status === 'pending') {
         const again = result.idempotent ? 'Already filed. ' : '';
-        reply = `${again}Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. Waiting on Chris. The BAN and the campaign code are minted when he approves. ${sow} ${actuals}`;
+        reply = `${again}Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. Waiting on Chris. The BAN and the campaign code are minted when he approves. ${sow}`;
       } else if (result.approver) {
         const again = result.idempotent ? 'Chris M. already approved this. ' : '';
-        reply = `${again}Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. Chris M. approved it. BAN ${result.ban}. Code ${result.campaignCode}. ${sow} ${actuals}`;
+        reply = `${again}Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. Chris M. approved it. BAN ${result.ban}. Code ${result.campaignCode}. ${sow}${actuals}`;
       } else {
-        reply = `Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. That is at or under $150,000, so the policy approves it. BAN ${result.ban}. Code ${result.campaignCode}. ${sow} ${actuals}`;
+        reply = `Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. That is at or under $150,000, so the policy approves it. BAN ${result.ban}. Code ${result.campaignCode}. ${sow}${actuals}`;
       }
       return { reply, result: { ...result, actual: chi } };
     }
@@ -242,8 +250,8 @@ const ASKS = [
         name: 'Chicago security roundtable', amount: 180000, currency: 'USD',
         actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text, idempotencyKey: 'ask:budget-chicago'
       }));
-      const open = result.open.map(f => f.label).join(', ');
-      return { reply: `Drafted the SOW for ${result.sow.agency}. Venue ${result.sow.fields.venue}. Still open, because only a person knows them: ${open}.`, result };
+      const waiting = spend.waitingLine(result.open);
+      return { reply: `Drafted the SOW for ${result.sow.agency}. Venue ${result.sow.fields.venue}.${waiting ? ' ' + waiting + '.' : ''}`, result };
     }
   },
   {

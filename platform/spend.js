@@ -10,10 +10,16 @@ const { agencyOf, taxOf, milestonesOf } = require('../backend/jobs');
 const policy = require('./policy');
 
 const OPEN = [
-  { key: 'our_pm', label: 'Our project manager' },
-  { key: 'po_number', label: 'Purchase order' },
-  { key: 'venue_contact', label: 'Day-of venue contact' }
+  { key: 'our_pm', label: 'Our project manager', short: 'PM' },
+  { key: 'po_number', label: 'Purchase order', short: 'PO' },
+  { key: 'venue_contact', label: 'Day-of venue contact', short: 'venue contact' }
 ];
+
+function waitingLine(open) {
+  if (!open || !open.length) return '';
+  const short = { our_pm: 'PM', po_number: 'PO', venue_contact: 'venue contact' };
+  return 'Waiting on you: ' + open.map(f => f.short || short[f.key] || f.label).join(', ');
+}
 
 function db() { return current(); }
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -192,4 +198,4 @@ async function chicagoPacket() {
   return row ? present(row, false) : null;
 }
 
-module.exports = { file, approve, answer, packets, actuals, remaining, codes, chicagoPacket, OPEN, LIMIT_USD, money, present };
+module.exports = { file, approve, answer, packets, actuals, remaining, codes, chicagoPacket, OPEN, LIMIT_USD, money, present, waitingLine };

@@ -70,7 +70,15 @@ async function deckFacts(region) {
   const list = await regions();
   const slice = all ? list : list.filter(r => r.region === scope);
   const bars = await programs(all ? null : scope);
-  const names = await db().all(`SELECT name FROM campaigns WHERE status = 'Live' ${all ? '' : 'AND region = ?'} ORDER BY id LIMIT 6`, all ? [] : [scope]);
+  const rawNames = await db().all(`SELECT name FROM campaigns WHERE status = 'Live' ${all ? '' : 'AND region = ?'} ORDER BY id`, all ? [] : [scope]);
+  const names = [];
+  const seenName = new Set();
+  for (const row of rawNames) {
+    if (seenName.has(row.name)) continue;
+    seenName.add(row.name);
+    names.push(row);
+    if (names.length === 6) break;
+  }
   const sum = (k) => slice.reduce((s, r) => s + (r[k] || 0), 0);
   const chicago = await campaignFacts('CAMP-CHI');
   const risks = [];

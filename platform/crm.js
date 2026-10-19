@@ -111,16 +111,18 @@ function mapRows(grid) {
     const status = /^(y|yes|true|1|attended|checked in|present)$/.test(norm(get(r, 'Status'))) ? 'Attended' : 'Registered';
     accepted.push({ first: named.first, last: named.last, email, company: get(r, 'Company'), title: get(r, 'Title'), phone: get(r, 'Phone'), country, status, consent: yes ? 'yes' : consent || 'unknown' });
   }
-  const seen = new Set(); let duplicates = 0;
-  const rows = [];
+  const first = new Map();
+  const dup = new Set();
   for (const row of accepted) {
-    if (seen.has(row.email)) {
-      duplicates++;
-      duplicatesHeld.push({ name: `${row.first} ${row.last}`.trim(), email: row.email, reason: 'duplicate' });
-      continue;
-    }
-    seen.add(row.email);
-    rows.push(row);
+    if (first.has(row.email)) dup.add(row.email);
+    else first.set(row.email, row);
+  }
+  let duplicates = 0;
+  const rows = [];
+  for (const [email, row] of first) {
+    if (!dup.has(email)) { rows.push(row); continue; }
+    duplicates++;
+    duplicatesHeld.push({ name: `${row.first} ${row.last}`.trim(), email, reason: 'duplicate' });
   }
   const held = quarantined.concat(duplicatesHeld);
   return { headerRow: headerAt + 1, mapping: mapping.filter(m => m.column), rows, quarantined, duplicates, held };
@@ -174,7 +176,7 @@ async function drain(q) {
     if (attempts === 0 && payload.failOnce) {
       attempts = 1;
       retried++;
-      await q.run('UPDATE crm_queue SET attempts = 1, last_error = ? WHERE id = ?', ['503 SERVER_UNAVAILABLE (simulated). Retrying.', job.id]);
+      await q.run('UPDATE crm_queue SET attempts = 1, last_error = ? WHERE id = ?', ['Salesforce was busy, retried automatically.', job.id]);
     }
     await q.run(UPSERT, [payload.id, payload.type, job.external_id, payload.name || '', payload.email || '', payload.company || '', payload.title || '', payload.country || '', payload.status || '', payload.ownerId || '', payload.ownerName || '', payload.campaignExt || '', now()]);
     await q.run("UPDATE crm_queue SET status = 'done', attempts = ? WHERE id = ?", [attempts + 1, job.id]);
@@ -204,9 +206,11 @@ async function upload({ filename, buffer, campaignId = 'CAMP-CHI', actor, channe
   await d.tx(async (q) => {
     await ensureOrg(q);
     const owned = [];
+    const blocked = new Set(mapped.held.map(h => String(h.email || '').toLowerCase()).filter(Boolean));
     for (const row of mapped.rows) {
+      if (blocked.has(row.email)) continue;
       const who = await ownerFor(q, row);
-      if (who.unknown) { mapped.quarantined.push({ email: row.email, reason: who.reason }); continue; }
+      if (who.unknown) { mapped.quarantined.push({ name: `${row.first} ${row.last}`.trim(), email: row.email, reason: who.reason }); continue; }
       owned.push({ ...row, ...who });
     }
     const id = 'UPL-' + crypto.randomBytes(3).toString('hex');
@@ -232,10 +236,13 @@ async function upload({ filename, buffer, campaignId = 'CAMP-CHI', actor, channe
       });
     }
     const drained = await drain(q);
+    const line = ownerLine(await ownerSnapshot(q, campaignId, owned));
+    const heldBits = mapped.held.map(h => `${h.name} (${h.reason})`).join('; ');
+    const retry = drained.retried ? ' Salesforce was busy, retried automatically.' : '';
     await append(q, {
       entity: 'crm_uploads', entityId: id, op: 'insert', actor, channel, sourceMessage,
-      why: `Uploaded ${filename || sample.filename} for ${campaign.name}. ${owned.length} campaign members synced. Held ${mapped.quarantined.length}.`,
-      after: { accepted: owned.length, quarantined: mapped.quarantined.length, duplicates: mapped.duplicates, retried: drained.retried }
+      why: `Uploaded ${filename || sample.filename} for ${campaign.name}. ${owned.length} campaign members. ${line}. Held ${mapped.held.length}: ${heldBits}.${retry}`,
+      after: { accepted: owned.length, quarantined: mapped.quarantined.length, duplicates: mapped.duplicates, held: mapped.held.length, retried: drained.retried }
     });
     result = { id, filename: filename || sample.filename, campaignId, accepted: owned.length, quarantined: mapped.quarantined.length, duplicates: mapped.duplicates, held: mapped.held, rows: owned, retried: drained.retried, idempotent: false, skippedUnknown: held.length };
   });
@@ -262,8 +269,8 @@ async function ownerSummary(campaignId) {
 async function ownership(campaignId = 'CAMP-CHI') {
   await db().tx(async (q) => { await ensureOrg(q); });
   const accounts = await db().all(`SELECT id, name, city, country, tier FROM accounts
-    WHERE country = 'United States' AND city IN ('Chicago','Naperville','Aurora','Springfield','Peoria','Rockford','Joliet','Evanston')
-    ORDER BY id`);
+    WHERE country = 'United States' AND city IN (${ILLINOIS.map(() => '?').join(',')})
+    ORDER BY id`, ILLINOIS);
   const terr = await db().get("SELECT * FROM territories WHERE country = 'United States'");
   const members = await db().all("SELECT owner_name, COUNT(*) AS n FROM crm_objects WHERE type = 'Lead' AND campaign_ext = ? GROUP BY owner_name", [campaignId]);
   const memberOf = Object.fromEntries(members.map(r => [r.owner_name, r.n]));
@@ -272,7 +279,7 @@ async function ownership(campaignId = 'CAMP-CHI') {
   const owners = terr ? [
     { name: ae, role: 'AE', accounts: accounts.length, members: memberOf[ae] || 0 },
     { name: sdr, role: 'SDR', accounts: 0, members: memberOf[sdr] || 0 }
-  ] : [];
+  ].map(o => ({ ...o, label: ownerLabel(o) })) : [];
   return {
     count: accounts.length,
     owners,
@@ -284,8 +291,28 @@ async function ownership(campaignId = 'CAMP-CHI') {
 
 async function chicagoAccounts() { return ownership('CAMP-CHI'); }
 
+const ILLINOIS = ['Chicago', 'Naperville', 'Aurora', 'Springfield', 'Peoria', 'Rockford', 'Joliet', 'Evanston'];
+
+function ownerLabel(o) {
+  const accounts = `${o.accounts} Chicago account${o.accounts === 1 ? '' : 's'}`;
+  const members = `${o.members} campaign member${o.members === 1 ? '' : 's'}`;
+  return `${o.name} (${o.role}): ${accounts}, ${members}`;
+}
+
 function ownerLine(owners) {
-  return (owners || []).map(o => `${o.name} (${o.role}): ${o.accounts} Chicago accounts, ${o.members} campaign members`).join('. ');
+  return (owners || []).map(o => o.label || ownerLabel(o)).join('. ');
+}
+
+async function ownerSnapshot(q, campaignId, owned) {
+  const accountN = await q.get(`SELECT COUNT(*) AS n FROM accounts WHERE country = 'United States' AND city IN (${ILLINOIS.map(() => '?').join(',')})`, ILLINOIS);
+  const terr = await q.get("SELECT ae_name, sdr_name FROM territories WHERE country = 'United States'");
+  if (!terr) return [];
+  const memberOf = {};
+  for (const row of owned || []) memberOf[row.ownerName] = (memberOf[row.ownerName] || 0) + 1;
+  return [
+    { name: terr.ae_name, role: 'AE', accounts: accountN.n, members: memberOf[terr.ae_name] || 0 },
+    { name: terr.sdr_name, role: 'SDR', accounts: 0, members: memberOf[terr.sdr_name] || 0 }
+  ].map(o => ({ ...o, label: ownerLabel(o) }));
 }
 
 async function listUploads(campaignId = 'CAMP-CHI') {

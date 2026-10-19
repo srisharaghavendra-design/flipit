@@ -69,9 +69,9 @@ The ask box is the channel test. App, Email, and Webex are the same call. The hu
 
 One Chicago send writes the segment (CIO, Illinois, opened in the 30 days before 19 Oct 2026, opted in), reuses the invite, merges first name and company, and delivers into the local mail catcher. Contacts without opted-in consent are held. The open pixel and the click redirect write activities. Fit plus behaviour becomes the score. A lead becomes an MQL at 70. Opens stay under that line. A click crosses it. A simulated response is about 45% open and about 12% click, and only the clickers cross the line. The nurture then enrolls clickers who have not registered, sends the first note, and waits 48 hours before the next one.
 
-The attendee upload reads `platform/samples/chicago-attendees.xlsx`. Junk rows sit above the header. Owners are the territory AE for an executive title and the territory SDR otherwise. Held rows are listed with a reason: no consent, missing email, duplicate, and a formula in a cell. Account owners and campaign members are counted per person. Jake Moss owns the Chicago accounts. Rosa Diaz owns the non-executive members. The campaign object is written once. The first attempt returns a simulated 503 and the retry completes it.
+The attendee upload reads `platform/samples/chicago-attendees.xlsx`. Junk rows sit above the header. Owners are the territory AE for an executive title and the territory SDR otherwise. Held rows are listed with a reason: no consent, missing email, duplicate, and a formula in a cell. A held row is not loaded. Nina Vale is the duplicate, so she is held and she is not a campaign member. The same counts are in the ask, on the CRM page, and in the why feed. Jake Moss owns the Chicago accounts. Rosa Diaz is assigned by the SDR rule and owns none of those accounts. The campaign object is written once. Salesforce was busy, retried automatically, and the queue finishes clear.
 
-The Chicago budget of $180,000 is over $150,000, so Maria's request is Waiting on Chris. It does not approve itself. Chris M. approves it from `/platform/spend`, or with `@mops approve Chicago` while signed in as Chris. The BAN and the campaign code are minted then. $150,000 is approved by the policy. $150,001 waits for Chris M. The SOW is filled from the agency roster. Actuals sit next to the budget.
+The Chicago budget of $180,000 is over $150,000, so Maria's request is Waiting on Chris. It does not approve itself. Chris M. approves it from `/platform/spend`, or with `@mops approve Chicago` while signed in as Chris. The BAN and the campaign code are minted then. $150,000 is approved by the policy. $150,001 waits for Chris M. The SOW is filled from the agency roster. Open items read Waiting on you: PM, PO, venue contact. Actuals stay hidden until Chris approves.
 
 The weekly report reads the live region and program totals. The deck states a pipeline target that is not the actual pipeline. The reply offers Download PowerPoint and Download PDF.
 
@@ -79,7 +79,7 @@ Reset demo wipes the book back to the seed, so the next ask is a first run.
 
 ## Old tool vs @mops
 
-Each console labels the measured line Old tool vs @mops.
+Each console shows one measured line, labeled Old tool vs @mops. A run under a second reads <1 sec.
 
 Data core: 6 screens, 11 fields, 20 minutes in Snowflake and Airtable for one consented list. The console shows the measured seconds for `@mops who can I email in Illinois`.
 

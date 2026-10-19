@@ -156,7 +156,11 @@ async function sendLog() {
     const prev = by.get(row.campaign_id);
     if (!prev || n > (prev.recipients || 0)) by.set(row.campaign_id, row);
   }
-  return [...by.values()];
+  const picked = [...by.values()];
+  if (!picked.length) return [];
+  const names = await db().all(`SELECT id, name FROM campaigns WHERE id IN (${picked.map(() => '?').join(',')})`, picked.map(r => r.campaign_id));
+  const nameOf = Object.fromEntries(names.map(r => [r.id, r.name]));
+  return picked.map(row => ({ ...row, campaign: nameOf[row.campaign_id] || row.campaign_id }));
 }
 
 async function deliverOne(q, { contact, template, campaign, sendId, actor, channel, sourceMessage }) {
@@ -173,7 +177,6 @@ async function deliverOne(q, { contact, template, campaign, sendId, actor, chann
   await q.run('INSERT INTO send_recipients(token, send_id, contact_id, email, opened, clicked, mail_id) VALUES(?, ?, ?, ?, 0, 0, ?)', [token, sendId, contact.id, contact.email, mail.id]);
   const actId = 'ACT-' + crypto.randomBytes(4).toString('hex');
   await q.run('INSERT INTO activities(id, contact_id, campaign_id, event_id, kind, at, ref) VALUES(?, ?, ?, NULL, ?, ?, ?)', [actId, contact.id, campaign.id, 'send', now(), sendId]);
-  await append(q, { entity: 'activities', entityId: actId, op: 'insert', actor, channel, sourceMessage, why: `Sent “${subject}” to ${contact.first_name} ${contact.last_name} at ${contact.email}.`, after: { kind: 'send', email: contact.email } });
   return { token, email: contact.email, first_name: contact.first_name, subject };
 }
 
@@ -333,6 +336,15 @@ async function tickJourney(id, ctx = {}) {
       const at = new Date(Date.now() + (following.hours || 0) * 3600 * 1000).toISOString();
       await db().run('UPDATE journey_members SET step = ?, next_at = ? WHERE id = ?', [nxt, at, member.id]);
     } else await db().run('UPDATE journey_members SET step = ?, next_at = ? WHERE id = ?', [nxt, now(), member.id]);
+  }
+  if (sent) {
+    await db().tx(async (q) => {
+      await append(q, {
+        entity: 'sends', entityId: journey.id, op: 'insert', actor: ctx.actor || 'Engage', channel: ctx.channel || 'App', sourceMessage: ctx.sourceMessage || '',
+        why: `Sent ${sent} ${sent === 1 ? 'note' : 'notes'} on ${journey.name}.`,
+        after: { sent, campaignId: journey.campaign_id }
+      });
+    });
   }
   return { sent, waited, due: due.length };
 }

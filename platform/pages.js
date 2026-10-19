@@ -90,11 +90,17 @@ details ul{margin:8px 0;padding-left:18px;color:#3c3b36}
 .arch code{background:#efeae0;padding:1px 5px;border-radius:5px;font-family:ui-monospace,monospace;font-size:.92em}
 .boards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .policy{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.today{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.8fr);gap:16px;align-items:stretch}
+.today .panel{min-height:320px}
+.stat{font-size:40px;line-height:1;letter-spacing:-.04em;font-weight:620;margin:8px 0}
+.feed p{margin:0;padding:10px 0;border-bottom:1px solid #f0ece4}
+.feed p:last-child{border-bottom:0}
+.feed small{color:var(--muted)}
 @media(max-width:900px){
   .shell{flex-direction:column}
   aside{width:100%}
   nav{flex-direction:row;flex-wrap:wrap}
-  .boards{grid-template-columns:1fr}
+  .boards,.today{grid-template-columns:1fr}
 }
 </style>
 <div class="shell">
@@ -103,6 +109,7 @@ details ul{margin:8px 0;padding-left:18px;color:#3c3b36}
 <header class="top"><div class="who" id="who">Signed in</div><div class="row" style="margin:0"><select id="switch" aria-label="Switch user"></select><button id="reset" class="ghost" type="button">Reset demo</button></div></header>
 <script>
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function when(v){const m=/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})/.exec(String(v||''));if(!m)return '';const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];let h=Number(m[4]);const ap=h<12?'am':'pm';h=h%12||12;return Number(m[3])+' '+months[Number(m[2])-1]+', '+h+':'+m[5]+' '+ap}
 async function api(url, opt){const r=await fetch(url,Object.assign({headers:{'content-type':'application/json'}},opt));const j=await r.json().catch(()=>({ok:false,error:'Bad response'}));if(!r.ok||j.ok===false)throw new Error(j.error||('Request failed '+r.status));return j}
 function err(e){const n=document.querySelector('#err');if(n)n.textContent=e.message||String(e)}
 function elon(b){return 'Old tool vs @mops: Old tool: '+b.screens+' screens / '+b.fields+' fields / '+b.minutes+' minutes · @mops: 1 ask / '+b.secondsText}
@@ -143,7 +150,24 @@ document.querySelector('#reset').onclick=async()=>{
 
 function home() {
   const cards = MODULES.map(m => `<article class="card" data-module="${esc(m.id)}" data-status="${esc(m.status)}"><span class="tag ${esc(m.status)}">${esc(m.status)}</span><h2>${esc(m.name)}</h2><p>Replaces ${esc(m.replaces)}</p>${m.note ? `<p>${esc(m.note)}</p>` : ''}${m.href ? `<p><a class="btn" href="${esc(m.href)}">Open</a></p>` : ''}</article>`).join('');
-  return layout('home', `<h1>One platform, six modules.</h1><p class="sub">Data core, Engage, CRM, Plan and spend, Insights, and the Brain API are running on this machine. Fictional Northwind data only.</p><div class="grid">${cards}</div>`);
+  const names = Object.fromEntries(MODULES.map(m => [m.id, m.name]));
+  return layout('home', `<h1>One platform, six modules.</h1><p class="sub">Data core, Engage, CRM, Plan and spend, Insights, and the Brain API are running on this machine. Fictional Northwind data only.</p><div class="grid">${cards}</div><h2>What @mops did today</h2><div class="today"><div id="today" class="panel feed">Loading…</div><div id="saved" class="panel">Loading…</div></div>
+<script>
+const NAME=${JSON.stringify(names)};
+function noise(why){return /Loaded the fictional Northwind book|Scored from title|Minted the campaign code from the region|Recorded \\$|Recorded opted_in|Recorded opted_out|Recorded unknown consent|Approved \\$180,000 because Chris/.test(why||'')}
+async function boot(){try{
+  await window.whoReady;
+  const [feed, metrics]=await Promise.all([api('/api/platform/brain/why?limit=80'), api('/api/platform/metrics')]);
+  const mods=Object.entries(metrics).filter(([,b])=>b&&b.minutes);
+  const all=mods.reduce((s,[,b])=>s+b.minutes,0);
+  const ran=mods.filter(([,b])=>b.runs);
+  const saved=ran.reduce((s,[,b])=>s+b.minutes,0);
+  document.querySelector('#saved').innerHTML='<p class="kicker">Time saved</p><p class="stat">'+(saved||all).toLocaleString('en-US')+' min</p><p>'+(saved?('Saved '+saved+' minutes across '+ran.length+' '+(ran.length===1?'ask':'asks')+' run here. All six take '+all+' minutes in the old tools.'):('The six asks take '+all+' minutes in the old tools.'))+' @mops does each in &lt;1 sec.</p>'+mods.map(([k,b])=>'<p><b>'+esc(NAME[k]||k)+'</b> · '+b.minutes+' min before · '+esc(b.secondsText)+'</p>').join('');
+  const rows=(feed.rows||[]).filter(r=>!noise(r.why)).slice(0,8);
+  document.querySelector('#today').innerHTML=rows.length?rows.map(r=>'<p><small>'+esc(when(r.at)||'')+' · '+esc(r.module)+' · '+esc(r.actor)+'</small><br>'+esc(r.why)+'</p>').join(''):'Nothing yet today.';
+}catch(e){err(e)}}
+boot();
+</script>`);
 }
 
 function tableScript() {
@@ -151,13 +175,13 @@ function tableScript() {
 const LABEL={costPerLead:'Cost per lead',mqls:'MQLs',pipeline:'Pipeline',target:'Target',budget:'Budget',actual:'Actual',campaigns:'Campaigns',leads:'Leads',region:'Region',program:'Program',variance:'Left',name:'Name',title:'Title',state:'State',score:'Score',stage:'Stage',email:'Email',owner_name:'Owner',status:'Status',attempts:'Attempts',last_error:'Last error',type:'Type',company:'Company',country:'Country'};
 const MONEY=new Set(['costPerLead','pipeline','target','budget','actual','variance','amount','spend','goal','left']);
 function head(c){if(LABEL[c])return LABEL[c];const s=String(c).replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2');return s.charAt(0).toUpperCase()+s.slice(1)}
-function cell(c,v){if(v==null||v==='')return '—';if(MONEY.has(c)&&v!==''&&!isNaN(Number(v)))return money(v);if(typeof v==='number')return Number(v).toLocaleString('en-US');return esc(v).slice(0,180)}
+function cell(c,v){if(v==null||v==='')return '—';const stamp=when(v);if(stamp&&(c==='at'||c==='created_at'||/^\\d{4}-\\d{2}-\\d{2}T/.test(String(v))))return esc(stamp);if(MONEY.has(c)&&v!==''&&!isNaN(Number(v)))return money(v);if(typeof v==='number')return Number(v).toLocaleString('en-US');return esc(v).slice(0,180)}
 function table(el, rows){if(!rows||!rows.length){el.textContent='No rows.';return}const cols=Object.keys(rows[0]);el.innerHTML='<table><thead><tr>'+cols.map(c=>'<th>'+esc(head(c))+'</th>').join('')+'</tr></thead><tbody>'+rows.slice(0,40).map(r=>'<tr>'+cols.map(c=>'<td>'+cell(c,r[c])+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}`;
 }
 
 function dataPage() {
   const proof = BASELINES.data.proof;
-  return layout('data', `<h1>Data core</h1><p class="sub">Replaces the Snowflake marts and the Airtable trackers. Every write is an append-only event. Each person has one name and one state.</p><p class="kicker">Old tool vs @mops</p><p class="elon" id="elon" data-module="data">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><span id="counts"></span></div><div id="answer"></div><h2>Schema</h2><div id="schema" class="schema"></div><h2>Tables</h2><div class="row"><select id="table"></select><input id="q" placeholder="Filter"><button id="load" class="ghost" type="button">Show</button></div><div id="rows" class="panel"></div><h2>Event log</h2><div class="row"><input id="logq" placeholder="Search the why" value="venue"><button id="logbtn" class="ghost" type="button">Search</button></div><div id="log" class="panel"></div>
+  return layout('data', `<h1>Data core</h1><p class="sub">Replaces the Snowflake marts and the Airtable trackers. Every write is an append-only event. Each person has one name and one state.</p><p class="elon" id="elon" data-module="data">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><span id="counts"></span></div><div id="answer"></div><h2>Schema</h2><div id="schema" class="schema"></div><h2>Tables</h2><div class="row"><select id="table"></select><input id="q" placeholder="Filter"><button id="load" class="ghost" type="button">Show</button></div><div id="rows" class="panel"></div><h2>Event log</h2><div class="row"><input id="logq" placeholder="Search the why" value="venue"><button id="logbtn" class="ghost" type="button">Search</button></div><div id="log" class="panel"></div>
 <script>
 ${tableScript()}
 async function boot(){try{
@@ -182,7 +206,7 @@ boot();
 
 function engagePage() {
   const proof = BASELINES.engage.proof;
-  return layout('engage', `<h1>Engage</h1><p class="sub">Replaces Eloqua. One ask builds the segment, the email, and the send. The mail catcher never leaves this machine.</p><p class="kicker">Old tool vs @mops</p><p class="elon" id="elon" data-module="engage">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><button id="sim" class="ghost" type="button" data-simulate>Simulate a realistic response</button><span>MQLs <b data-mql-count>…</b> · line is ${MQL_THRESHOLD} · about 45% open, about 12% click</span></div><div id="answer"></div><h2>Segments</h2><div id="segments" class="panel"></div><h2>Templates</h2><div id="templates" class="panel"></div><h2>Send log</h2><p class="sub">One row per campaign. Notes to a single person stay off this list. Simulate runs once per send.</p><div id="sends" class="panel"></div><h2>Leaderboards</h2><div class="boards"><div class="panel"><h3>Illinois</h3><div id="board-il"></div></div><div class="panel"><h3>Texas</h3><div id="board-tx"></div></div></div>
+  return layout('engage', `<h1>Engage</h1><p class="sub">Replaces Eloqua. One ask builds the segment, the email, and the send. The mail catcher never leaves this machine.</p><p class="elon" id="elon" data-module="engage">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><button id="sim" class="ghost" type="button" data-simulate>Simulate a realistic response</button><span>MQLs <b data-mql-count>…</b> · an MQL is a score of ${MQL_THRESHOLD} or higher · about 45% open, about 12% click</span></div><div id="answer"></div><h2>Segments</h2><div id="segments" class="panel"></div><h2>Templates</h2><div id="templates" class="panel"></div><h2>Send log</h2><p class="sub">One row per campaign. Notes to a single person stay off this list. Simulate runs once per send.</p><div id="sends" class="panel"></div><h2>Leaderboards</h2><div class="boards"><div class="panel"><h3>Illinois</h3><div id="board-il"></div></div><div class="panel"><h3>Texas</h3><div id="board-tx"></div></div></div>
 <script>
 function pct(n){return Math.round((n||0)*100)+'%'}
 function board(el, rows){el.innerHTML='<table><tr><th>Name</th><th>Title</th><th>State</th><th>Score</th><th>Stage</th></tr>'+(rows||[]).map(p=>'<tr data-contact="'+esc(p.id)+'"><td>'+esc(p.first_name)+' '+esc(p.last_name)+'</td><td>'+esc(p.title)+'</td><td>'+esc(p.state)+'</td><td>'+Number(p.score).toLocaleString('en-US')+'</td><td><span class="tag '+(p.stage==='mql'?'ok':'')+'">'+esc(p.stage)+'</span></td></tr>').join('')+'</table>'}
@@ -192,7 +216,7 @@ async function refresh(){
   const tpls=await api('/api/platform/engage/templates');
   document.querySelector('#templates').innerHTML=tpls.templates.map(t=>'<p><b>'+esc(t.name)+'</b> — '+esc(t.subject)+'</p>').join('');
   const sends=await api('/api/platform/engage/sends');
-  document.querySelector('#sends').innerHTML='<table><tr><th>Campaign</th><th>Sent</th><th>Open</th><th>Click</th></tr>'+sends.sends.map(s=>'<tr data-recipients="'+s.recipients+'"><td>'+esc(s.campaign_id)+'</td><td>'+Number(s.recipients).toLocaleString('en-US')+'</td><td>'+pct(s.openRate)+'</td><td>'+pct(s.clickRate)+'</td></tr>').join('')+'</table>';
+  document.querySelector('#sends').innerHTML='<table><tr><th>Campaign</th><th>Sent</th><th>Open</th><th>Click</th></tr>'+sends.sends.map(s=>'<tr data-recipients="'+s.recipients+'"><td>'+esc(s.campaign||s.campaign_id)+'</td><td>'+Number(s.recipients).toLocaleString('en-US')+'</td><td>'+pct(s.openRate)+'</td><td>'+pct(s.clickRate)+'</td></tr>').join('')+'</table>';
   const all=await api('/api/platform/engage/scores');
   document.querySelector('[data-mql-count]').textContent=all.mqls;
   const il=await api('/api/platform/engage/scores?state=Illinois');
@@ -243,7 +267,7 @@ document.querySelector('#run').onclick=async()=>{
 
 function crmPage() {
   const proof = BASELINES.crm.proof;
-  return layout('crm', `<h1>CRM bridge</h1><p class="sub">Replaces the Salesforce connector. Mock campaign, lead, and campaign-member objects, a queue that retries, and a messy badge export.</p><p class="kicker">Old tool vs @mops</p><p class="elon" id="elon" data-module="crm">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><a class="btn ghost" href="/platform/samples/chicago-attendees.xlsx">Download the sample Excel</a></div><div id="answer"></div><h2>Held rows</h2><div id="held" class="panel"></div><h2>Account owners</h2><div id="owners" class="panel"></div><h2>Salesforce objects</h2><div id="objects" class="panel"></div><h2>Sync queue</h2><div id="queue" class="panel"></div>
+  return layout('crm', `<h1>CRM bridge</h1><p class="sub">Replaces the Salesforce connector. Mock campaign, lead, and campaign-member objects, a queue that retries, and a messy badge export.</p><p class="elon" id="elon" data-module="crm">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><a class="btn ghost" href="/platform/samples/chicago-attendees.xlsx">Download the sample Excel</a></div><div id="answer"></div><p id="tally" class="sub"></p><h2>Held rows</h2><div id="held" class="panel"></div><h2>Account owners</h2><div id="owners" class="panel"></div><h2>Salesforce objects</h2><div id="objects" class="panel"></div><h2>Sync queue</h2><div id="queue" class="panel"></div>
 <script>
 ${tableScript()}
 async function refresh(){
@@ -252,9 +276,12 @@ async function refresh(){
   const queue=await api('/api/platform/crm/queue');
   table(document.querySelector('#queue'), queue.jobs);
   const owners=await api('/api/platform/crm/owners');
-  document.querySelector('#owners').innerHTML=(owners.owners||[]).map(o=>'<p><b>'+esc(o.name)+'</b> ('+esc(o.role)+'): '+o.accounts+' Chicago accounts, '+o.members+' campaign members</p>').join('')||'No owners yet.';
+  document.querySelector('#owners').innerHTML=(owners.owners||[]).map(o=>'<p>'+esc(o.label|| (o.name+' ('+o.role+')'))+'</p>').join('')||'No owners yet.';
   const uploads=await api('/api/platform/crm/uploads');
-  const held=(uploads.uploads[0]&&uploads.uploads[0].held)||[];
+  const latest=uploads.uploads[0];
+  const held=(latest&&latest.held)||[];
+  const tally=document.querySelector('#tally');
+  tally.textContent=latest?(latest.accepted+' campaign members loaded. Held '+held.length+'. Held rows are not in Salesforce.'):'No upload yet.';
   table(document.querySelector('#held'), held.map(h=>({name:h.name,reason:h.reason})));
 }
 window.afterAsk=refresh;
@@ -265,7 +292,7 @@ boot();
 
 function spendPage() {
   const proof = BASELINES.plan.proof;
-  return layout('plan', `<h1>Plan and spend</h1><p class="sub">Replaces Command Center and Airtable. Maria files the budget. Over $150,000 it sits with Chris M. as Waiting on Chris. He approves here, or with @mops approve Chicago. The BAN and the code are minted then.</p><p class="kicker">Old tool vs @mops</p><p class="elon" id="elon" data-module="plan">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><button id="approve" type="button" hidden>Approve Chicago</button></div><div id="answer"></div><h2>Approval queue</h2><div id="packets" class="panel"></div><h2>SOW — three fields only a person knows</h2><div class="row"><input id="our_pm" placeholder="Our project manager"><input id="po_number" placeholder="Purchase order"><input id="venue_contact" placeholder="Day-of venue contact"><button id="save" class="ghost" type="button">Save those three</button></div><div id="sow" class="panel"></div><h2>Actuals vs budget</h2><div id="actuals" class="panel"></div>
+  return layout('plan', `<h1>Plan and spend</h1><p class="sub">Replaces Command Center and Airtable. Maria files the budget. Over $150,000 it sits with Chris M. as Waiting on Chris. He approves here, or with @mops approve Chicago. The BAN and the code are minted then.</p><p class="elon" id="elon" data-module="plan">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><button id="approve" type="button" hidden>Approve Chicago</button></div><div id="answer"></div><h2>Approval queue</h2><div id="packets" class="panel"></div><h2>SOW — three fields only a person knows</h2><div class="row"><input id="our_pm" placeholder="Our project manager"><input id="po_number" placeholder="Purchase order"><input id="venue_contact" placeholder="Day-of venue contact"><button id="save" class="ghost" type="button">Save those three</button></div><div id="sow" class="panel"></div><h2>Actuals vs budget</h2><div id="actuals" class="panel"></div>
 <script>
 ${tableScript()}
 async function refresh(){
@@ -276,9 +303,15 @@ async function refresh(){
   const button=document.querySelector('#approve');
   button.hidden=!(document.body.dataset.role==='approver'&&waiting);
   const sow=(packets.packets||[]).find(p=>p.campaignId==='CAMP-CHI')||(packets.packets||[])[0];
-  document.querySelector('#sow').textContent=sow?sow.sow.agency+' · '+(sow.open.length?sow.open.map(f=>f.label).join(', ')+' still open':sow.sow.status):'File the Chicago budget to draft the SOW.';
-  const actuals=await api('/api/platform/spend/actuals');
-  table(document.querySelector('#actuals'), actuals.rows.slice(0,12).map(r=>({campaign:r.name,region:r.region,budget:r.budget,actual:r.actual,left:r.variance})));
+  const short={our_pm:'PM',po_number:'PO',venue_contact:'venue contact'};
+  document.querySelector('#sow').textContent=sow?(sow.open.length?('Waiting on you: '+sow.open.map(f=>f.short||short[f.key]||f.label).join(', ')):sow.sow.agency+' · '+sow.sow.status):'File the Chicago budget to draft the SOW.';
+  const chicago=(packets.packets||[]).find(p=>p.campaignId==='CAMP-CHI');
+  if(!chicago||chicago.status!=='approved'){
+    document.querySelector('#actuals').textContent='Actuals show after approval.';
+  }else{
+    const actuals=await api('/api/platform/spend/actuals');
+    table(document.querySelector('#actuals'), actuals.rows.slice(0,12).map(r=>({campaign:r.name,region:r.region,budget:r.budget,actual:r.actual,left:r.variance})));
+  }
 }
 document.querySelector('#save').onclick=async()=>{
   try{
@@ -301,7 +334,7 @@ boot();
 
 function insightsPage() {
   const proof = BASELINES.insights.proof;
-  return layout('insights', `<h1>Insights</h1><p class="sub">Replaces Power BI and Tableau. The numbers are the live book. The weekly deck has a pipeline target that is not the actual pipeline. The PowerPoint and the PDF are real files.</p><p class="kicker">Old tool vs @mops</p><p class="elon" id="elon" data-module="insights">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><a class="btn ghost" href="/api/platform/insights/reports/weekly.pptx?region=Americas">Weekly PowerPoint</a><a class="btn ghost" href="/api/platform/insights/reports/weekly.pdf?region=Americas">Weekly PDF</a><a class="btn ghost" href="/api/platform/insights/reports/monthly.pptx?region=portfolio">Monthly PowerPoint</a><a class="btn ghost" href="/api/platform/insights/reports/monthly.pdf?region=portfolio">Monthly PDF</a></div><div id="answer"></div><h2>By region</h2><div id="regions" class="panel"></div><h2>By program</h2><div id="programs" class="panel"></div>
+  return layout('insights', `<h1>Insights</h1><p class="sub">Replaces Power BI and Tableau. The numbers are the live book. The weekly deck has a pipeline target that is not the actual pipeline. The PowerPoint and the PDF are real files.</p><p class="elon" id="elon" data-module="insights">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><a class="btn ghost" href="/api/platform/insights/reports/weekly.pptx?region=Americas">Weekly PowerPoint</a><a class="btn ghost" href="/api/platform/insights/reports/weekly.pdf?region=Americas">Weekly PDF</a><a class="btn ghost" href="/api/platform/insights/reports/monthly.pptx?region=portfolio">Monthly PowerPoint</a><a class="btn ghost" href="/api/platform/insights/reports/monthly.pdf?region=portfolio">Monthly PDF</a></div><div id="answer"></div><h2>By region</h2><div id="regions" class="panel"></div><h2>By program</h2><div id="programs" class="panel"></div>
 <script>
 ${tableScript()}
 async function refresh(){
@@ -317,10 +350,10 @@ boot();
 
 function brainPage() {
   const proof = BASELINES.brain.proof;
-  return layout('brain', `<h1>Brain API</h1><p class="sub">The tag, the policy, and a why feed across every module. Rules decide. Nothing here calls a model.</p><p class="kicker">Old tool vs @mops</p><p class="elon" id="elon" data-module="brain">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button></div><div id="answer"></div><h2>Policy</h2><div id="policy" class="policy"></div><h2>Why feed</h2><div class="row"><input id="whyq" placeholder="Search the why" value="Chicago"><button id="whybtn" class="ghost" type="button">Search</button></div><div id="why" class="panel"></div>
+  return layout('brain', `<h1>Brain API</h1><p class="sub">The tag, the policy, and a why feed across every module. Rules decide. Nothing here calls a model.</p><p class="elon" id="elon" data-module="brain">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button></div><div id="answer"></div><h2>Policy</h2><div id="policy" class="policy"></div><h2>Why feed</h2><div class="row"><input id="whyq" placeholder="Search the why" value="Chicago"><button id="whybtn" class="ghost" type="button">Search</button></div><div id="why" class="panel"></div>
 <script>
 ${tableScript()}
-function chips(rows){return '<table><tr><th>Module</th><th>Channel</th><th>Who</th><th>Why</th></tr>'+rows.map(r=>'<tr><td><span class="tag mod">'+esc(r.module)+'</span></td><td>'+esc(r.channel)+'</td><td>'+esc(r.actor)+'</td><td>'+esc(r.why)+'</td></tr>').join('')+'</table>'}
+function chips(rows){return '<table><tr><th>When</th><th>Module</th><th>Channel</th><th>Who</th><th>Why</th></tr>'+rows.map(r=>'<tr><td>'+esc(when(r.at)||r.at)+'</td><td><span class="tag mod">'+esc(r.module)+'</span></td><td>'+esc(r.channel)+'</td><td>'+esc(r.actor)+'</td><td>'+esc(r.why)+'</td></tr>').join('')+'</table>'}
 async function load(){const body=await api('/api/platform/brain/why?q='+encodeURIComponent(document.querySelector('#whyq').value));document.querySelector('#why').innerHTML=body.rows.length?chips(body.rows):'No rows.'}
 async function boot(){try{
   await window.whoReady;
