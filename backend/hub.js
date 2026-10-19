@@ -101,6 +101,15 @@ async function handle(req,res,p,u){
   mm=r.match(/^zero\/budget\/(BUD-[\w-]+)\/(approve|adjust)$/);if(mm&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,ZT.decide(mm[1],{action:mm[2],adjust:b.adjust}));return true}
   mm=r.match(/^sow\/(SOW-\w+)\/(state|answer|sign)$/);if(mm){const b=req.method==='POST'?JSON.parse(await body(req)||'{}'):{};J(res,mm[2]==='state'?ZT.sowGet(mm[1]):mm[2]==='answer'?ZT.sowAnswer(mm[1],b.answers||{}):ZT.sowSign(mm[1],b.by));return true}
   if(r==='zero/data'){J(res,ZT.DATA);return true}
+  const LC=require('./lifecycle');
+  if(r==='lifecycle/start'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,await LC.start(b));return true}
+  if(r==='lifecycle/reset'&&req.method==='POST'){J(res,LC.present(LC.resetDemo()));return true}
+  if(r==='lifecycle'){J(res,{draft:LC.present(LC.ensure()),items:LC.list(),steps:LC.STEPS});return true}
+  mm=r.match(/^lifecycle\/(LC-[\w]+)\/sow\.(docx|pdf|html)$/);if(mm){const kind=mm[2]==='html'?'html':mm[2];const f=LC.file(mm[1],kind);if(!f){res.writeHead(404);return res.end('not ready'),true}
+    const h={'content-type':f.type};if(kind!=='html'&&f.name)h['content-disposition']=`attachment; filename="${f.name}"`;res.writeHead(200,h);res.end(f.body);return true}
+  mm=r.match(/^lifecycle\/(LC-[\w]+)\/upload\.csv$/);if(mm){const f=LC.file(mm[1],'csv');if(!f){res.writeHead(404);return res.end(''),true}res.writeHead(200,{'content-type':'text/csv','content-disposition':`attachment; filename="${f.name}"`});res.end(f.body);return true}
+  mm=r.match(/^lifecycle\/(LC-[\w]+)$/);if(mm&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');try{const out=await LC.act(mm[1],b);J(res,out||{error:'not found'},out?200:404)}catch(e){J(res,{error:e.message},500)}return true}
+  if(mm){const out=LC.get(mm[1]);J(res,out||{error:'not found'},out?200:404);return true}
   if(r==='intakes'){J(res,INT.list());return true}
   if(r==='repeat-entry'){J(res,require('./fields').repeatEntry());return true}
   mm=r.match(/^sow\/(SOW-[\w-]+)$/);if(mm){const s=INT.sow(mm[1]);res.writeHead(s?200:404,{'content-type':'text/html'});res.end(s?s.html:'not found');return true}

@@ -50,6 +50,54 @@ const BS=['Target','Awareness','Consideration','Decision','Purchase'];const KW=[
 const intent6s=accounts.map(a=>({accountId:a.id,source:'6sense (mock)',buyingStage:a.id==='A141'?'Decision':BS[Math.floor(r2()*4)],intentScore:a.id==='A141'?88:Math.round(r2()*100),keywords:[pick2(KW),pick2(KW)].filter((v,i,x)=>x.indexOf(v)===i),at:'2026-10-17'}));
 const PAGES=['/sase','/zero-trust','/pricing','/case-studies/bank','/webinars','/contact-sales'];const adobeWeb=[];
 for(const c of contacts){const n=c.accountId==='A141'?(c.id==='C1301'?5:c.id==='C1303'?3:1):Math.floor(r2()*2);for(let j=0;j<n;j++)adobeWeb.push({contactId:c.id,accountId:c.accountId,source:'Adobe Analytics (mock)',page:c.id==='C1301'&&j<2?'/pricing':pick2(PAGES),at:'2026-10-'+String(1+Math.floor(r2()*17)).padStart(2,'0')});}
-const db={company:'Northwind Networks',limits:{approvalUSD:150000},accounts,contacts,campaigns,leads,mdf,events,budgets:[],sows:[],segments:[],emails:[],outbox:[],sequences:[],uploads:[],crmSync:[],threads,activities,opps,syncLog,sellers,crm:{tasks:[],campaignMembers:[],leadScores:[]},notifications:[],intent6s,adobeWeb};
+// Region → Program → Campaign. Added after the original RNG so K1–K10, leads, and the activity stream stay put.
+const GEO={India:'APJ',Japan:'APJ',ANZ:'APJ',ASEAN:'APJ',EMEA:'EMEA',US:'Americas'};
+const CTRY={India:'India',Japan:'Japan',ANZ:'Australia',ASEAN:'Singapore',EMEA:'Germany',US:'United States'};
+const RG={India:'IND',Japan:'JPN',ANZ:'ANZ',ASEAN:'ASN',EMEA:'EMA',US:'USA'};
+const CHC={ABM:'ABM',Digital:'DIG',Partner:'PTR','Lead gen':'LGN',Events:'EVT'};
+const META={
+ K1:{stage:'Leads',pace:'on pace',nextAction:'Brief sellers on the hot CIO touches'},
+ K2:{stage:'Run',pace:'on pace',nextAction:'Check ASEAN paid social against the quarter goal'},
+ K3:{stage:'Report',pace:'on pace',nextAction:'Chase MDF proof of execution before 30 Oct'},
+ K4:{stage:'Setup',pace:'on pace',nextAction:'Booth list is staged — review the rows with no consent'},
+ K5:{stage:'Follow-up',pace:'on pace',nextAction:'Post-event follow-up is drafted — needs your OK to send'},
+ K6:{stage:'Leads',pace:'on pace',nextAction:'Hand the warm Japan accounts to Yui'},
+ K7:{stage:'Setup',pace:'behind',nextAction:'Campaign code is missing in CRM — I can create it'},
+ K8:{stage:'Run',pace:'on pace',nextAction:'Partner co-marketing is live — watch the MDF claim'},
+ K9:{stage:'Invite',pace:'on pace',nextAction:'Assessment offer is pacing — no action unless replies drop'},
+ K10:{stage:'Invite',pace:'behind',nextAction:'Registrations are behind pace — the reminder is scheduled'}};
+const EXTRA=[
+ ['K11','ABM','EMEA Enterprise 12','EMEA','Germany',160000,0.71,'behind','Leads','Three accounts went quiet after the first touch — draft the follow-up',18,410000,24000,6.1,'Srisha R.'],
+ ['K12','Digital','DACH SASE Always-on','EMEA','Germany',78000,0.74,'on pace','Run','Creative is live — check cost per MQL on Friday',22,190000,0,4.4,'Lena Ward'],
+ ['K13','Events','Paris Campus Roundtable','EMEA','France',92000,0.68,'on pace','Invite','Venue is held — send the opted-in CIO list',9,80000,0,3.2,'Lena Ward'],
+ ['K14','Partner','UK Reseller MDF Sprint','EMEA','United Kingdom',110000,0.66,'behind','Run','Two partners have not sent proof of execution',11,140000,0,3.6,'Srisha R.'],
+ ['K15','Lead gen','EMEA Assessment Offer','EMEA','Germany',44000,0.8,'on pace','Leads','Offer is ahead of the MQL goal — leave it running',31,210000,18000,5.4,'Lena Ward'],
+ ['K16','ABM','UK Top-15 Financial','EMEA','United Kingdom',145000,0.7,'on pace','Leads','Four accounts are in buying stage — brief the AE',14,520000,60000,5.8,'Srisha R.'],
+ ['K17','Digital','France Paid Social Q2','EMEA','France',69000,0.77,'behind','Run','Spend is fine, pipeline is behind the goal — pause the weak ad set',16,90000,0,4.2,'Lena Ward'],
+ ['K18','Events','Amsterdam Secure Access Day','EMEA','Netherlands',98000,0.67,'on pace','Setup','Hold the venue line and confirm the agency PM',4,40000,0,3.4,'Srisha R.'],
+ ['K19','ABM','US Strategic 20','US','United States',175000,0.73,'on pace','Leads','Pipeline is ahead — ask the AE which five accounts to double down on',20,890000,120000,6.4,'Jill Park'],
+ ['K20','Digital','Americas Hybrid Work Search','US','United States',84000,0.76,'on pace','Run','Search is on pace — no change this week',27,260000,20000,4.6,'Jill Park'],
+ ['K21','Events','Chicago CIO Salon','US','United States',96000,0.66,'behind','Invite','Registrations are light versus the room we booked',7,55000,0,3.1,'Noah Brooks'],
+ ['K22','Partner','Canada Co-sell Play','US','Canada',72000,0.7,'on pace','Run','Co-sell list is with the partner — wait on their seller notes',8,160000,0,4.0,'Jill Park'],
+ ['K23','Lead gen','US Network Assessment','US','United States',39000,0.82,'on pace','Report','Quarter readout is ready for you to skim',34,240000,40000,6.0,'Noah Brooks'],
+ ['K24','ABM','Brazil Top Accounts','US','Brazil',128000,0.69,'behind','Leads','Local events landed, pipeline has not — plan a seller workshop',12,150000,0,4.8,'Jill Park'],
+ ['K25','Events','NYC Security Breakfast','US','United States',88000,0.72,'on pace','Follow-up','Breakfast ran yesterday — follow-up draft is waiting',15,110000,0,3.5,'Noah Brooks'],
+ ['K26','Digital','LATAM Retargeting','US','Mexico',56000,0.75,'on pace','Run','Retargeting is cheap and on pace',19,130000,0,4.3,'Jill Park'],
+ ['K27','ABM','ASEAN Top-10 Banks','ASEAN','Singapore',150000,0.7,'on pace','Leads','Two banks opened the architecture note — loop Daniel in',13,480000,0,5.5,'Daniel Tan'],
+ ['K28','Digital','India SASE Always-on','India','India',66000,0.78,'on pace','Run','Always-on is funding itself — leave the budget',29,220000,15000,4.7,'Srisha R.'],
+ ['K29','Events','Tokyo Executive Breakfast','Japan','Japan',74000,0.67,'on pace','Invite','Sakura Gate is holding the room — invite the opted-in list',6,30000,0,3.3,'Yui Mori'],
+ ['K30','Partner','India MDF Wave 2','India','India',99000,0.71,'on pace','Run','Claims are in — one proof package still missing',10,175000,0,3.8,'Dev Rao'],
+ ['K31','Lead gen','ANZ Assessment Blitz','ANZ','Australia',37000,0.84,'behind','Leads','Clicks are up, MQLs are behind — rewrite the offer line',21,70000,0,4.1,'Amelia Clarke'],
+ ['K32','Events','Singapore Architecture Workshop','ASEAN','Singapore',108000,0.68,'on pace','Setup','Workshop date is set — SOW is with the agency',5,45000,0,3.6,'Daniel Tan']];
+for(const row of EXTRA){const [id,channel,name,region,country,budget,ratio,pace,stage,nextAction,leadCount,pipeline,bookings,goalX,owner]=row;
+ campaigns.push({id,channel,program:channel,name,region,country,geo:GEO[region],budget,spend:Math.round(budget*ratio),code:`FY27Q2-${RG[region]}-${CHC[channel]}-${id.slice(1).padStart(4,'0')}`,status:'Live',owner,pace,stage,nextAction,leadCount,mqls:Math.max(3,Math.round(leadCount*0.62)),pipeline,bookings,goal:Math.round(budget*goalX),quarter:'FY27Q2',sfdcId:'701NW0000'+id.slice(1).padStart(5,'0')+'AA'});}
+for(const k of campaigns){const m=META[k.id]||{};k.program=k.program||k.channel;k.geo=k.geo||GEO[k.region]||'APJ';k.country=k.country||CTRY[k.region]||k.region;k.quarter=k.quarter||'FY27Q2';k.stage=k.stage||m.stage||'Run';k.pace=k.pace||m.pace||'on pace';k.nextAction=k.nextAction||m.nextAction||'Watch pipeline against the quarter goal';k.sfdcId=k.sfdcId||('701NW0000'+String(k.id.replace(/\D/g,'')).padStart(5,'0')+'AA');
+ if(k.leadCount==null){const ls=leads.filter(l=>l.campaignId===k.id);k.leadCount=ls.length;k.mqls=ls.filter(l=>['MQL','SQL','Opportunity','Won'].includes(l.stage)).length;k.pipeline=ls.reduce((s,l)=>s+(l.pipeline||0),0);k.bookings=Math.round((k.pipeline||0)*(k.stage==='Report'?0.16:0.04));}
+ k.goal=k.goal||Math.max(k.pipeline?Math.round(k.pipeline/0.62):0,Math.round(k.budget*4));k.needsApproval=false;if(!k.consent){const n=58+(k.id.charCodeAt(k.id.length-1)*3)%24;k.consent={opted_in:n,unknown:16,opted_out:100-n-16};}}
+for(const k of campaigns)if(!threads.some(t=>t.refId===k.id))threads.push({id:'T-'+k.id,type:'campaign',refId:k.id,title:k.name,messages:[{who:'Srisha R.',at:'2026-10-12T09:00:00Z',text:`Kick-off: ${k.name} (${k.program}, ${k.geo}). Budget $${k.budget.toLocaleString()}.`}]});
+const regionBook=[{id:'APJ',name:'APJ',countries:['India','Japan','Australia','New Zealand','Singapore','Indonesia','Malaysia','Thailand']},{id:'EMEA',name:'EMEA',countries:['United Kingdom','Germany','France','Netherlands','United Arab Emirates']},{id:'Americas',name:'Americas',countries:['United States','Canada','Brazil','Mexico']}];
+const programs=[{id:'ABM',name:'ABM',budget:1400000},{id:'Digital',name:'Digital',budget:820000},{id:'Events',name:'Events',budget:980000},{id:'Partner',name:'Partner',budget:640000},{id:'Lead gen',name:'Lead gen',budget:380000}];
+const lifecycleDraft={id:'LC-DEMO',step:'budget',name:'Frankfurt Zero Trust Executive Dinner',fields:{campaign_name:'Frankfurt Zero Trust Executive Dinner',geo:'EMEA',region:'EMEA',country:'Germany',program:'Events',channel:'Events',product:'zero trust',start_date:'2026-11-19',end_date:'2026-11-19',city:'Frankfurt',city_venue:'Frankfurt',audience:'CIOs and CISOs at 25 target accounts',goal:'25 target accounts',budget:168000,capacity:40,owner:'Srisha R.'}};
+const db={company:'Northwind Networks',limits:{approvalUSD:150000},regions:regionBook,programs,lifecycleDraft,accounts,contacts,campaigns,leads,mdf,events,budgets:[],sows:[],segments:[],emails:[],outbox:[],sequences:[],uploads:[],crmSync:[],threads,activities,opps,syncLog,sellers,crm:{tasks:[],campaignMembers:[],leadScores:[]},notifications:[],intent6s,adobeWeb};
 fs.writeFileSync(__dirname+'/data.seed.json',JSON.stringify(db));fs.writeFileSync(__dirname+'/data.json',JSON.stringify(db));
 console.log('seeded',accounts.length,'accounts',contacts.length,'contacts',leads.length,'leads');

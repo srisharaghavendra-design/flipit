@@ -1,4 +1,5 @@
 {
+  "github": { "silent": true },
   "functions": {
     "api/index.js": {
       "maxDuration": 60

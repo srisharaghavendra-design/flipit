@@ -12,14 +12,16 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;-webki
 body[data-state=needs] .aura i:nth-child(3){opacity:1}
 [data-theme=light] .aura{opacity:.35}
 @keyframes drift{to{transform:translate(6vmax,4vmax) scale(1.15)}}
-.app{position:relative;z-index:1;max-width:720px;margin:0 auto;height:100dvh;display:flex;flex-direction:column}
+.app{position:relative;z-index:1;max-width:1080px;margin:0 auto;height:100dvh;display:flex;flex-direction:column}
 header{display:flex;align-items:center;gap:10px;padding:16px 22px 4px}
 .brand{font-weight:600;letter-spacing:-.01em;font-size:15px}.brand small{color:var(--mu);font-weight:400;font-size:12px;margin-left:8px}
 .state{font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px;margin-left:6px;padding:4px 10px;border-radius:999px;background:var(--glass);border:1px solid var(--line);backdrop-filter:var(--blur)}
 .state:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ac2);box-shadow:0 0 8px var(--ac2)}
 body[data-state=working] .state:before{background:var(--ac);box-shadow:0 0 8px var(--ac);animation:blink 1s infinite}body[data-state=needs] .state:before{background:var(--warn);box-shadow:0 0 8px var(--warn)}
 @keyframes blink{50%{opacity:.3}}
-.hbtn{margin-left:auto;display:flex;gap:2px}.ib{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--mu);transition:.2s}.ib:hover{background:var(--glass2);color:var(--tx)}
+.hbtn{margin-left:auto;display:flex;gap:8px;align-items:center}.ib{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--mu);transition:.2s}.ib:hover{background:var(--glass2);color:var(--tx)}
+.mode{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--glass)}
+.mode a{padding:6px 12px;font-size:12px;color:var(--mu);text-decoration:none;white-space:nowrap}.mode a.on{background:var(--tx);color:var(--bg);font-weight:650}
 /* pulse */
 .pulse{--c1:var(--ac);--c2:var(--ac2);--sp:6s;position:relative;width:28px;height:28px;flex:none}
 .pulse .core{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 34% 30%,#ffffffcc,transparent 34%),conic-gradient(from 0deg,var(--c1),var(--c2),var(--c1));box-shadow:0 0 30px color-mix(in srgb,var(--c1) 55%,transparent),inset 0 0 12px #0004;animation:breathe var(--sp) ease-in-out infinite,turn calc(var(--sp)*3) linear infinite}
@@ -164,13 +166,32 @@ footer:before{content:"";position:absolute;inset:-40px 0 0;background:linear-gra
 .intro .iq{font-size:clamp(64px,13vw,140px);font-weight:650;letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#fff,#b9b2ff);-webkit-background-clip:text;color:transparent;opacity:0;animation:rise .8s 1.9s forwards}
 .intro .il{font-size:16px;color:var(--mu);opacity:0;animation:rise .8s 2.2s forwards}.intro .il b{color:var(--ac2);font-weight:600}
 .intro .ib2{font-size:22px;letter-spacing:-.02em;opacity:0;animation:rise .8s 3.4s forwards;text-align:center;padding:0 24px}.intro .ib2 span{color:var(--warn)}
+.sumrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sumrow .glass{padding:14px 16px}.sumrow .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu2);font-weight:650}
+.sumrow .v{font-size:26px;font-weight:650;letter-spacing:-.03em;margin-top:2px}.sumrow .s{color:var(--mu);font-size:13px}
+.cockpit .story{font-size:34px}.newcamp{display:inline-flex;align-items:center;gap:8px;background:var(--tx);color:var(--bg);font-weight:650;padding:12px 16px;border-radius:14px;font-size:15px}.newcamp .svg{width:16px;height:16px}
+.hintline{color:var(--mu);font-size:13px;margin:0;max-width:640px}
+.chipsep{width:1px;height:16px;background:var(--line);flex:none;align-self:center}
+.grp h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu2);margin:16px 2px 8px;font-weight:650}
+.crow{display:grid;grid-template-columns:minmax(0,1.5fr) .7fr .6fr minmax(0,1.4fr);gap:10px;align-items:center;padding:11px 14px;border-top:1px solid var(--line);cursor:pointer;text-align:left;width:100%}
+.crow:first-child{border-top:0}.crow:hover{background:var(--glass2)}.crow .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crow .sub{color:var(--mu);font-size:12px;font-weight:450}
+.crow .st{font-size:12px;color:var(--ac2);font-weight:650}.crow .nx{font-size:13px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pace{font-size:11px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--mu)}.pace.behind{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.kvgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.kvgrid div{padding:10px 12px;border-radius:14px;background:var(--glass);border:1px solid var(--line)}.kvgrid b{display:block;font-size:14px}.kvgrid span{color:var(--mu);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.two .glass{padding:14px}.two h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu2)}
+.steprail{display:flex;gap:6px;overflow:auto;padding:4px 0 12px;scrollbar-width:none}.steprail button{flex:none;font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mu)}.steprail button.now{color:var(--bg);background:linear-gradient(90deg,var(--ac),var(--ac2));border:0;font-weight:700}.steprail button.done{color:var(--ok)}
+.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu);margin-bottom:8px}.field input,.field select,.field textarea{background:#ffffff10;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:8px 10px;font:inherit}
+.timer{font-size:13px;color:var(--mu);margin:8px 0}.flag{color:var(--warn)}
+.askbox{padding:14px 16px;margin:8px 0 14px}.askbox b{display:block;margin-bottom:4px}
+iframe.sow{width:100%;height:280px;border:1px solid var(--line);border-radius:14px;background:#fff}
+@media(max-width:800px){.sumrow,.two,.kvgrid{grid-template-columns:1fr 1fr}.crow{grid-template-columns:1fr 1fr}.crow .nx{grid-column:1/-1}}
 @media(max-width:600px){.story{font-size:30px}.journey{margin:18px -16px 4px;padding:8px 16px 18px}.js{width:132px}.tg{grid-template-columns:36px 1fr}.tg .res{grid-row:auto;grid-column:2;justify-self:start;margin-top:4px;max-width:100%}}
 @media(prefers-reduced-motion:reduce){.intro{display:none}*{animation-duration:.01s!important;transition-duration:.01s!important}}
 </style></head><body data-state="calm">
 <div class="aura"><i></i><i></i><i></i></div>
 <div class="app">
 <header><div class="pulse" id="orb" onclick="go('all')"><div class="core"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div></div><div class="brand">@mops<small>Northwind</small></div><div class="state" id="stl">calm</div>
-<div class="hbtn"><button class="ib" id="theme" title="Theme" aria-label="Toggle theme"></button><button class="ib" id="more" title="Under the hood" aria-label="Under the hood"></button></div></header>
+<div class="hbtn"><nav class="mode" aria-label="Surface"><a href="/" class="on">Front end</a><a href="/engine">Engine room</a></nav><button class="ib" id="theme" title="Theme" aria-label="Toggle theme"></button><button class="ib" id="more" title="Under the hood" aria-label="Under the hood"></button></div></header>
 <nav class="chips" id="chips"></nav>
 <main id="msgs"></main>
 <footer><div class="sug" id="sug"></div><div class="to" id="to"></div>
@@ -187,7 +208,9 @@ const P={check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',theme:'<circle cx="12" cy="1
 const ic=(n)=>`<svg class="svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]||''}</svg>`;
 const APPS={Outlook:['mail','#1f6fd6'],Webex:['webex','#0aa37f'],Slack:['slack','#7b3fa0'],Meeting:['meet','#e2603b'],'Partner portal':['portal','#3b6ee2']};
 const $=id=>document.getElementById(id),e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let EF=null,S,D,TH={},cur=location.hash.startsWith('#T-')?location.hash.slice(1):'all',charts=[],busy=false,ARTS={},delegated=false,speaking=false;
+let EF=null,S,D,TH={},PF=null,LCcache=null,ASK='',FILT={region:'all',program:'all',quarter:'FY27Q2'},charts=[],busy=false,ARTS={},delegated=false,speaking=false;
+function hashCur(){const h=location.hash.slice(1);if(h==='accounts'||h.startsWith('LC-')||h.startsWith('T-'))return h;return 'all'}
+let cur=hashCur();
 const snoozed=new Set(JSON.parse(localStorage.mopsSnooze||'[]'));
 document.documentElement.dataset.theme=localStorage.mopsTheme||'dark';
 $('theme').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=localStorage.mopsTheme=t;render()};
@@ -197,7 +220,10 @@ function setState(s){if(speaking&&s!=='speaking')return;document.body.dataset.st
 function toast(t){const x=$('toast');x.textContent=t;x.classList.add('on');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('on'),2200)}
 async function load(){if(!delegated&&cur==='all'){delegated=true;try{await fetch('/api/delegate',{method:'POST'})}catch(_){}}
  S=await(await fetch('/api/state')).json();D=await(await fetch('/api/data')).json();try{EF=await(await fetch('/api/efficiency')).json()}catch(_){EF=null}
- const ts=await Promise.all(S.threads.map(t=>fetch('/api/thread/'+t.id).then(r=>r.json())));TH={};ts.forEach(t=>TH[t.id]=t);render();if(!window._intro){window._intro=1;intro()}}
+ const q=new URLSearchParams(FILT);try{PF=await(await fetch('/api/portfolio?'+q)).json()}catch(_){PF=null}
+ const ts=await Promise.all(S.threads.map(t=>fetch('/api/thread/'+t.id).then(r=>r.json())));TH={};ts.forEach(t=>TH[t.id]=t);
+ if(String(cur).startsWith('LC-')){try{LCcache=await(await fetch('/api/engine/lifecycle/'+encodeURIComponent(cur))).json()}catch(_){}}
+ render();if(!window._intro){window._intro=1;intro()}}
 function pending(){const out=[];
  for(const t of Object.values(TH))for(const m of t.messages)for(const a of (m.artifacts||[])){const d=a.data||{};let st=null,id=null;
   if(d.budgetId&&a.kind==='Budget request'){const b=D.budgets.find(x=>x.id===d.budgetId);if(b&&b.status==='pending_approval'){st='budget';id=b.id}}
@@ -329,21 +355,86 @@ function intro(){const q=new URLSearchParams(location.search);if(cur!=='all'||(s
  setTimeout(()=>{try{if('speechSynthesis' in window&&q.has('speak'))playStory()}catch(_){}},1200);
  const end=()=>{el.classList.add('out');setTimeout(()=>el.remove(),900);removeEventListener('keydown',end);removeEventListener('pointerdown',end)};addEventListener('keydown',end);addEventListener('pointerdown',end);setTimeout(end,+(q.get('intro')||5200));}
 // ---------- views ----------
-function chips(P){const pend=new Set(P.map(p=>p.t.id));const ord=Object.values(TH).sort((x,y)=>(y.messages.at(-1).at>x.messages.at(-1).at)?1:-1);
- $('chips').innerHTML=`<button class="chip ${cur==='all'?'on':''}" onclick="go('all')">Now</button>`+ord.map(t=>`<button class="chip ${cur===t.id?'on':''}" onclick="go('${t.id}')">${e(short(t.title))}${pend.has(t.id)?'<span class="dot"></span>':''}</button>`).join('');}
+function chips(){const chip=(fn,label,on)=>`<button class="chip ${on?'on':''}" onclick="${fn}">${e(label)}</button>`;
+ const regs=[['all','All regions'],['APJ','APJ'],['EMEA','EMEA'],['Americas','Americas']];
+ const progs=[['all','All programs'],['ABM','ABM'],['Digital','Digital'],['Events','Events'],['Partner','Partner'],['Lead gen','Lead gen']];
+ $('chips').innerHTML=chip("go('all')",'Campaigns',cur==='all')+chip("go('accounts')",'Accounts',cur==='accounts')
+  +`<span class="chipsep"></span>`+regs.map(([v,l])=>chip(`setFilt('region','${v}')`,l,FILT.region===v)).join('')
+  +`<span class="chipsep"></span>`+progs.map(([v,l])=>chip(`setFilt('program','${v}')`,l,FILT.program===v)).join('')
+  +`<span class="chipsep"></span>`+chip("setFilt('quarter','FY27Q2')",'FY27Q2',FILT.quarter==='FY27Q2')+chip("setFilt('quarter','all')",'All quarters',FILT.quarter==='all');}
+async function setFilt(k,v){FILT[k]=v;const q=new URLSearchParams(FILT);try{PF=await(await fetch('/api/portfolio?'+q)).json()}catch(_){}if(cur!=='all'&&cur!=='accounts'&&!String(cur).startsWith('LC-'))cur='all';render()}
 function refreshState(){if(busy)return setState('working');setState(visiblePending().length?'needs':'calm');}
-function home(P){const now=new Date();const when=now.toLocaleDateString(undefined,{weekday:'long'})+' · '+now.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
- const pr={budget:0,shift:1,fu:2};const list=P.slice().sort((x,y)=>pr[x.st]-pr[y.st]||(x.at<y.at?1:-1)).slice(0,3);
- const B=brief(P);let h=`<section class="hero"><div class="pulse big"><div class="core"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div></div><div class="when">${when}</div><p class="story">${words(B.head)}</p><div class="stats3">${B.st.map((x,i)=>`<span class="st3 glass" style="animation-delay:${400+i*120}ms">${ic(x[0])}<span>${x[1]}</span></span>`).join('')}</div>${effPill()}<button class="play" id="playb" onclick="playStory()"><i>${ic('play')}</i>Hear it</button></section>`;
- h+=`<div class="lbl">${list.length?`<span class="n">●</span> Needs you · ${list.length}`:'Needs you'}</div>`+deck(list,'deck');
- h+=tagged()+campaigns();
- h+=`<div class="lbl">Right now · <span id="lvn">${handledCount()}</span> things handled</div><div class="live glass" id="live"></div>`;
- h+=quarter();
- const items=[];for(const t of Object.values(TH))t.messages.forEach(m=>{if(m.who==='@mops')(m.artifacts||[]).forEach(a=>{if(a.kind!=='Recommendation'&&!(a.data&&(a.data.followupId||a.data.shiftId)))items.push({a,at:m.at,tid:t.id})})});items.sort((x,y)=>x.at<y.at?1:-1);
- const show=window.showAll?items.slice(0,60):items.slice(0,5);
- h+=`<div class="lbl">Done for you</div><div class="handled glass">${show.map(x=>line(x.a,x.tid,1)).join('')}${items.length>show.length?`<button class="art more" onclick="showAll=1;render()"><span class="ck" style="background:var(--glass2);color:var(--mu)">+</span><span class="t" style="color:var(--mu)">${items.length-show.length} more, all in your rules</span><span class="go">›</span></button>`:''}</div><div style="height:30px"></div>`;
+function home(){const s=PF?.summary||{budget:0,spend:0,pipeline:0,goal:0,mqls:0,campaigns:0};const groups=PF?.groups||{};
+ const order=['ABM','Digital','Events','Partner','Lead gen'];
+ let h=`<section class="hero cockpit"><div class="when">Region → Program → Campaign</div><p class="story">Your quarter, by program.</p>
+ <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:10px 0 6px"><button class="newcamp" onclick="openNew()">${ic('plus')} New campaign</button><p class="hintline">Or type <b>@mops new campaign</b>. It only asks for the fields that are still missing.</p></div>
+ ${ASK?`<div class="askbox glass"><b>@mops</b>${e(ASK)}</div>`:''}
+ <div class="sumrow"><div class="glass"><div class="k">Budget vs spend</div><div class="v">${fmt(s.spend)}</div><div class="s">of ${fmt(s.budget)} · ${s.campaigns} campaigns</div></div>
+ <div class="glass"><div class="k">Pipeline vs goal</div><div class="v">${fmt(s.pipeline)}</div><div class="s">of ${fmt(s.goal)}</div></div>
+ <div class="glass"><div class="k">MQLs</div><div class="v">${s.mqls}</div><div class="s">this slice</div></div></div></section>`;
+ let any=0;for(const name of order){const rows=groups[name]||[];if(!rows.length)continue;any+=rows.length;
+  h+=`<div class="grp"><h3>${e(name)} · ${rows.length}</h3><div class="glass">${rows.map(c=>`<button class="crow" onclick="go('T-${c.id}')"><span class="nm">${e(c.name)}<div class="sub">${e(c.geo||'')} · ${e(c.country||c.region||'')}</div></span><span class="st">${e(c.stage||'')}</span><span class="pace ${c.pace==='behind'?'behind':''}">${e(c.pace||'')}</span><span class="nx">${e(c.nextAction||'')}</span></button>`).join('')}</div></div>`;}
+ if(!any)h+=`<div class="clear glass"><div><b>No campaigns in this slice.</b> Change a filter, or start one.</div></div>`;
  return h;}
-function thread(P){const t=TH[cur];const c=CAMP(cur.slice(2));let h=`<div class="th-h"><h1>${e(short(t.title))}</h1><div class="stats">${c?`<span>${e(c.channel)} · ${e(c.region)}</span><span><b>${fmt(c.spend)}</b> of ${fmt(c.budget)}</span>${c.state?`<span>Stage <b>${c.state.index+1}/9</b> ${e(c.state.stage)}</span>`:''}`:'<span>Account</span>'}</div></div>${c?journey(c):''}`;
+function accountsView(){const rows=D.accounts||[];
+ let h=`<section class="hero cockpit"><div class="when">Accounts</div><p class="story">Accounts sit beside the quarter.</p><p class="hintline">The work is organized by region, program, and campaign. Accounts are who those campaigns reach.</p></section><div class="glass">`;
+ h+=rows.map(a=>{const tid='T-'+a[0];const goTo=TH[tid]?`onclick="go('${tid}')"`:'';return `<button class="crow" ${goTo}><span class="nm">${e(a[1])}<div class="sub">${e(a[2]||'')} · ${e(a[3]||'')}</div></span><span class="nx">${TH[tid]?'Open the thread':'In the ledger'}</span></button>`}).join('');
+ return h+'</div>';}
+function campCard(c){const ev=(D.events||[]).find(x=>x.campaignId===c.id);const L=(D.leads||[]).filter(l=>l[2]===c.id);const cons=c.consent||{};
+ const tot=(+cons.opted_in||0)+(+cons.unknown||0)+(+cons.opted_out||0);const pct=tot?Math.round((+cons.opted_in||0)/tot*100)+'%':'—';
+ return `<div class="jcard glass"><div class="kvgrid">
+ <div><b>${fmt(c.spend||0)} / ${fmt(c.budget||0)}</b><span>Spend of budget</span></div>
+ <div><b>${e(c.code||'—')}</b><span>Campaign code</span></div>
+ <div><b>${e(c.sfdcId||'—')}</b><span>SFDC campaign</span></div>
+ <div><b>${ev?(ev.registrations||0)+' / '+(ev.capacity||'—'):'—'}</b><span>Registrations</span></div>
+ <div><b>${c.leadCount||L.length} · ${c.mqls||0} MQL</b><span>Leads</span></div>
+ <div><b>${fmt(c.pipeline||0)} / ${fmt(c.goal||0)}</b><span>Pipeline of goal</span></div>
+ <div><b>${fmt(c.bookings||0)}</b><span>Bookings</span></div>
+ <div><b>${pct}</b><span>Consent opted in</span></div></div>
+ <div class="two"><div class="glass"><h4>What @mops did</h4><p>${e(c.nextAction||'Running this campaign inside your rules.')}</p></div>
+ <div class="glass"><h4>Needs you</h4><p>${c.needsApproval?'This one is waiting on an approval.':'Nothing blocking. @mops will ask when a rule needs you.'}</p></div></div></div>`;}
+function lcFields(){const o={};document.querySelectorAll('[data-f]').forEach(el=>{if(String(el.value).trim()!=='')o[el.name]=el.type==='number'?+el.value:el.value});return o}
+function lcLines(){return [...document.querySelectorAll('[data-line]')].map(el=>({name:el.dataset.line,amount:+el.value||0}))}
+function lcAnswers(){const o={};document.querySelectorAll('[data-q]').forEach(el=>{if(String(el.value).trim()!=='')o[el.name]=el.value});return o}
+async function openNew(){const r=await(await fetch('/api/engine/lifecycle')).json();if(!r.draft){toast('No draft is parked.');return}LCcache=r.draft;go(r.draft.id)}
+async function lcAct(action,patch){if(busy)return;busy=true;setState('working');let r;try{r=await(await fetch('/api/engine/lifecycle/'+encodeURIComponent(cur),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,patch:patch||{}})})).json()}catch(err){busy=false;refreshState();toast(String(err.message||err));return}
+ busy=false;if(r.error)toast(r.error);LCcache=r;if(action==='launch'){await load();return}refreshState();render()}
+async function lcSaveIntake(goOn){const fields=lcFields();await lcAct('save-intake',{fields});if(goOn)await lcAct('continue')}
+async function lcSaveBudget(action){await lcAct(action,{lines:lcLines()})}
+async function lcSaveSow(goOn){const answers=lcAnswers();await lcAct('save-sow',{answers});if(goOn)await lcAct('continue')}
+function fld(name,label,val,type){return `<label class="field">${e(label)}<input data-f name="${e(name)}" type="${type||'text'}" value="${e(val??'')}"></label>`}
+function stepper(lc){if(!lc||!lc.step)return `<section class="hero cockpit"><p class="story">Opening the draft…</p></section>`;
+ const f=lc.fields||{};const rail=`<div class="steprail">${(lc.steps||[]).map(s=>`<button type="button" class="${s.state}">${e(s.label)}</button>`).join('')}</div>`;
+ const panes=`<div class="two"><div class="glass"><h4>What @mops did</h4>${(lc.did||[]).map(x=>`<p>${e(x)}</p>`).join('')||'<p>—</p>'}</div><div class="glass"><h4>Needs you</h4>${(lc.needs||[]).map(x=>`<p>${e(x)}</p>`).join('')||'<p>—</p>'}</div></div>`;
+ const timer=lc.timer?`<p class="timer">${e(lc.timer.note)}</p>`:'';
+ let body='';
+ if(lc.step==='intake'){const pairs=[['campaign_name','Campaign name'],['geo','Region'],['country','Country'],['program','Program'],['product','Product'],['start_date','Start date','date'],['end_date','End date','date'],['city','City'],['audience','Goal / target accounts'],['budget','Rough budget','number']];
+  body=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${pairs.map(([n,l,t])=>fld(n,l,f[n],t)).join('')}</div><div class="acts2"><button class="b2" onclick="lcSaveIntake(0)">Save</button><button class="b1" onclick="lcSaveIntake(1)">Continue</button></div>`;}
+ else if(lc.step==='budget'){const b=lc.budget||{lines:[],total:0,status:'draft'};
+  const acts=b.status==='pending_approval'?'<button class="b1" type="button" onclick="lcAct(\'approve-budget\')">Approve</button>':b.status==='approved'?'<button class="b1" type="button" onclick="lcAct(\'continue\')">Continue to SOW</button>':'<button class="b1" type="button" onclick="lcSaveBudget(\'submit-budget\')">Submit</button>';
+  body=`<p><b>Total ${fmt(b.total||0)}</b> · ${fmt(Math.max(0,b.remaining||0))} left in ${e(b.program||'the program')}</p><p class="hintline">${e(b.route||'')}</p><div class="acts2" id="lc-act">${acts}<button class="b2" type="button" onclick="lcSaveBudget('save-budget')">Save</button></div>
+  ${(b.lines||[]).map(l=>`<label class="field">${e(l.name)}<input data-line="${e(l.name)}" type="number" value="${l.amount}"><span>${e(l.why||'')}</span></label>`).join('')}`;}
+ else if(lc.step==='sow'){const s=lc.sow||{fields:[],questions:[]};const open=(s.questions||[]).filter(q=>!(s.answers||{})[q.key]);
+  const guess=q=>q.key==='agency_confirm'?(f.vendor||'Rhine & Co Events'):q.key==='venue'?(f.venue||((f.city||'City')+' — the usual room')):q.key==='cost_center'?(f.cost_center||'MK-4401'):q.key==='client_pm'?(f.client_pm||f.owner||'Srisha R.'):q.key==='agency_pm'?(f.agency_pm||'Ada Klein'):'';
+  body=`<div class="acts2" id="lc-act"><button class="b2" type="button" onclick="lcSaveSow(0)">Save edits</button><button class="b1" type="button" onclick="lcSaveSow(1)">Continue</button></div>
+  <p class="hintline"><a href="/api/engine/lifecycle/${e(lc.id)}/sow.docx">Download .docx</a> · <a href="/api/engine/lifecycle/${e(lc.id)}/sow.pdf">Download PDF</a></p>
+  ${open.map(q=>`<label class="field">${e(q.label)}<input data-q name="${e(q.key)}" value="${e((s.answers||{})[q.key]||guess(q))}"></label>`).join('')}
+  ${(s.fields||[]).map(x=>`<div class="field"><span>${e(x.field)}${x.confidence==='unknown'?' <em class="flag">needs you</em>':''}</span><b>${e(x.value)}</b><span>${e(x.source)} · ${e(x.confidence)}</span></div>`).join('')}
+  <iframe class="sow" title="SOW preview" src="/api/engine/lifecycle/${e(lc.id)}/sow.html"></iframe>`;}
+ else if(lc.step==='codes'){const c=lc.codes||{};
+  body=`<div class="acts2" id="lc-act"><button class="b1" type="button" onclick="lcAct('continue')">Continue to setup</button></div><div class="kvgrid"><div><b>${e(c.campaign_code||'—')}</b><span>Campaign code</span></div><div><b>${e(c.sfdc_campaign_id||'—')}</b><span>SFDC campaign</span></div><div><b>${e(c.event_id||'—')}</b><span>Event ID</span></div><div><b>${e(c.sdr||'—')} / ${e(c.ae||'—')}</b><span>SDR / AE</span></div></div>
+  <p class="timer">${c.fieldsReused||0} fields reused · ${c.retyped||0} retyped</p>`;}
+ else if(lc.step==='setup'){const u=lc.setup||{email:{},consent:{}};
+  body=`<div class="acts2" id="lc-act"><button class="b2" type="button" onclick="lcAct('upload',{csv:document.getElementById('lccsv').value})">Map columns</button><button class="b1" type="button" onclick="lcAct('continue')">Continue</button></div><p><a href="${e(u.registrationUrl||'#')}">${e(u.registrationUrl||'Registration page')}</a></p>
+  <div class="glass" style="padding:14px"><b>${e(u.email?.subject||'')}</b><pre>${e(u.email?.body||'')}</pre><p class="hintline">${e(u.consent?.note||'')}</p></div>
+  <p class="hintline"><a href="/api/engine/lifecycle/${e(lc.id)}/upload.csv">SFDC upload file</a></p>
+  <label class="field">Target list<textarea id="lccsv" rows="4" placeholder="email,first,last,company,title"></textarea></label>`;}
+ else if(lc.step==='launch')body=`<button class="newcamp" type="button" onclick="lcAct('launch')">${ic('play')} Launch</button>`;
+ else if(lc.step==='run')body=`<p class="hintline">${e(lc.campaign?.nextAction||'')}</p><div class="acts2"><button class="b1" onclick="lcAct('continue')">Build the report</button><button class="b2" onclick="go('all')">Back to the cockpit</button></div>`;
+ else body=`<p>${e(lc.report?.summary||'')}</p><button class="b2" onclick="go('all')">Back to the cockpit</button>`;
+ return `<section class="hero cockpit"><div class="when">${e(f.geo||'New')} → ${e(f.program||'Campaign')}</div><p class="story">${e(f.campaign_name||'New campaign')}</p>${rail}${timer}${body}${panes}</section>`;}
+function thread(P){const t=TH[cur];if(!t)return `<section class="hero cockpit"><p class="story">That thread is not here yet.</p><button class="newcamp" onclick="go('all')">Back to campaigns</button></section>`;
+ const c=CAMP(cur.slice(2));let h=`<div class="th-h"><h1>${e(short(t.title))}</h1><div class="stats">${c?`<span>${e(c.program||c.channel)} · ${e(c.geo||c.region)}</span><span><b>${fmt(c.spend)}</b> of ${fmt(c.budget)}</span>${c.stage?`<span>Stage <b>${e(c.stage)}</b></span>`:c.state?`<span>Stage <b>${c.state.index+1}/9</b> ${e(c.state.stage)}</span>`:''}`:'<span>Account</span>'}</div></div>${c?journey(c)+campCard(c):''}`;
  const vis=P.filter(p=>p.t.id===cur);if(vis.length)h+=deck(vis,'tdeck');
  const pendIds=new Set(P.map(p=>p.id));let last='';
  for(const m of t.messages.slice(-200)){const d=new Date(m.at).toDateString();if(d!==last){last=d;h+=`<div class="day">${d===new Date().toDateString()?'Today':new Date(m.at).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</div>`;}
@@ -351,11 +442,13 @@ function thread(P){const t=TH[cur];const c=CAMP(cur.slice(2));let h=`<div class=
   const arts=(m.artifacts||[]).filter(a=>!(a.data&&(pendIds.has(a.data.followupId)||pendIds.has(a.data.shiftId)||(a.kind==='Budget request'&&pendIds.has(a.data.budgetId)))));
   h+=`<div class="r">${m.mode!=='autopilot'&&m.mode!=='direct'&&m.text&&arts.length!==1?`<div class="txt">${e(m.text)}</div>`:''}${arts.map(a=>line(a,cur)).join('')}</div>`;}
  return h;}
-function render(){ARTS={};DEC={};charts.forEach(c=>c.destroy());charts=[];const P=visiblePending();chips(P);
- $('msgs').innerHTML=cur==='all'?home(P):thread(P);
+function render(){ARTS={};DEC={};charts.forEach(c=>c.destroy());charts=[];const P=visiblePending();chips();
+ const view=cur==='all'?home():cur==='accounts'?accountsView():String(cur).startsWith('LC-')?stepper(LCcache):thread(P);
+ $('msgs').innerHTML=view;
  document.querySelectorAll('canvas[data-k]').forEach(cv=>charts.push(mkChart(cv,ARTS[cv.dataset.k].chart)));
- $('to').innerHTML=`To <b>${e(short(TH[target()].title))}</b>`;sugg();document.body.classList.toggle('home',cur==='all');swipe();refreshState();
- if(cur==='all'){$('msgs').scrollTop=0;countUp();startLive();}else{clearInterval(LV);$('msgs').scrollTop=1e9;const j=$('jy'),c=j&&j.querySelector('.js.c');if(c)j.scrollLeft=Math.max(0,c.offsetLeft-j.clientWidth/2+60);}}
+ const who=cur==='all'||cur==='accounts'||String(cur).startsWith('LC-')?'@mops':short((TH[target()]||{title:'@mops'}).title);
+ $('to').innerHTML=`To <b>${e(who)}</b>`;sugg();document.body.classList.toggle('home',cur==='all'||cur==='accounts'||String(cur).startsWith('LC-'));swipe();refreshState();
+ if(cur==='all'||cur==='accounts'||String(cur).startsWith('LC-')){clearInterval(LV);$('msgs').scrollTop=0}else{$('msgs').scrollTop=1e9;const j=$('jy'),c=j&&j.querySelector('.js.c');if(c)j.scrollLeft=Math.max(0,c.offsetLeft-j.clientWidth/2+60);}}
 function reg(a){const k='a'+Object.keys(ARTS).length;ARTS[k]=a;return k}
 function line(a,tid,compact){const k=reg(a);const ex=a.table2&&a.table2.rows.length?` · ${a.table2.rows.length} exceptions`:'';
  return`<div class="art ${a.error?'e':''}" data-kind="${e(a.kind||'Error')}" onclick="openArt('${k}')"><span class="ck">${ic(a.error?'alert':'check')}</span><span class="t">${e(a.error||a.title)}${ex}</span><span class="k">${e(a.kind||'')}</span><span class="go">${ic('chev')}</span></div>${compact?'':''}${!compact&&a.table&&a.table.rows.length&&!a.chart&&a.kind!=='Autopilot'?`<div class="prev glass" onclick="openArt('${k}')">${a.table.rows.slice(0,3).map(r=>`<div style="display:flex;gap:10px;padding:3px 0;font-size:13px"><b style="font-weight:600;flex:none">${e(r[0])}</b><span style="color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.slice(1,4).map(e).join(' · ')}</span></div>`).join('')}${a.table.rows.length>3?`<div style="color:var(--ac);font-size:12px;padding-top:4px">+${a.table.rows.length-3} more</div>`:''}</div>`:''}${!compact&&a.chart?`<div class="prev glass" onclick="openArt('${k}')"><canvas data-k="${k}"></canvas></div>`:''}`;}
@@ -364,12 +457,16 @@ function mkChart(cv,c){const st=getComputedStyle(document.documentElement),ac=st
  const ds=c.datasets.map((d,i)=>({...d,backgroundColor:c.type==='doughnut'?pal:pal[i],borderColor:pal[i],borderRadius:6,tension:.35,pointRadius:2}));
  return new Chart(cv,{type:c.type,data:{labels:c.labels,datasets:ds},options:{animation:{duration:700},plugins:{legend:{labels:{color:mu,boxWidth:10}}},scales:c.type==='doughnut'?{}:{x:{ticks:{color:mu},grid:{display:false}},y:{ticks:{color:mu},grid:{color:ln}},...(c.datasets.some(d=>d.yAxisID)?{y1:{position:'right',ticks:{color:mu},grid:{display:false}}}:{})}}});}
 
-function target(){if(cur!=='all')return cur;const q=$('tx').value.toLowerCase();const hit=Object.values(TH).find(t=>short(t.title).toLowerCase().split(/\s+/).some(w=>w.length>4&&q.includes(w)));return hit?hit.id:'T-K5';}
-function sugg(){const t=TH[target()];const c=D.campaigns.find(c=>'T-'+c.id===t.id);let s;
+function target(){if(cur!=='all'&&cur!=='accounts'&&!String(cur).startsWith('LC-')&&TH[cur])return cur;const q=($('tx').value||'').toLowerCase();const hit=Object.values(TH).find(t=>short(t.title).toLowerCase().split(/\s+/).some(w=>w.length>4&&q.includes(w)));return hit?hit.id:'T-K5';}
+function sugg(){if(cur==='all'||cur==='accounts'||String(cur).startsWith('LC-')){const s=['how is APJ ABM doing this quarter','which EMEA campaigns are behind pace','new campaign'];
+ $('sug').innerHTML=s.map(x=>`<button>${e(x)}</button>`).join('');[...$('sug').children].forEach((b,i)=>b.onclick=()=>{$('tx').value='@mops '+s[i];$('tx').focus()});return}
+ const t=TH[target()]||{id:'T-K5',type:'campaign',title:''};const c=D.campaigns.find(c=>'T-'+c.id===t.id);let s;
  if(t.type==='account')s=[`who's hot at ${short(t.title)}?`,"why didn't these leads reach SFDC?",'credit the roundtable on this opp','pipeline by account'];
  else{s=[];if(c&&!c.code)s.push('create a campaign code');s.push('what\'s next?');if(c&&c.channel==='Events')s.push('set up the event for 40 guests','who registered?');if(c&&c.channel==='Partner')s.push('MDF status');s.push('pipeline by channel','push the target list to sellers','budget request $60K','email opted-in CIOs in '+(c?c.region:'India')+' about SASE');}
  $('sug').innerHTML=s.slice(0,6).map(x=>`<button>${e(x)}</button>`).join('');[...$('sug').children].forEach((b,i)=>b.onclick=()=>{$('tx').value='@mops '+s[i];$('tx').focus();});}
-function go(id){$('listen').classList.remove('on');cur=id;history.replaceState(null,'',id==='all'?'#':'#'+id);render()}
+async function go(id){$('listen').classList.remove('on');cur=id;history.replaceState(null,'',id==='all'?'#':'#'+id);
+ if(String(id).startsWith('LC-')&&(!LCcache||LCcache.id!==id)){try{LCcache=await(await fetch('/api/engine/lifecycle/'+encodeURIComponent(id))).json()}catch(err){LCcache={error:String(err)}}}
+ render()}
 function openArt(k){const a=ARTS[k];const tb=t=>t&&t.rows.length?`<div class="list">${t.rows.map(r=>`<div class="li"><b>${e(r[0])}</b> <span>${r.slice(1).map(e).join(' · ')}</span></div>`).join('')}</div>`:'';
  $('sheetBody').innerHTML=`<div class="kk">${e(a.kind||'Error')}</div><h2>${e(a.error||a.title)}</h2>${a.chart?'<div class="list" style="padding:12px"><canvas id="sc"></canvas></div>':''}${a.body?`<pre>${e(a.body)}</pre>`:''}${tb(a.table)}${a.table2&&a.table2.rows.length?'<div class="kk" style="color:var(--warn);margin-bottom:6px">Exceptions</div>'+tb(a.table2):''}
  ${a.cites?`<div class="cites">Sources ${a.cites.slice(0,30).map(c=>`<span>${e(c)}</span>`).join('')}</div>`:''}<div class="acts2">${(a.actions||[]).map(x=>x.api?`<button class="${/Reject/.test(x.label)?'b2':'b1'}" onclick="closeSheet();api('${x.api}')">${e(x.label)}</button>`:`<button class="b1" onclick="closeSheet();say('${e(x.say)}')">${e(x.label)}</button>`).join('')}${[a.link,a.link2].filter(Boolean).map(l=>`<a class="b2" style="text-decoration:none" target="_blank" href="${l.href}">${e(l.label)}</a>`).join('')}</div>`;
@@ -381,14 +478,22 @@ function edit(tid,st,id){go(tid);$('tx').value=st==='budget'?'@mops budget reque
 const STEPS=[[/budget/,['Reading the thread','Pulling spend and pipeline','Checking your $150K limit','Drafting the request']],[/segment|email|invite|nurture/,['Reading the thread','Building the segment','Checking consent','Drafting and sending']],[/pipeline|report|how|which|chart/,['Querying the data layer','Computing totals','Citing source records','Drawing the chart']],[/sfdc|sync/,['Reading the sync log','Grouping failure causes','Fixing what is safe']],[/hot|score/,['Reading 6sense intent','Adding Adobe web visits','Scoring contacts']],[/upload|csv|list/,['Parsing the file','De-duplicating','Matching to accounts','Flagging exceptions']],[/./,['Reading the thread','Choosing the right agent','Doing the work']]];
 async function think(text){const st=STEPS.find(s=>s[0].test(text.toLowerCase()))[1];const el=document.createElement('div');el.className='think glass';el.id='thinking';el.innerHTML=`<div class="shimmer">@mops is working…</div>`;$('msgs').appendChild(el);
  for(const s of st){const r=document.createElement('div');r.className='row';r.innerHTML=`<i></i>${s}`;el.appendChild(r);$('msgs').scrollTop=1e9;await new Promise(z=>setTimeout(z,260));el.querySelectorAll('.row').forEach((x,i,arr)=>{if(i<arr.length-1)x.classList.add('done')});}}
-async function send(csv){let text=$('tx').value.trim()||(csv?'@mops upload this attendee list':'');if(!text||busy)return;if(!/@mops/i.test(text))text='@mops '+text;const tid=target();
- if(cur==='all'&&tid)go(tid);busy=true;$('send').disabled=true;setState('working');$('tx').value='';
+async function send(csv){let text=$('tx').value.trim()||(csv?'@mops upload this attendee list':'');if(!text||busy)return;if(!/@mops/i.test(text))text='@mops '+text;
+ const onCockpit=cur==='all'||cur==='accounts'||String(cur).startsWith('LC-');
+ if(/\bnew campaign\b/i.test(text)&&onCockpit){busy=true;$('tx').value='';setState('working');
+  const r=await(await fetch('/api/engine/lifecycle/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text})})).json();
+  busy=false;LCcache=r;if(r.id)go(r.id);else{refreshState();toast(r.error||'Could not start');}return}
+ if(onCockpit&&/how is|behind pace|which /i.test(text)){busy=true;$('tx').value='';setState('working');
+  const res=await(await fetch('/api/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({threadId:'T-K5',text})})).json();
+  const last=(res.messages||[]).filter(m=>m.who==='@mops').at(-1);ASK=last?.text||'';busy=false;refreshState();if(cur!=='all')go('all');else await load();return}
+ const tid=target();
+ if((cur==='all'||cur==='accounts')&&tid)go(tid);busy=true;$('send').disabled=true;setState('working');$('tx').value='';
  const u=document.createElement('div');u.className='u';u.innerHTML=`<div>${e(text)}</div>`;$('msgs').appendChild(u);
  const w=think(text);const r=fetch('/api/post',{method:'POST',body:JSON.stringify({threadId:tid,text,csv})});await Promise.all([w,r]);
  busy=false;$('send').disabled=false;refreshState();await load();}
 async function say(t,tid,id){if(id)await resolve(id);if(tid&&cur!==tid&&cur!=='all')go(tid);if(tid&&cur==='all'){busy=true;await fetch('/api/post',{method:'POST',body:JSON.stringify({threadId:tid,text:t})});busy=false;return load()}$('tx').value=t;send()}
 async function api(u,id){if(id)await resolve(id);await fetch(u,{method:'POST'});load()}
-$('send').onclick=()=>send();$('tx').onkeydown=ev=>{if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();send()}};$('tx').oninput=()=>{$('to').innerHTML=`To <b>${e(short(TH[target()].title))}</b>`;};
+$('send').onclick=()=>send();$('tx').onkeydown=ev=>{if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();send()}};$('tx').oninput=()=>{const t=TH[target()];const who=cur==='all'||cur==='accounts'||String(cur).startsWith('LC-')?'@mops':short((t||{title:'@mops'}).title);$('to').innerHTML=`To <b>${e(who)}</b>`};
 $('csv').onchange=async ev=>{const f=ev.target.files[0];if(f){send(await f.text());ev.target.value=''}};
 $('theme').innerHTML=ic('theme');$('more').innerHTML=ic('more');$('att').insertAdjacentHTML('afterbegin',ic('plus'));$('send').innerHTML=ic('up');
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)$('mic').title='Voice not supported in this browser';
@@ -402,6 +507,6 @@ async function panel(t){const P=$('panel');if(t==='stack')P.innerHTML=`<div clas
  if(t==='data'){const c=S.counts;P.innerHTML=`<div class="list">${Object.entries(c).map(([k,v])=>`<div class="li"><b>${v}</b> <span>${k}</span></div>`).join('')}</div><button class="b2" onclick="fetch('/api/nurture/run',{method:'POST'}).then(load)">Fast-forward nurture</button>`;}
  if(t==='outbox'){const o=await(await fetch('/api/outbox')).json();P.innerHTML=`<div class="list">${o.slice(0,50).map(m=>`<div class="li"><a style="color:var(--ac)" target="_blank" href="/outbox/${m.id}">${e(m.subject)}</a><br><span>${e(m.to)}${m.opened?' · opened':''}</span></div>`).join('')||'<div class="li">No emails yet</div>'}</div>`;}}
 async function reset(){if(confirm('Reset all demo data?')){await fetch('/api/reset',{method:'POST'});closeSheet();load()}}
-window.onhashchange=()=>{const h=location.hash.startsWith('#T-')?location.hash.slice(1):'all';if(h!==cur&&TH[h]||h==='all'&&cur!=='all'){cur=h;render()}};
+window.onhashchange=()=>{const h=hashCur();if(h!==cur)go(h)};
 if(innerWidth<600)$('tx').placeholder='Ask @mops anything…';load();setInterval(()=>{if(!busy&&!$('sheet').classList.contains('on'))load()},30000);
 </script></body></html>

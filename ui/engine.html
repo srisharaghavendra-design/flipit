@@ -6,6 +6,8 @@ a{color:inherit}.wrap{max-width:1440px;margin:0 auto;padding:18px 26px 40px}
 header{display:flex;align-items:center;gap:14px;margin-bottom:18px}.logo{font-weight:700;font-size:18px;letter-spacing:-.02em}.logo b{background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;color:transparent}
 .sub{color:var(--mu);font-size:13px}.sp{flex:1}.pill{font-size:12px;padding:5px 11px;border-radius:99px;background:var(--glass);border:1px solid var(--line);color:var(--mu);display:flex;gap:7px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}.dot.bad{background:var(--bad);box-shadow:0 0 10px var(--bad)}
 .btn{border:1px solid var(--line);background:var(--glass);color:var(--tx);padding:9px 15px;border-radius:12px;font:600 13px inherit;cursor:pointer;text-decoration:none}.btn:hover{background:var(--glass2)}
+.mode{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--glass)}
+.mode a{padding:7px 12px;font-size:12px;color:var(--mu);text-decoration:none}.mode a.on{background:var(--tx);color:var(--bg);font-weight:700}
 .go{background:linear-gradient(90deg,var(--ac),var(--ac2));color:#06070a;border:0;padding:10px 18px;box-shadow:0 8px 30px #9d8cff44}.go:disabled{opacity:.6;cursor:wait}
 .grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px}.card{background:var(--glass);border:1px solid var(--line);border-radius:22px;backdrop-filter:var(--blur);padding:16px 18px;position:relative;overflow:hidden}
 h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu2);margin:0 0 10px;font-weight:600;display:flex;gap:8px;align-items:center}
@@ -41,8 +43,9 @@ table.mp{width:100%;border-collapse:collapse;font-size:12px}table.mp td,table.mp
 .row5{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;margin-top:16px}@media(max-width:1100px){.row5{grid-template-columns:1fr}.arts{grid-template-columns:1fr 1fr}}
 @media(max-width:1100px){.grid,.bottom{grid-template-columns:1fr}.svcs{grid-template-columns:repeat(2,1fr)}}
 </style></head><body><div class="wrap">
-<header><div><div class="logo"><b>@mops</b> · Engine room</div><div class="sub">The backend, live. Event-driven: every service publishes to one append-only log and workers react. Separate services, separate databases. Fictional data (Northwind Networks).</div></div><div class="sp"></div>
-<span class="pill" id="conn"><span class="dot"></span><span>live</span></span><a class="btn" href="/">← App</a><button class="btn" id="reset">Reset data</button><button class="btn go" id="run">▶ Run full campaign</button></header>
+<header><div><div class="logo"><b>@mops</b> · Engine room</div><div class="sub">This is the backend that replaces Eloqua, the Salesforce upload, and Power BI.</div></div><div class="sp"></div>
+<nav class="mode" aria-label="Surface"><a href="/">Front end</a><a href="/engine" class="on">Engine room</a></nav>
+<span class="pill" id="conn"><span class="dot"></span><span>live</span></span><button class="btn" id="reset">Reset data</button><button class="btn go" id="run">▶ Run full campaign</button></header>
 <div class="grid">
  <div class="card"><h2>Data flow <span class="sub" style="text-transform:none;letter-spacing:0">· lights up as each service does work</span></h2>
  <svg id="flow" viewBox="0 0 860 470"></svg></div>

@@ -74,3 +74,47 @@ test('warehouse: ELT into RAW, marts rebuilt, named queries, read-only SQL',asyn
 test('full campaign run: budget → report, end to end, under 2 minutes, timed against baselines',async()=>{const t=Date.now();const r=(await j(H+'/api/engine/run',{body:{wait:true,pace:0}})).body;
   assert.equal(r.ok,true,r.error);assert.equal(r.steps.length,13);assert.ok(Date.now()-t<120000);assert.ok(r.steps.every(s=>s.status==='done'));assert.ok(r.baselineMinutes>0&&r.speedup>0);
   const rep=r.steps.at(-1).result;assert.ok(+rep.campaign.sent>0);assert.ok(rep.funnel.length===7);const runs=(await j(H+'/api/engine/runs')).body;assert.ok(runs.length>=1)});
+
+test('portfolio and warehouse roll up region, program, and the two marketer questions',async()=>{
+  await W('/elt/run',{body:{}});
+  const regions=(await W('/query/by_region')).body.rows.map(r=>r.geo);
+  for(const g of ['APJ','EMEA','Americas'])assert.ok(regions.includes(g),g);
+  const programs=(await W('/query/by_program')).body.rows.map(r=>r.program);
+  for(const p of ['ABM','Digital','Events','Partner','Lead gen'])assert.ok(programs.includes(p),p);
+  const n=(await W('/sql',{body:{sql:'SELECT count(*) n FROM marts.campaign_performance'}})).body.rows[0].n;
+  assert.ok(n>=25&&n<=80,'campaigns '+n);
+  const tag=await j(H+'/api/engine/tag',{body:{text:'@mops how is APJ ABM doing this quarter'}});
+  assert.equal(tag.body.action,'insight.region_program');assert.match(tag.body.reply,/APJ/);assert.match(tag.body.reply,/ABM/);
+  const behind=await j(H+'/api/engine/tag',{body:{text:'@mops which EMEA campaigns are behind pace'}});
+  assert.equal(behind.body.action,'insight.behind');assert.ok(behind.body.data.length>0);assert.match(behind.body.reply,/EMEA/);
+  const home1=await j(H+'/api/post',{body:{threadId:'T-K5',text:'@mops how is APJ ABM doing this quarter'}});
+  const a1=home1.body.messages.filter(m=>m.who==='@mops').at(-1);assert.match(a1.text,/APJ/);assert.match(a1.text,/ABM/);
+  const home2=await j(H+'/api/post',{body:{threadId:'T-K5',text:'@mops which EMEA campaigns are behind pace'}});
+  const a2=home2.body.messages.filter(m=>m.who==='@mops').at(-1);assert.match(a2.text,/EMEA/);
+  const pf=await j(H+'/api/portfolio?region=EMEA&program=ABM&quarter=FY27Q2');
+  assert.equal(pf.body.source,'campaign-ledger');assert.ok(pf.body.summary.campaigns>=1);assert.ok(pf.body.groups.ABM.length>=1)});
+
+test('lifecycle: new campaign from a parked draft through launch',async()=>{
+  const list=await j(H+'/api/engine/lifecycle');
+  assert.equal(list.body.draft.id,'LC-DEMO');assert.equal(list.body.draft.step,'budget');
+  assert.ok(list.body.draft.budget.lines.length>=5);assert.equal(list.body.draft.budget.total,168000);assert.match(list.body.draft.budget.route,/150/);
+  const miss=await j(H+'/api/engine/lifecycle/start',{body:{text:'@mops a dinner in Pune'}});
+  assert.ok(miss.body.missing.length>0);
+  const full=await j(H+'/api/engine/lifecycle/start',{body:{text:'@mops new campaign Berlin Zero Trust Dinner, 19 Nov 2026, Berlin, zero trust, dinner for CIOs, budget $80K'}});
+  assert.equal(full.body.missing.length,0);assert.equal(full.body.step,'budget');
+  const id='LC-DEMO';const act=(action,patch)=>j(H+'/api/engine/lifecycle/'+id,{body:{action,patch}});
+  const sub=await act('submit-budget',{lines:list.body.draft.budget.lines});assert.equal(sub.body.budget.status,'pending_approval');
+  const ap=await act('approve-budget');assert.equal(ap.body.budget.status,'approved');
+  const sow=await act('continue');assert.equal(sow.body.step,'sow');assert.ok(sow.body.sow.fields.every(f=>f.source));
+  const answers={};for(const q of sow.body.sow.questions)answers[q.key]=q.key==='venue'?'Main Tower, Frankfurt':q.key==='agency_confirm'?'Rhine & Co Events':'NW-'+q.key;
+  const saved=await act('save-sow',{answers});assert.equal(saved.body.sow.status,'ready for review');
+  const codes=await act('continue');assert.equal(codes.body.step,'codes',codes.body.error);assert.ok(codes.body.codes.campaign_code);assert.ok(codes.body.codes.sfdc_campaign_id);assert.ok(codes.body.codes.event_id);assert.ok(codes.body.codes.fieldsReused>0);assert.equal(codes.body.codes.retyped,0);
+  const docx=await fetch(H+'/api/engine/lifecycle/'+id+'/sow.docx');const dbuf=Buffer.from(await docx.arrayBuffer());assert.equal(dbuf.subarray(0,2).toString(),'PK');
+  const pdf=await fetch(H+'/api/engine/lifecycle/'+id+'/sow.pdf');const pbuf=Buffer.from(await pdf.arrayBuffer());assert.equal(pbuf.subarray(0,5).toString(),'%PDF-');
+  const setup=await act('continue');assert.equal(setup.body.step,'setup');assert.ok(setup.body.setup.registrationUrl);assert.ok(setup.body.setup.email.subject);assert.equal(typeof setup.body.setup.consent.optedIn,'number');
+  const csv=await fetch(H+'/api/engine/lifecycle/'+id+'/upload.csv');assert.equal((await csv.text()).split('\n')[0].includes('CampaignId'),true);
+  const mapped=await act('upload',{csv:'email,first,last,company,title\na@b.example,A,B,Co,CIO'});assert.ok(mapped.body.setup.mapping.mapped>=1);
+  const launchStep=await act('continue');assert.equal(launchStep.body.step,'launch');
+  const live=await act('launch');assert.equal(live.body.step,'run');assert.ok(live.body.campaign.id);
+  const after=await j(H+'/api/portfolio');assert.ok(JSON.stringify(after.body).includes('Frankfurt Zero Trust Executive Dinner'));
+});

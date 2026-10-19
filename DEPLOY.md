@@ -39,6 +39,7 @@ These match the project that serves flipit.fyi today. You should not have to cha
 | Output | leave the output directory as this project already has it. `public/index.html` is only there so that folder is not empty; `vercel.json` sends every path to the function |
 | Production branch | the branch Vercel already deploys for flipit.fyi (normally `main`) |
 | Function timeout | 60 seconds, set on `api/index.js` in `vercel.json`. That is the value this Hobby project already used for its functions |
+| Pull request comments | `github.silent` is on in `vercel.json`, so Vercel deploys the preview without posting a comment on the pull request |
 | Domain | `flipit.fyi` and `www.flipit.fyi` stay attached. Do not edit DNS |
 
 DNS today, which you leave alone:

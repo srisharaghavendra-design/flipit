@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS upload_rows(id INTEGER PRIMARY KEY,upload_id TEXT,dat
 CREATE TABLE IF NOT EXISTS scheduled_sends(id TEXT PRIMARY KEY,campaign_id TEXT,body TEXT,due_at INTEGER,status TEXT,result TEXT,created_by TEXT,at TEXT);
 CREATE TABLE IF NOT EXISTS seq(k TEXT PRIMARY KEY,n INT);`);
 for(const c of['start_date','end_date','country','product','intake_id','event_id'])try{db.exec(`ALTER TABLE campaigns ADD COLUMN ${c} TEXT`)}catch{}
+for(const [c,t] of [['geo','TEXT'],['program','TEXT'],['stage','TEXT'],['quarter','TEXT'],['goal','REAL'],['pipeline','REAL'],['bookings','REAL'],['next_action','TEXT'],['needs_approval','INT'],['pace','TEXT']])try{db.exec(`ALTER TABLE campaigns ADD COLUMN ${c} ${t}`)}catch{}
 const one=(q,...a)=>db.prepare(q).get(...a),all=(q,...a)=>db.prepare(q).all(...a),run=(q,...a)=>db.prepare(q).run(...a);
 const nextId=(k,p,w=4)=>{run('INSERT INTO seq VALUES(?,1) ON CONFLICT(k) DO UPDATE SET n=n+1',k);return p+String(one('SELECT n FROM seq WHERE k=?',k).n).padStart(w,'0')};
 const audit=(actor,action,object,detail,trace)=>run('INSERT INTO audit(at,actor,action,object,detail,trace) VALUES(?,?,?,?,?,?)',now(),actor,action,object,JSON.stringify(detail||{}),trace||null);
@@ -149,7 +150,8 @@ async function seed(trace){for(const t of['accounts','contacts','consent_ledger'
     for(const c of S.contacts)ins(c,reg[c.accountId]);
     const fn=['Anna','Lukas','Sofia','Jonas','Emma','Mateo','Olivia','Liam','Ava','Noah','Mia','Ethan'],T=['CIO','CTO','CISO','IT Director','VP Infrastructure','Network Manager'];const cs=['opted_in','unknown','opted_out','opted_in'];
     extra.forEach((a,ai)=>{for(let i=0;i<6;i++){const f=fn[(ai*6+i)%12];ins({id:`C2${ai}${i}0`,email:`${f.toLowerCase()}.${ai}${i}@${a[5]}`,first:f,last:['Meyer','Brooks','Rossi','Novak','Clark','Diaz'][i],title:T[i],accountId:a[0],consent:cs[(i+ai)%4]},a[2])}});
-    for(const k of S.campaigns){k.code=k.code||makeCode(k.channel,k.region);run('INSERT INTO campaigns(id,code,name,channel,region,fy_quarter,budget,spend,status,owner,crm_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',k.id,k.code,k.name,k.channel,k.region,(k.code||'').slice(0,6)||null,k.budget,k.spend,k.status,k.owner,null,ts,ts)}
+    for(const k of S.campaigns){k.code=k.code||makeCode(k.channel,k.region);run('INSERT INTO campaigns(id,code,name,channel,region,fy_quarter,budget,spend,status,owner,crm_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',k.id,k.code,k.name,k.channel,k.region,(k.code||'').slice(0,6)||null,k.budget,k.spend,k.status,k.owner,null,ts,ts);
+      run('UPDATE campaigns SET geo=?,program=?,stage=?,quarter=?,goal=?,pipeline=?,bookings=?,next_action=?,needs_approval=?,pace=?,country=? WHERE id=?',k.geo||null,k.program||k.channel,k.stage||'Live',k.quarter||'FY27Q2',k.goal||0,k.pipeline||0,k.bookings||0,k.nextAction||'',k.needsApproval?1:0,k.pace||'on pace',k.country||null,k.id)}
     for(const l of S.leads){const mid='CM-H'+l.id;run('INSERT INTO members VALUES(?,?,?,?,?,?,?)',mid,l.campaignId,l.contactId,l.stage==='Opportunity'?'Attended':'Responded',null,l.created+'T00:00:00.000Z',ts);
       run('INSERT INTO leads VALUES(?,?,?,?,?,?,?,?,?,?,?)',l.id,l.contactId,l.campaignId,l.stage==='Opportunity'?'Converted':l.stage==='MQL'?'MQL':'Open',50,null,null,null,l.created+'T00:00:00.000Z',ts,ts)}
     for(const s of S.intent6s)run('INSERT INTO signals(source,account_id,kind,keyword,score,at) VALUES(?,?,?,?,?,?)','6sense-style (seed)',s.accountId,'intent',s.keywords.join('|'),s.intentScore,s.at);

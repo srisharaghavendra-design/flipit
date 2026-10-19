@@ -7,7 +7,7 @@ function cell(v){if(v==null)return null;if(typeof v==='number'||typeof v==='bigi
 function ident(k){if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k))throw new Error('bad column '+k);return'"'+k+'"'}
 const MARTS={
  campaign_performance:`CREATE TABLE marts.campaign_performance AS
-  SELECT c.id campaign_id,c.code,c.name,c.channel,c.region,c.budget,c.spend,c.status,
+  SELECT c.id campaign_id,c.code,c.name,c.channel,COALESCE(c.program,c.channel) program,c.region,c.geo,c.country,c.quarter,c.stage,c.pace,c.next_action,c.needs_approval,c.budget,c.spend,c.status,c.goal,c.pipeline seeded_pipeline,c.bookings,
    (SELECT count(*) FROM raw.engine_sends s WHERE s.campaign_id=c.id AND s.status='sent') sent,
    (SELECT count(*) FROM raw.engine_sends s WHERE s.campaign_id=c.id AND s.status='suppressed') suppressed,
    (SELECT count(*) FROM raw.engine_sends s WHERE s.campaign_id=c.id AND s.opened_at IS NOT NULL) opens,
@@ -34,9 +34,14 @@ const MARTS={
    UNION ALL SELECT 'Registered', (SELECT count(*) FROM raw.engine_registrations)
    UNION ALL SELECT 'MQL', (SELECT count(*) FROM raw.engine_leads WHERE status IN ('MQL','Working','Converted'))
    UNION ALL SELECT 'Opportunity', (SELECT count(*) FROM raw.crm_opportunity)`,
- consent_health:`CREATE TABLE marts.consent_health AS SELECT region,consent,count(*) contacts FROM raw.engine_contacts GROUP BY region,consent ORDER BY region,consent`};
+ consent_health:`CREATE TABLE marts.consent_health AS SELECT region,consent,count(*) contacts FROM raw.engine_contacts GROUP BY region,consent ORDER BY region,consent`,
+ by_region:`CREATE TABLE marts.by_region AS SELECT geo,count(*) campaigns,sum(budget) budget,sum(spend) spend,sum(sourced_pipeline) pipeline,sum(COALESCE(goal,0)) goal,sum(mqls) mqls FROM marts.campaign_performance WHERE geo IS NOT NULL AND trim(geo)!='' GROUP BY geo ORDER BY geo`,
+ by_program:`CREATE TABLE marts.by_program AS SELECT COALESCE(program,channel) program,count(*) campaigns,sum(budget) budget,sum(spend) spend,sum(sourced_pipeline) pipeline,sum(COALESCE(goal,0)) goal,sum(mqls) mqls FROM marts.campaign_performance GROUP BY 1 ORDER BY pipeline DESC`,
+ by_slice:`CREATE TABLE marts.by_slice AS SELECT geo,COALESCE(program,channel) program,quarter,count(*) campaigns,sum(budget) budget,sum(spend) spend,sum(sourced_pipeline) pipeline,sum(COALESCE(goal,0)) goal,sum(mqls) mqls FROM marts.campaign_performance WHERE geo IS NOT NULL AND trim(geo)!='' GROUP BY 1,2,3`};
 const QUERIES={campaign:'SELECT * FROM marts.campaign_performance WHERE campaign_id=? OR code=?',pipeline_by_channel:'SELECT * FROM marts.pipeline_by_channel',attribution:'SELECT * FROM marts.attribution LIMIT 15',
- funnel:'SELECT * FROM marts.funnel',consent_health:'SELECT * FROM marts.consent_health',top_campaigns:'SELECT code,name,channel,sourced_pipeline,mqls FROM marts.campaign_performance ORDER BY sourced_pipeline DESC LIMIT 10'};
+ funnel:'SELECT * FROM marts.funnel',consent_health:'SELECT * FROM marts.consent_health',top_campaigns:'SELECT code,name,channel,sourced_pipeline,mqls FROM marts.campaign_performance ORDER BY sourced_pipeline DESC LIMIT 10',
+ by_region:'SELECT * FROM marts.by_region',by_program:'SELECT * FROM marts.by_program',by_slice:'SELECT * FROM marts.by_slice',
+ behind_pace:"SELECT campaign_id,code,name,channel,program,geo,region,budget,spend,pace,goal,sourced_pipeline,mqls,stage,next_action FROM marts.campaign_performance WHERE pace='behind' ORDER BY geo,name"};
 function counts(){const tables=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
   const out={raw_tables:0,raw_rows:0,marts_tables:0,marts_rows:0};
   for(const t of tables){const n=db.prepare(`SELECT count(*) n FROM ${ident(t.name)}`).get().n;
@@ -57,7 +62,7 @@ async function elt(trace){const t0=Date.now();emit('elt','ELT started: extractin
   for(const[k,sql]of Object.entries(MARTS)){try{db.exec('DROP TABLE IF EXISTS marts_'+k);db.exec(sqlName(sql))}catch(x){emit('error',`mart ${k} failed: ${x.message}`,{},trace);const e=new Error(`mart ${k}: ${x.message}`);e.status=500;throw e}}
   const r={at:now(),ms:Date.now()-t0,rows:total,tables:loaded,marts:Object.keys(MARTS)};runs.unshift(r);runs.length=Math.min(runs.length,20);emit('elt',`rebuilt ${Object.keys(MARTS).length} marts in ${r.ms}ms`,{},trace);return r}
 const spec=openapi('Warehouse (Snowflake-style, SQLite)','RAW tables loaded by ELT from engine + CRM; MARTS rebuilt with SQL; named queries replace BI dashboards. SQLite stands in for Snowflake so this runs inside a Vercel function.',[
- ['POST /elt/run','Run the ELT job now (extract → load RAW → rebuild MARTS)'],['GET /elt/runs','Recent ELT runs'],['GET /query/:name','Named query: campaign (?p=K-0001), pipeline_by_channel, attribution, funnel, consent_health, top_campaigns'],
+ ['POST /elt/run','Run the ELT job now (extract → load RAW → rebuild MARTS)'],['GET /elt/runs','Recent ELT runs'],['GET /query/:name','Named query: campaign (?p=K-0001), pipeline_by_channel, by_region, by_program, by_slice, behind_pace, attribution, funnel, consent_health, top_campaigns'],
  ['POST /sql','Read-only SQL (SELECT/WITH only). raw. and marts. names are accepted.',{sql:'SELECT * FROM marts.funnel'}],['GET /tables','List tables with row counts'],['GET /health','Health']]);
 const S=service('warehouse',PORTS.warehouse,spec);
 S.post('/elt/run',c=>elt(c.trace));S.get('/elt/runs',()=>runs);

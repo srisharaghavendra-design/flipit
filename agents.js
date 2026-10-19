@@ -42,6 +42,14 @@ schedule_nurture({thread,email_id,steps}){const em=db.emails.find(e=>e.id===emai
  db.sequences.push(seq);return{kind:'Nurture scheduled',title:`${seq.id}: ${days.length} steps`,table:{cols:['Step','Day','Audience','Subject','Due'],rows:seq.steps.map(s=>[s.n,'+'+s.day,s.rule,s.subject,s.dueAt.slice(0,16).replace('T',' ')])},data:{sequenceId:seq.id}};},
 // ---------- INSIGHT AGENT (replaces Power BI / Tableau) ----------
 query_insight({thread,question}){const q=(question||'').toLowerCase();
+ const geo=/americas|united states|\bus\b/.test(q)?'Americas':/emea|europe/.test(q)?'EMEA':/\bapj\b|apac|asia/.test(q)?'APJ':null;
+ const program=/lead ?gen/.test(q)?'Lead gen':/\babm\b/.test(q)?'ABM':/digital/.test(q)?'Digital':/partner/.test(q)?'Partner':/event/.test(q)?'Events':null;
+ if(/behind pace|behind\b/.test(q)){let rows=db.campaigns.filter(c=>c.pace==='behind'&&(!geo||c.geo===geo));if(!rows.length&&geo)rows=db.campaigns.filter(c=>c.pace==='behind'&&c.geo===geo);
+  const title=`${geo||'Campaigns'} behind pace: ${rows.length}`;
+  return{kind:'Insight',title,body:rows.length?rows.map(c=>`${c.name} (${c.geo} ${c.program||c.channel}): spent ${fmt(c.spend)} of ${fmt(c.budget)}, pipeline ${fmt(c.pipeline||0)} vs goal ${fmt(c.goal||0)}. Next: ${c.nextAction||'review'}`).join('\n'):'Nothing is behind pace in that slice.',table:{cols:['Campaign','Region','Program','Stage','Next'],rows:rows.map(c=>[c.name,c.geo,c.program||c.channel,c.stage,c.nextAction||''])},data:{geo,behind:rows.length}};}
+ if(/how is|doing/.test(q)&&(geo||program)){const rows=db.campaigns.filter(c=>(!geo||c.geo===geo)&&(!program||(c.program||c.channel)===program)&&(!/quarter|q2|fy27/.test(q)||(c.quarter||'FY27Q2')==='FY27Q2'||true));
+  const budget=rows.reduce((s,c)=>s+c.budget,0),spend=rows.reduce((s,c)=>s+c.spend,0),pipeline=rows.reduce((s,c)=>s+(c.pipeline||0),0),goal=rows.reduce((s,c)=>s+(c.goal||0),0),mqls=rows.reduce((s,c)=>s+(c.mqls||0),0);
+  return{kind:'Insight',title:`${geo||'All regions'} ${program||'programs'} this quarter`,body:`${rows.length} campaigns. Budget ${fmt(budget)}, spend ${fmt(spend)} (${budget?Math.round(spend/budget*100):0}%). Pipeline ${fmt(pipeline)} vs goal ${fmt(goal)}. ${mqls} MQLs.`,chart:{type:'bar',labels:rows.map(c=>c.name).slice(0,8),datasets:[{label:'Pipeline $',data:rows.map(c=>c.pipeline||0).slice(0,8)}]},data:{geo,program,budget,spend,pipeline,goal,mqls,campaigns:rows.length}};}
  const by=/region/.test(q)?'region':/account/.test(q)?'account':/campaign/.test(q)?'campaign':/email|open|click/.test(q)?'email':/stage|funnel/.test(q)?'stage':'channel';
  let rows={},cites=[];
  if(by==='email'){for(const e of db.emails.filter(e=>e.status==='sent')){const m=db.outbox.filter(o=>o.emailId===e.id);rows[e.id]={sent:m.length,opens:m.filter(o=>o.opened).length,clicks:m.filter(o=>o.clicked).length};cites.push(e.id);}
