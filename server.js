@@ -3,6 +3,7 @@
 if(process.env.VERCEL&&!process.env.MOPS_DATA_DIR)process.env.MOPS_DATA_DIR='/tmp/mops';
 if(process.env.VERCEL&&!process.env.MOPS_RUNS_DIR)process.env.MOPS_RUNS_DIR='/tmp/mops/runs';
 const http=require('http'),fs=require('fs'),path=require('path');const mk=require('./agents.js');const{esc,fmt}=mk;
+const {brandName,brandCompany}=require('./brand');
 const DATA_DIR=process.env.MOPS_DATA_DIR||__dirname;fs.mkdirSync(DATA_DIR,{recursive:true});const DB=path.join(DATA_DIR,'data.json');if(!fs.existsSync(DB))fs.copyFileSync(path.join(__dirname,'data.seed.json'),DB);
 // Literal paths so the Vercel file tracer ships the UI, seed, and fixtures with this server.
 fs.statSync(path.join(__dirname,'ui/index.html'));
@@ -21,7 +22,7 @@ fs.statSync(path.join(__dirname,'platform/samples/chicago-attendees.xlsx'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/abm_target_list.csv'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/booth_badge_scans.xlsx'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/event_attendees_export.xlsx'));
-let db=JSON.parse(fs.readFileSync(DB));const save=()=>fs.writeFileSync(DB,JSON.stringify(db));
+let db=JSON.parse(fs.readFileSync(DB));db.company=brandCompany();const save=()=>fs.writeFileSync(DB,JSON.stringify(db));
 const KEY=process.env.MOPS_API_KEY,BASE=process.env.MOPS_API_BASE||'https://api.x.ai/v1',MODEL=process.env.MOPS_MODEL||'grok-4';
 // Mail never leaves the process. An external MOPS_SMTP_URL is ignored on purpose.
 let sender={name:'in-process-catcher',send(m){try{require('./backend/mail').deliver({from:process.env.MOPS_FROM||'mops@mops.local',to:m.to,subject:m.subject,text:m.body})}catch(e){console.error('mail',e.message)}}};
@@ -92,7 +93,7 @@ function rules(text,thread,csv){const q=text.toLowerCase();const out=[];const go
 async function llm(text,thread,csv){const tools=Object.entries(SCHEMA).map(([n,[d,p]])=>({type:'function',function:{name:n,description:d,parameters:p}}));
  const recent=thread.messages.slice(-12).map(m=>`${m.who}: ${m.text}${(m.artifacts||[]).map(a=>` [${a.kind}: ${a.title}]`).join('')}`).join('\n');
  const rows=csv?String(csv).split(/\n/).filter(Boolean).length-1:0;
- const msgs=[{role:'system',content:`You are @mops, the field marketing operator for Northwind Networks (fictional). You replace Eloqua, Power BI, Cvent, campaign-code, SOW and upload tools by calling functions over one data layer. Thread: "${thread.title}" (${thread.type} ${thread.refId}). Never ask for info already in the thread or data. Do not spend, send email, change consent, or write the CRM. A person has to approve those. Act with tools, then reply in <=3 short sentences.\nThread so far:\n${recent}`},{role:'user',content:text+(rows>0?`\nA list is attached (${rows} rows). Do not ask for the rows.`:'')}];
+ const msgs=[{role:'system',content:`You are @mops, the field marketing operator for ${brandCompany()} (fictional). You replace Eloqua, Power BI, Cvent, campaign-code, SOW and upload tools by calling functions over one data layer. Thread: "${thread.title}" (${thread.type} ${thread.refId}). Never ask for info already in the thread or data. Do not spend, send email, change consent, or write the CRM. A person has to approve those. Act with tools, then reply in <=3 short sentences.\nThread so far:\n${recent}`},{role:'user',content:text+(rows>0?`\nA list is attached (${rows} rows). Do not ask for the rows.`:'')}];
  const arts=[];for(let i=0;i<6;i++){const r=await fetch(BASE+'/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+KEY},body:JSON.stringify({model:MODEL,messages:msgs,tools})});
   const j=await r.json();if(!r.ok)throw new Error(JSON.stringify(j).slice(0,200));const m=j.choices[0].message;msgs.push(m);
   if(!m.tool_calls?.length)return{reply:m.content,arts};
@@ -131,11 +132,11 @@ const nurtureTimer=setInterval(()=>tickNurture(false),15000);if(nurtureTimer.unr
 if(process.env.MOPS_AUTOPILOT!=='0'){const ap=setInterval(autopilot,Number(process.env.MOPS_AUTOPILOT_MS)||60000);if(ap.unref)ap.unref()}
 // ---------- pages ----------
 function sowHtml(s){const c=db.campaigns.find(x=>x.id===s.campaignId);return`<html><head><meta charset="utf-8"><title>${s.id}</title><style>body{font-family:Calibri,Arial;max-width:760px;margin:40px auto;line-height:1.5}h1{color:#4f46e5}td{padding:6px 10px;border:1px solid #ccc}</style></head><body>
-<h1>Statement of Work ${s.id}</h1><p><b>Client:</b> Northwind Networks (fictional) &nbsp; <b>Vendor:</b> ${esc(s.vendor)}</p><table><tr><td>Campaign</td><td>${esc(c?c.name:'-')}</td></tr><tr><td>Campaign code</td><td>${esc(s.code)}</td></tr><tr><td>Region</td><td>${esc(c?c.region:'-')}</td></tr><tr><td>Fee</td><td>${fmt(s.amount)}</td></tr></table>
-<h3>1. Scope</h3><p>${esc(s.scope)}</p><h3>2. Deliverables</h3><ul><li>Project plan within 5 business days</li><li>Execution per scope</li><li>Attendee/lead file in Northwind upload format within 48h</li><li>Post-activity report</li></ul><h3>3. Payment</h3><p>50% on signature, 50% on acceptance. Invoices must quote ${esc(s.code)}.</p><h3>4. Acceptance</h3><p>Field marketing owner sign-off.</p><p><br>Northwind Networks: ______________ &nbsp;&nbsp; ${esc(s.vendor)}: ______________</p><p style="color:#888;font-size:12px">Generated by @mops ${s.at.slice(0,10)}</p></body></html>`;}
+<h1>Statement of Work ${s.id}</h1><p><b>Client:</b> ${esc(brandCompany())} (fictional) &nbsp; <b>Vendor:</b> ${esc(s.vendor)}</p><table><tr><td>Campaign</td><td>${esc(c?c.name:'-')}</td></tr><tr><td>Campaign code</td><td>${esc(s.code)}</td></tr><tr><td>Region</td><td>${esc(c?c.region:'-')}</td></tr><tr><td>Fee</td><td>${fmt(s.amount)}</td></tr></table>
+<h3>1. Scope</h3><p>${esc(s.scope)}</p><h3>2. Deliverables</h3><ul><li>Project plan within 5 business days</li><li>Execution per scope</li><li>Attendee/lead file in ${esc(brandName())} upload format within 48h</li><li>Post-activity report</li></ul><h3>3. Payment</h3><p>50% on signature, 50% on acceptance. Invoices must quote ${esc(s.code)}.</p><h3>4. Acceptance</h3><p>Field marketing owner sign-off.</p><p><br>${esc(brandCompany())}: ______________ &nbsp;&nbsp; ${esc(s.vendor)}: ______________</p><p style="color:#888;font-size:12px">Generated by @mops ${s.at.slice(0,10)}</p></body></html>`;}
 function regPage(e,msg){return`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>${esc(e.name)}</title><style>body{font-family:Inter,system-ui;background:linear-gradient(135deg,#0f172a,#312e81);color:#fff;min-height:100vh;margin:0;display:grid;place-items:center}.c{background:#fff;color:#0f172a;border-radius:18px;padding:32px;width:380px;box-shadow:0 20px 60px #0006}h1{margin:0 0 4px;font-size:22px}p{color:#64748b;margin:0 0 18px}input{width:100%;box-sizing:border-box;padding:11px;margin:6px 0;border:1px solid #cbd5e1;border-radius:10px;font-size:14px}button{width:100%;padding:12px;border:0;border-radius:10px;background:#4f46e5;color:#fff;font-weight:600;margin-top:10px;cursor:pointer}.ok{background:#dcfce7;color:#166534;padding:10px;border-radius:10px;margin-bottom:10px}label{font-size:13px;color:#334155}</style></head><body><form class="c" method="post">
-<div style="color:#4f46e5;font-weight:700;font-size:13px">NORTHWIND NETWORKS</div><h1>${esc(e.name)}</h1><p>${esc(e.date)} · ${esc(e.city)} · ${e.capacity-e.registrations.length} seats left</p>${msg?`<div class="ok" id="ok">${msg}</div>`:''}
-<input name="name" placeholder="Full name" required><input name="email" type="email" placeholder="Work email" required><input name="company" placeholder="Company"><input name="title" placeholder="Job title"><label><input type="checkbox" name="consent" style="width:auto"> Email me about Northwind events</label><button>Register</button></form></body></html>`;}
+<div style="color:#4f46e5;font-weight:700;font-size:13px">${esc(brandCompany()).toUpperCase()}</div><h1>${esc(e.name)}</h1><p>${esc(e.date)} · ${esc(e.city)} · ${e.capacity-e.registrations.length} seats left</p>${msg?`<div class="ok" id="ok">${msg}</div>`:''}
+<input name="name" placeholder="Full name" required><input name="email" type="email" placeholder="Work email" required><input name="company" placeholder="Company"><input name="title" placeholder="Job title"><label><input type="checkbox" name="consent" style="width:auto"> Email me about ${esc(brandName())} events</label><button>Register</button></form></body></html>`;}
 // ---------- http ----------
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'};
 const body=req=>new Promise((resolve,reject)=>{let b='';let n=0;let tooBig=false;req.on('data',c=>{n+=c.length;if(n>8_000_000){tooBig=true;return}b+=c});req.on('end',()=>{if(tooBig)reject(Object.assign(new Error('Request is too large'),{status:413}));else resolve(b)});req.on('error',reject)});
@@ -176,11 +177,11 @@ function attachLog(req,res){const journal=require('./backend/journal');
   res.end=function(chunk,enc,cb){try{if(req._mopsLog&&chunk!=null){const text=Buffer.isBuffer(chunk)?chunk.toString('utf8'):String(chunk);
     if(text.charCodeAt(0)===123){const obj=JSON.parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj)&&obj.mopsLog==null){obj.mopsLog=req._mopsLog;chunk=JSON.stringify(obj)}}}}catch(e){console.error('embed log',e&&e.message||e)}
     return origEnd(chunk,enc,cb)}}
-function servePage(res,file){try{res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(fs.readFileSync(file))}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
+function servePage(res,file){try{let raw=fs.readFileSync(file);if(raw.includes('__BRAND__')||raw.includes('__BRAND_JSON__')){const name=brandName();const safe=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));raw=raw.toString('utf8').replaceAll('__BRAND_JSON__',JSON.stringify(name)).replaceAll('__BRAND__',safe)}res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(raw)}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
 async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;try{u=new URL(req.url,'http://x')}catch(e){u=new URL('/','http://x')}const p=u.pathname;
  if(p==='/login'||p==='/login/'){res.writeHead(303,{location:'/','cache-control':'no-store'});return res.end()}
  if(p==='/api/logout'&&req.method==='POST'){res.writeHead(200,{'content-type':'application/json','cache-control':'no-store','set-cookie':'mops_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax'});return res.end('{"ok":true}')}
- if(p==='/health'||p==='/healthz'||p==='/api/health')return J(res,{ok:true,service:'mops',company:'Northwind Networks'});
+ if(p==='/health'||p==='/healthz'||p==='/api/health')return J(res,{ok:true,service:'mops',company:brandCompany()});
  ready().catch(e=>console.error('boot',e&&e.message||e));
  if(p.startsWith('/platform/t/')||p.startsWith('/platform/p/'))return require('./platform').publicRoute(req,res,u);
  attachLog(req,res);
@@ -193,7 +194,7 @@ async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;
  if(p==='/engine/data'||p==='/engine/data/')return servePage(res,path.join(__dirname,'ui','data.html'));
  await ready();
  if(p==='/api/carry'&&req.method==='POST')return carry(req,res);
- if(p==='/health'||p==='/healthz')return J(res,{ok:true,service:'mops',company:'Northwind Networks'});
+ if(p==='/health'||p==='/healthz')return J(res,{ok:true,service:'mops',company:brandCompany()});
  if(await HUB.handle(req,res,p,u))return;
  if(p==='/api/state')return J(res,{company:db.company,mode:KEY?'llm':'rules',model:KEY?MODEL:null,sender:sender.name,stack:STACK,threads:db.threads.map(t=>({id:t.id,title:t.title,type:t.type,n:t.messages.length})),
   counts:{accounts:db.accounts.length,contacts:db.contacts.length,optedIn:db.contacts.filter(c=>c.consent==='opted_in').length,campaigns:db.campaigns.length,leads:db.leads.length,events:db.events.length,registrations:db.events.reduce((s,e)=>s+e.registrations.length,0),budgets:db.budgets.length,sows:db.sows.length,segments:db.segments.length,emailsSent:db.outbox.length,crmSync:db.crmSync.length}});

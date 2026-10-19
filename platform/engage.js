@@ -6,6 +6,7 @@ const { append } = require('./log');
 const { now, daysBeforeDemo } = require('./clock');
 const { behaviorOf, stageOf, MQL_THRESHOLD } = require('./score');
 const { deliver } = require('../backend/mail');
+const { brandName, brandCompany } = require('../brand');
 const { publicBase } = require('../backend/lib');
 
 const SEND_CAP = 250;
@@ -168,10 +169,11 @@ async function deliverOne(q, { contact, template, campaign, sendId, actor, chann
   const link = `${publicBase()}/platform/t/c/${token}`;
   const subject = merge(template.subject, contact, campaign, link);
   const body = merge(template.html, contact, campaign, link);
-  const html = `${body}<img src="${publicBase()}/platform/t/o/${token}" width="1" height="1" alt="">`;
+  const company = brandCompany();
+  const html = `${body}<p style="font-size:11px;color:#888">${company} · fictional field marketing</p><img src="${publicBase()}/platform/t/o/${token}" width="1" height="1" alt="">`;
   if (/\{\{/.test(subject + html)) fail(500, 'A merge field was left in the email');
   const mail = deliver({
-    from: 'events@northwind.example', to: contact.email, subject, html, text: body.replace(/<[^>]+>/g, ' '),
+    from: '"' + company + '" <events@northwind.example>', to: contact.email, subject, html, text: body.replace(/<[^>]+>/g, ' '),
     headers: { 'X-Mops-Campaign': campaign.id, 'X-Mops-Send': sendId }
   });
   await q.run('INSERT INTO send_recipients(token, send_id, contact_id, email, opened, clicked, mail_id) VALUES(?, ?, ?, ?, 0, 0, ?)', [token, sendId, contact.id, contact.email, mail.id]);
@@ -375,7 +377,7 @@ function pageHtml(p, message) {
   const note = message ? `<p class="note">${esc(message)}</p>` : '';
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(p.title)}</title>
 <style>body{margin:0;background:#f6f5f2;color:#1a1c1f;font:18px/1.45 Georgia,serif}main{max-width:560px;margin:0 auto;padding:48px 20px}h1{font-size:40px;line-height:1.05;margin:0 0 8px}label{display:block;margin:14px 0 4px;font:600 13px/1.2 ui-sans-serif,system-ui}input,select{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #cfcbc2;border-radius:8px;font:16px ui-sans-serif,system-ui}button{margin-top:18px;background:#1a1c1f;color:#fff;border:0;border-radius:999px;padding:12px 18px;font:600 15px ui-sans-serif,system-ui}.note{background:#e7f6ec;padding:12px 14px;border-radius:10px}</style>
-<main><p>Northwind</p><h1>${esc(p.title)}</h1><p>${esc(p.city || '')} · ${esc((p.starts_at || '').slice(0, 10))}</p>${note}
+<main><p>${esc(brandName())}</p><h1>${esc(p.title)}</h1><p>${esc(p.city || '')} · ${esc((p.starts_at || '').slice(0, 10))}</p>${note}
 <form method="post"><label>Name</label><input name="name" required><label>Email</label><input name="email" type="email" required><label>Company</label><input name="company"><label>Country</label><input name="country" value="United States"><label><input type="checkbox" name="consent" value="yes" style="width:auto"> Email me about this event</label><button>Register</button></form></main>`;
 }
 

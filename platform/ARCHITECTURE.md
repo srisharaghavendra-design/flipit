@@ -1,6 +1,6 @@
-# Northwind Marketing Cloud
+# Marketing Cloud
 
-One local platform replaces the marketing tool stack. `npm start`, then sign in. `/` is the marketer home. `/platform` is the console behind it. The store is SQLite. `PLATFORM_DB=postgres` plus `PLATFORM_DATABASE_URL` selects the Postgres driver in `platform/db.js`. The same migrations run, with `BIGSERIAL` and `$1` placeholders.
+One local platform replaces the marketing tool stack. `npm start`, then sign in. `/` is the marketer home. `/platform` is the console behind it. The text wordmark follows `BRAND_NAME` (default Northwind). There is no logo. The store is SQLite. `PLATFORM_DB=postgres` plus `PLATFORM_DATABASE_URL` selects the Postgres driver in `platform/db.js`. The same migrations run, with `BIGSERIAL` and `$1` placeholders.
 
 ## What replaces what
 
@@ -93,11 +93,11 @@ Insights: 5 screens, 9 fields, 30 minutes in Power BI for a weekly regional deck
 
 Brain API: 11 screens, 22 fields, 45 minutes to check policy and the why across the old tools. The console shows the measured seconds for `@mops what changed on the Chicago roundtable`.
 
-Those minutes are an operator baseline for the old tools, not a stopwatch of a Northwind employee. The seconds are the median of real runs stored in `ask_runs`. Reads on the seeded book (5,000 contacts, 300 accounts, 40 campaigns, four regions) stay under 300ms.
+Those minutes are an operator baseline for the old tools, not a stopwatch of an employee. The seconds are the median of real runs stored in `ask_runs`. Reads on the seeded book (5,000 contacts, 300 accounts, 40 campaigns, four regions) stay under 300ms.
 
 ## Enterprise path
 
-This demo is one SQLite file, fictional Northwind data, and the demo sign-in. Production is the same modules with a harder edge:
+This demo is one SQLite file, fictional data, and the demo sign-in. The wordmark is `BRAND_NAME` (default Northwind). Production is the same modules with a harder edge:
 
 SSO via OIDC. The demo picker uses the same session interface. `MOPS_OIDC_ISSUER` switches the provider.
 

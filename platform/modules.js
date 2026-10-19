@@ -1,5 +1,8 @@
 'use strict';
 
+const { brandName } = require('../brand');
+const who = 'Not a stopwatch of a ' + brandName() + ' employee.';
+
 // Home status. The full policy engine in the brain is the remaining module.
 const MODULES = [
   { id: 'data', name: 'Data core', replaces: 'Snowflake marts and Airtable trackers', status: 'built', href: '/platform/data' },
@@ -18,7 +21,7 @@ const BASELINES = {
     minutes: 20,
     askId: 'illinois-email',
     proof: '@mops who can I email in Illinois',
-    source: 'Operator baseline for one consented-list pull: a warehouse worksheet plus an Airtable check. Not a stopwatch of a Northwind employee.'
+    source: 'Operator baseline for one consented-list pull: a warehouse worksheet plus an Airtable check. ' + who
   },
   engage: {
     replaces: 'Eloqua',
@@ -27,7 +30,7 @@ const BASELINES = {
     minutes: 35,
     askId: 'send-chicago',
     proof: '@mops send the Chicago invite to CIOs in Illinois who opened last month',
-    source: 'Operator baseline for building that segment, the email, and the send in Eloqua. Not a stopwatch of a Northwind employee.'
+    source: 'Operator baseline for building that segment, the email, and the send in Eloqua. ' + who
   },
   crm: {
     replaces: 'Salesforce',
@@ -36,7 +39,7 @@ const BASELINES = {
     minutes: 25,
     askId: 'upload-chicago',
     proof: '@mops upload this attendee file to SFDC for the Chicago roundtable',
-    source: 'Operator baseline for mapping a messy badge export, assigning AE and SDR owners, and loading campaign members. Not a stopwatch of a Northwind employee.'
+    source: 'Operator baseline for mapping a messy badge export, assigning AE and SDR owners, and loading campaign members. ' + who
   },
   plan: {
     replaces: 'Command Center and Airtable',
@@ -45,7 +48,7 @@ const BASELINES = {
     minutes: 40,
     askId: 'budget-chicago',
     proof: '@mops new budget: Chicago security roundtable, $180K',
-    source: 'Operator baseline for a budget request, the $150K approval, a BAN, a campaign code, and a SOW draft. Not a stopwatch of a Northwind employee.'
+    source: 'Operator baseline for a budget request, the $150K approval, a BAN, a campaign code, and a SOW draft. ' + who
   },
   insights: {
     replaces: 'Power BI and Tableau',
@@ -54,7 +57,7 @@ const BASELINES = {
     minutes: 30,
     askId: 'weekly-americas',
     proof: '@mops weekly report for Americas',
-    source: 'Operator baseline for a weekly regional deck and a slide export. Not a stopwatch of a Northwind employee.'
+    source: 'Operator baseline for a weekly regional deck and a slide export. ' + who
   },
   brain: {
     replaces: 'The tag, the policy, and the why feed',
@@ -63,7 +66,7 @@ const BASELINES = {
     minutes: 45,
     askId: 'chicago-changes',
     proof: '@mops what changed on the Chicago roundtable',
-    source: 'Operator baseline for reading policy, approval, and the why across the old tools. Not a stopwatch of a Northwind employee.'
+    source: 'Operator baseline for reading policy, approval, and the why across the old tools. ' + who
   }
 };
 

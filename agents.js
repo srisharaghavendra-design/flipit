@@ -1,4 +1,5 @@
 // @mops agents: every function reads/writes ONE data layer (db) and returns an artifact saved to the thread.
+const {brandName,brandCompany}=require('./brand');
 const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
 const uid=(p,arr)=>p+'-'+(arr.length+1).toString().padStart(3,'0');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -22,9 +23,9 @@ build_segment({thread,query}){const q=(query||'').toLowerCase();const f={};
  return{kind:'Segment',title:`${seg.id}: ${match.length} contacts`,body:`Filters: titles=${f.titles.join('/')||'any'} · regions=${f.regions.join('/')||'any'} · segment=${f.segment||'any'}${f.industry?' · industry='+f.industry:''} · opted-in only=${f.optedInOnly}\n${sup} would be suppressed at send (no consent).`,
   table:{cols:['Name','Title','Account','Region','Consent'],rows:match.slice(0,8).map(x=>[x.first+' '+x.last,x.title,acc(x.accountId).name,acc(x.accountId).region,x.consent])},cites:match.slice(0,12).map(x=>x.id),data:{segmentId:seg.id,count:match.length}};},
 draft_email({thread,segment_id,topic}){const seg=db.segments.find(s=>s.id===segment_id)||[...db.segments].reverse().find(s=>s.threadId===thread.id);if(!seg)return{error:'No segment yet – build one first.'};
- const c=campOf(thread);const tp=topic||(c?c.name:'Northwind secure networking');
+ const c=campOf(thread);const tp=topic||(c?c.name:brandName()+' secure networking');
  const em={id:uid('EM',db.emails),segmentId:seg.id,campaignId:c?.id||null,code:c?.code||null,subject:`{{first}}, a 30-minute look at ${tp}`,
-  body:`Hi {{first}},\n\nTeams like {{account}} are rethinking how they secure hybrid work without adding tools. We're hosting a short, practical session on ${tp} – real architectures from ${c?c.region:'APAC'} peers, no slideware.\n\nWould you like a seat?\n\nBest,\nSrisha R.\nField Marketing, Northwind Networks`,threadId:thread.id,status:'draft',at:now()};
+  body:`Hi {{first}},\n\nTeams like {{account}} are rethinking how they secure hybrid work without adding tools. We're hosting a short, practical session on ${tp} – real architectures from ${c?c.region:'APAC'} peers, no slideware.\n\nWould you like a seat?\n\nBest,\nSrisha R.\nField Marketing, ${brandCompany()}`,threadId:thread.id,status:'draft',at:now()};
  db.emails.push(em);return{kind:'Email draft',title:`${em.id} → ${seg.id} (${seg.contactIds.length} contacts)`,body:`Subject: ${em.subject}\n\n${em.body}`,data:{emailId:em.id},actions:[{label:'Send now',say:`@mops send ${em.id}`}]};},
 send_email({thread,email_id}){const em=db.emails.find(e=>e.id===email_id)||[...db.emails].reverse().find(e=>e.threadId===thread.id&&e.status==='draft');if(!em)return{error:'No draft email to send.'};
  const seg=db.segments.find(s=>s.id===em.segmentId);let sent=0,sup=[];
@@ -192,7 +193,7 @@ approve_item({id}){id=(id||'').toUpperCase();const f=(db.followups||[]).find(x=>
   return{kind:'Approved',title:`${id}: ${fmt(sh.amount)} moved ${camp(sh.from).name} → ${camp(sh.to).name}`,data:{approved:id}};}
  return{error:'Nothing pending with id '+id};},
 // ---------- EVENT AGENT (replaces Cvent / RainFocus basics) ----------
-create_event({thread,name,date,city,capacity}){const c=campOf(thread);const nm=name||(c?c.name:'Northwind Executive Briefing');
+create_event({thread,name,date,city,capacity}){const c=campOf(thread);const nm=name||(c?c.name:brandName()+' Executive Briefing');
  let e=db.events.find(e=>c&&e.campaignId===c.id);if(e)return{kind:'Event',title:`${e.name} already exists`,body:`${e.registrations.length}/${e.capacity} registered`,link:{href:`/r/${e.slug}`,label:'Open registration page'}};
  e={id:'E'+(db.events.length+1),campaignId:c?.id,name:nm,date:date||'2026-12-10',city:city||(c?{India:'Bengaluru',ANZ:'Sydney',ASEAN:'Singapore',Japan:'Tokyo'}[c.region]:'Singapore'),capacity:Number(capacity)||50,slug:nm.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40),registrations:[],code:c?.code||null};
  db.events.push(e);return{kind:'Event',title:`${e.id}: ${e.name}`,body:`${e.date} · ${e.city} · capacity ${e.capacity} · tracking code ${e.code||'none'}`,link:{href:`/r/${e.slug}`,label:'Open hosted registration page'}};},

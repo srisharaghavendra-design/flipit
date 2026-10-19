@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const path = require('path');
 const Database = require('better-sqlite3');
 const { DATA } = require('./lib');
+const { brandName } = require('../brand');
 
 const USERS = [
   { id: 'maria', name: 'Maria Alvarez', role: 'marketer', regions: ['Americas'], persona: 'Americas, Security' },
@@ -12,7 +13,7 @@ const USERS = [
   { id: 'arjun', name: 'Arjun Shah', role: 'marketer', regions: ['APJ'], persona: 'India, Data Center' },
   { id: 'srisha', name: 'Srisha R.', role: 'marketer', regions: ['Americas', 'EMEA', 'APJ'], persona: 'Field marketing' },
   { id: 'chris', name: 'Chris M.', role: 'approver', regions: ['Americas', 'EMEA', 'APJ'], persona: 'Director, field marketing' },
-  { id: 'admin', name: 'Northwind Admin', role: 'admin', regions: ['Americas', 'EMEA', 'APJ'], persona: 'Demo admin' }
+  { id: 'admin', name: brandName() + ' Admin', role: 'admin', regions: ['Americas', 'EMEA', 'APJ'], persona: 'Demo admin' }
 ];
 const BY_ID = Object.fromEntries(USERS.map(u => [u.id, u]));
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Northwind</title>
+<title>__BRAND__</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -163,7 +163,7 @@ li.just .mark { animation: pop .45s ease; }
 </head>
 <body class="home">
 <header>
-  <a class="logo" href="#/"><i></i>Northwind</a>
+  <a class="logo" href="#/"><i></i>__BRAND__</a>
   <p id="saved">Saved today: …</p>
   <div class="tools">
     <div id="schedule" role="group" aria-label="Report schedule">
@@ -208,8 +208,9 @@ li.just .mark { animation: pop .45s ease; }
 <script>
 const storedChannel = localStorage.getItem('mops-channel');
 if (storedChannel) document.querySelector('#channel').value = storedChannel;
+const BRAND = __BRAND_JSON__;
 
-const NOISE = /Loaded the fictional Northwind book|Scored from title|Minted the campaign code|Recorded \$|Recorded opted_in|opted_out|unknown consent|Approved \$180,000 because Chris|does not own|Recorded an open from the tracking pixel|Recorded a click from the redirect|Recorded a (?:open|click|send) on /;
+const NOISE = /Loaded the fictional .+ book|Scored from title|Minted the campaign code|Recorded \$|Recorded opted_in|opted_out|unknown consent|Approved \$180,000 because Chris|does not own|Recorded an open from the tracking pixel|Recorded a click from the redirect|Recorded a (?:open|click|send) on /;
 const STEPS = [
   ['budget', 'Budget', 'you'],
   ['code', 'Code', 'mops'],
@@ -482,7 +483,7 @@ function serviceName(apiPath) {
   if (p.indexOf('/insights') >= 0) return 'Insights';
   if (p.indexOf('/brain') >= 0) return 'Brain';
   if (p.indexOf('/data') >= 0) return 'Data';
-  return 'Northwind';
+  return BRAND;
 }
 function trimValue(value, depth) {
   if (depth > 4) return '…';
@@ -506,7 +507,7 @@ function drawerHtml(trace) {
   const calls = trace.calls || [];
   const services = [...new Set(calls.map(c => serviceName(c.api)))];
   const audit = trace.audit || (trace.result && trace.result.why) || '';
-  return '<p class="kicker">' + esc(services.join(' · ') || 'Northwind') + '</p>'
+  return '<p class="kicker">' + esc(services.join(' · ') || BRAND) + '</p>'
     + '<h3>Payload</h3><pre>' + esc(JSON.stringify(trimValue(trace.payload, 0), null, 2)) + '</pre>'
     + (calls.length ? '<h3>Calls</h3><pre>' + esc(calls.map(c => c.api + ' · ' + (c.ms || 0) + 'ms').join('\n')) + '</pre>' : '')
     + '<h3>What was written</h3><pre>' + esc(JSON.stringify(trimValue(trace.written, 0), null, 2)) + '</pre>'

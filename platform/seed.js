@@ -1,5 +1,6 @@
 'use strict';
 
+const { bookLine } = require('../brand');
 const { fitOf, behaviorOf, stageOf } = require('./score');
 const { pack, INSERT } = require('./log');
 const { demoDay } = require('./clock');
@@ -108,7 +109,7 @@ function build() {
     const name = `${LEFT[i % 20]} ${RIGHT[Math.floor(i / 20)]}`;
     const row = { id: `AC-${pad(i + 1, 3)}`, name, domain: `${slug(name)}.example`, region, industry, employees, tier, country: place.country, city: place.city, state: place.state };
     accounts.push(row);
-    note({ at: LOAD_AT, entity: 'accounts', entityId: row.id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: 'Loaded the fictional Northwind book.', after: { name, region } });
+    note({ at: LOAD_AT, entity: 'accounts', entityId: row.id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: bookLine(), after: { name, region } });
   }
 
   function personName(n) {
@@ -137,7 +138,7 @@ function build() {
     const source = spec.source;
     const at = spec.consentAt;
     consent.push({ id: `CN-${pad(n, 5)}`, contact_id: id, country: row.country, purpose: 'email', status, source, at });
-    note({ at: LOAD_AT, entity: 'contacts', entityId: id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: 'Loaded the fictional Northwind book.', after: { email, title, country: row.country } });
+    note({ at: LOAD_AT, entity: 'contacts', entityId: id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: bookLine(), after: { email, title, country: row.country } });
     note({ at, entity: 'consent', entityId: `CN-${pad(n, 5)}`, op: 'insert', actor: 'Seed', channel: spec.channel || 'system', sourceMessage: source, why: `Recorded ${status} consent for ${row.country} from ${source}.`, after: { status, country: row.country, source, at } });
     return row;
   }
@@ -227,18 +228,18 @@ function build() {
       const eventSlug = c.id === 'CAMP-CHI' ? 'chicago' : 'event-' + slug(c.id);
       events.push({ id: c.id === 'CAMP-CHI' ? 'EV-CHI' : `EV-${c.id}`, campaign_id: c.id, name: c.name, slug: eventSlug, city: c.city, capacity: c.id === 'CAMP-CHI' ? 40 : 80, starts_at: `${finalStart}T15:00:00.000Z` });
     }
-    note({ at: LOAD_AT, entity: 'campaigns', entityId: c.id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: 'Loaded the fictional Northwind book.', after: { name: c.name, region: c.region } });
+    note({ at: LOAD_AT, entity: 'campaigns', entityId: c.id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: bookLine(), after: { name: c.name, region: c.region } });
     note({ at: LOAD_AT, entity: 'codes', entityId: `COD-${c.id}-C`, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: 'Minted the campaign code from the region, program, and quarter.', after: { value: code } });
-    const budgetWhy = c.id === 'CAMP-CHI' ? 'Approved $180,000 because Chris M. approved it in the app.' : 'Loaded the fictional Northwind book.';
+    const budgetWhy = c.id === 'CAMP-CHI' ? 'Approved $180,000 because Chris M. approved it in the app.' : bookLine();
     note({ at: LOAD_AT, entity: 'budgets', entityId: c.id === 'CAMP-CHI' ? 'BDG-CHI' : `BDG-${c.id}`, op: 'insert', actor: c.id === 'CAMP-CHI' ? 'Chris M.' : 'Seed', channel: c.id === 'CAMP-CHI' ? 'App' : 'system', sourceMessage: c.id === 'CAMP-CHI' ? 'APP-CHRIS-BUDGET' : 'seed', why: budgetWhy, after: { amount_usd: amount, status: c.id === 'CAMP-CHI' ? 'approved' : 'recorded' } });
-    note({ at: LOAD_AT, entity: 'sows', entityId: c.id === 'CAMP-CHI' ? 'SOW-CHI' : `SOW-${c.id}`, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: 'Loaded the fictional Northwind book.', after: { vendor: c.region === 'Americas' ? 'Harbor North' : 'Field and Co' } });
+    note({ at: LOAD_AT, entity: 'sows', entityId: c.id === 'CAMP-CHI' ? 'SOW-CHI' : `SOW-${c.id}`, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: bookLine(), after: { vendor: c.region === 'Americas' ? 'Harbor North' : 'Field and Co' } });
   }
   codes.push(
     { id: 'COD-CHI-BAN', campaign_id: 'CAMP-CHI', kind: 'ban', value: 'BAN-FY26Q3-4100-0001' },
     { id: 'COD-CHI-SFDC', campaign_id: 'CAMP-CHI', kind: 'sfdc', value: '7010000000CHIAA' },
     { id: 'COD-CHI-EV', campaign_id: 'CAMP-CHI', kind: 'event', value: 'EV-CHI-001' }
   );
-  for (const row of codes.slice(-3)) note({ at: LOAD_AT, entity: 'codes', entityId: row.id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: 'Loaded the fictional Northwind book.', after: { kind: row.kind, value: row.value } });
+  for (const row of codes.slice(-3)) note({ at: LOAD_AT, entity: 'codes', entityId: row.id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: bookLine(), after: { kind: row.kind, value: row.value } });
 
   const history = contacts.slice(historyStart - 1, historyStart - 1 + 20);
   const recipients = history.map((c, i) => ({ token: `tok-${c.id}`, contact_id: c.id, email: c.email, opened: i < 8 ? 1 : 0, clicked: i < 3 ? 1 : 0 }));

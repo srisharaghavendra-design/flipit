@@ -4,6 +4,8 @@ The site already lives on the free Vercel project that serves flipit.fyi. You do
 
 Email in the demo is caught inside the app. It is never sent to a real inbox.
 
+The wordmark is the `BRAND_NAME` environment variable. The default is Northwind. Set it on the host when this deployment should show a different fictional name. There is no logo. Mailbox addresses stay on `northwind.example`.
+
 ## What you click
 
 1. Open the pull request on GitHub.
@@ -57,7 +59,7 @@ The Engine room, campaign run, CRM sync, consent checks, registration forms, the
 
 Limits, because Hobby does not keep a server running:
 
-- State lasts while that instance is warm. A cold start loads the fictional Northwind data again. Two instances at once can each have their own copy. Do not treat it as a shared database.
+- State lasts while that instance is warm. A cold start loads the fictional book again. Two instances at once can each have their own copy. Do not treat it as a shared database.
 - The scale-test button uses **2,000 contacts and 200 messages** (cap 8,000 / 800), labelled on the button. It is not the million-row run. The card shows the measured rate after it finishes. On a development machine that same Hobby size finished in 37ms (catcher accepted 200 of 200; segment query p95 was 0.07ms). The 8,000 / 800 cap finished in 76ms. A full campaign run in the test suite took about 7 seconds, and the self-heal test took about 25 seconds. The function is allowed 60 seconds and 1 CPU, so both fit. Expect the live site to be slower than that machine.
 - A full campaign run is one request, up to 60 seconds, then the page shows the result.
 - "Covered for you" runs when you open that card or press Scan now. It does not tick in the background after you leave.

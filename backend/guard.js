@@ -3,6 +3,7 @@
 // are allow-listed in the engine, not here.
 const crypto = require('crypto');
 const auth = require('./auth');
+const { brandName } = require('../brand');
 
 const WINDOW_MS = 10 * 60 * 1000;
 const buckets = new Map();
@@ -63,7 +64,7 @@ function readBody(req) {
 function page() {
   const people = auth.USERS.filter(u => u.role !== 'admin').map(u => `<button type="submit" name="user" value="${u.id}"><b>${u.name}</b><span>${u.role} · ${u.persona} · ${u.regions.join(', ')}</span></button>`).join('');
   const sso = auth.provider() === 'demo' ? '' : `<p>Company SSO is configured (${auth.provider()}). The picker below is only the local demo.</p>`;
-  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · Northwind</title>
+  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · ${brandName()}</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090a0c;color:#f5f5f7;font-family:Inter,system-ui,sans-serif}
 form{width:min(520px,94vw);background:#14161b;border:1px solid #2a2d34;border-radius:28px;padding:32px}
 h1{font-size:36px;margin:0 0 8px;letter-spacing:-.04em;font-weight:560}p{color:#9b9ba3;font-size:15px;line-height:1.45}

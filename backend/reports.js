@@ -1,9 +1,10 @@
 // Weekly and monthly field-marketing decks. Numbers come from the warehouse when it
-// has rows, and from the fictional Northwind book otherwise. Nothing here is Cisco.
+// has rows, and from the fictional book otherwise. The wordmark is BRAND_NAME.
 const fs = require('fs');
 const path = require('path');
 const PptxGenJS = require('pptxgenjs');
 const { call } = require('./lib');
+const { brandName, brandCompany, brandMark } = require('../brand');
 
 const cache = new Map();
 
@@ -84,7 +85,7 @@ function slidesFor(period, data, when) {
   const title = titleFor(period, data.region, when);
   const bars = data.bars.length ? data.bars : [{ label: place, spend: data.spend, budget: data.budget }];
   const slides = [
-    { kind: 'title', title, sub: 'Northwind Networks · fictional field marketing · not a customer system' },
+    { kind: 'title', title, sub: brandCompany() + ' · fictional field marketing · not a customer system' },
     { kind: 'bars', title: 'Spend against budget', bars, note: `${money(data.spend)} spent of ${money(data.budget)} budget` },
     { kind: 'pair', title: 'Registrations and pipeline', left: data.leads + ' leads', right: money(data.pipeline) + ' pipeline', note: `Target pipeline ${money(data.goal)} · ${data.mqls} MQLs` },
     { kind: 'list', title: 'Campaigns live', items: data.names.length ? data.names : ['No live campaigns in this slice.'] },
@@ -107,14 +108,14 @@ async function pptx(period, data, when) {
   const pres = new PptxGenJS();
   pres.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
   pres.layout = 'WIDE';
-  pres.author = 'Northwind @mops';
+  pres.author = brandName() + ' @mops';
   pres.title = titleFor(period, data.region, when);
   const slides = slidesFor(period, data, when);
   for (const s of slides) {
     const slide = pres.addSlide();
     slide.background = { color: PAPER };
     slide.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: 0.18, h: 7.5, fill: { color: LIME } });
-    slide.addText('NORTHWIND', { x: 0.55, y: 0.28, w: 4, h: 0.28, fontFace: 'Calibri', fontSize: 11, color: MUTED, margin: 0 });
+    slide.addText(brandMark(), { x: 0.55, y: 0.28, w: 4, h: 0.28, fontFace: 'Calibri', fontSize: 11, color: MUTED, margin: 0 });
     if (s.kind === 'title') {
       slide.addText(s.title, { x: 0.55, y: 2.2, w: 11.5, h: 1.6, fontFace: 'Calibri', fontSize: 36, color: INK, margin: 0 });
       slide.addText(s.sub, { x: 0.55, y: 4.1, w: 10, h: 0.4, fontFace: 'Calibri', fontSize: 16, color: MUTED, margin: 0 });
@@ -147,7 +148,7 @@ function escPdf(s) { return String(s || '').replace(/[\\()]/g, m => '\\' + m).re
 function pdf(period, data, when) {
   const slides = slidesFor(period, data, when);
   const pages = slides.map(s => {
-    const cmds = ['0.96 0.965 0.953 rg', '0 0 612 792 re f', '0.84 1 0.29 rg', '0 0 10 792 re f', 'BT', '/F1 11 Tf', '0.45 0.47 0.5 rg', '36 760 Td', '(NORTHWIND) Tj'];
+    const cmds = ['0.96 0.965 0.953 rg', '0 0 612 792 re f', '0.84 1 0.29 rg', '0 0 10 792 re f', 'BT', '/F1 11 Tf', '0.45 0.47 0.5 rg', '36 760 Td', '(' + escPdf(brandMark()) + ') Tj'];
     if (s.kind === 'title') {
       cmds.push('/F1 22 Tf', '0 0 0 rg', '1 0 0 1 36 520 Tm', '(' + escPdf(s.title).slice(0, 70) + ') Tj', '/F1 12 Tf', '0.45 0.47 0.5 rg', '1 0 0 1 36 490 Tm', '(' + escPdf(s.sub).slice(0, 90) + ') Tj');
     } else {
@@ -197,7 +198,7 @@ async function build(opts) {
   const trace = require('./trace');
   const data = await trace.run(async () => {
     const t0 = Date.now();
-    trace.add({ service: 'Report agent', name: 'Read the warehouse', ms: 1, status: 'ok', request: { period, region }, response: { source: 'warehouse, then the Northwind book' }, rows: [] });
+    trace.add({ service: 'Report agent', name: 'Read the warehouse', ms: 1, status: 'ok', request: { period, region }, response: { source: 'warehouse, then the ' + brandName() + ' book' }, rows: [] });
     const facts = await gather(region);
     trace.add({ service: 'Warehouse', name: 'Campaign performance', ms: Date.now() - t0, status: 'ok', request: { region }, response: { campaigns: facts.campaigns, spend: facts.spend, pipeline: facts.pipeline, warehouseRegions: facts.warehouseRegions }, rows: facts.bars.slice(0, 6) });
     trace.add({ service: 'Report agent', name: 'Build the deck', ms: 1, status: 'ok', request: { slides: period === 'monthly' ? 8 : 6 }, response: { format: 'pptx and pdf' }, rows: [] });

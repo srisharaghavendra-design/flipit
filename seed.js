@@ -1,4 +1,5 @@
-// Generates fictional Northwind Networks data -> data.seed.json + data.json. Deterministic.
+// Generates fictional book data -> data.seed.json + data.json. Deterministic. The company line follows BRAND_NAME.
+const {brandCompany}=require('./brand');
 const fs=require('fs');let s=42;const r=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;const pick=a=>a[Math.floor(r()*a.length)];
 const regions={India:['Bengaluru','Mumbai','Delhi','Hyderabad','Pune'],ANZ:['Sydney','Melbourne','Auckland'],ASEAN:['Singapore','Jakarta','Kuala Lumpur','Bangkok'],Japan:['Tokyo','Osaka']};
 const pre=['Tata','Indus','Kaveri','Lotus','Saffron','Harbour','Southern Cross','Kiwi','Merlion','Batik','Garuda','Sakura','Fuji','Orbit','Zenith','Nimbus','Aurora','Vertex','Summit','Coral'];
@@ -98,6 +99,6 @@ for(const k of campaigns)if(!threads.some(t=>t.refId===k.id))threads.push({id:'T
 const regionBook=[{id:'APJ',name:'APJ',countries:['India','Japan','Australia','New Zealand','Singapore','Indonesia','Malaysia','Thailand']},{id:'EMEA',name:'EMEA',countries:['United Kingdom','Germany','France','Netherlands','United Arab Emirates']},{id:'Americas',name:'Americas',countries:['United States','Canada','Brazil','Mexico']}];
 const programs=[{id:'ABM',name:'ABM',budget:1400000},{id:'Digital',name:'Digital',budget:820000},{id:'Events',name:'Events',budget:980000},{id:'Partner',name:'Partner',budget:640000},{id:'Lead gen',name:'Lead gen',budget:380000}];
 const lifecycleDraft={id:'LC-DEMO',step:'budget',name:'Frankfurt Zero Trust Executive Dinner',fields:{campaign_name:'Frankfurt Zero Trust Executive Dinner',geo:'EMEA',region:'EMEA',country:'Germany',program:'Events',channel:'Events',product:'zero trust',start_date:'2026-11-19',end_date:'2026-11-19',city:'Frankfurt',city_venue:'Frankfurt',audience:'CIOs and CISOs at 25 target accounts',goal:'25 target accounts',budget:168000,capacity:40,owner:'Srisha R.'}};
-const db={company:'Northwind Networks',limits:{approvalUSD:150000},regions:regionBook,programs,lifecycleDraft,accounts,contacts,campaigns,leads,mdf,events,budgets:[],sows:[],segments:[],emails:[],outbox:[],sequences:[],uploads:[],crmSync:[],threads,activities,opps,syncLog,sellers,crm:{tasks:[],campaignMembers:[],leadScores:[]},notifications:[],intent6s,adobeWeb};
+const db={company:brandCompany(),limits:{approvalUSD:150000},regions:regionBook,programs,lifecycleDraft,accounts,contacts,campaigns,leads,mdf,events,budgets:[],sows:[],segments:[],emails:[],outbox:[],sequences:[],uploads:[],crmSync:[],threads,activities,opps,syncLog,sellers,crm:{tasks:[],campaignMembers:[],leadScores:[]},notifications:[],intent6s,adobeWeb};
 fs.writeFileSync(__dirname+'/data.seed.json',JSON.stringify(db));fs.writeFileSync(__dirname+'/data.json',JSON.stringify(db));
 console.log('seeded',accounts.length,'accounts',contacts.length,'contacts',leads.length,'leads');

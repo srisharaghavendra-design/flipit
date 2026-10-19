@@ -1,5 +1,6 @@
 // The four jobs a field marketer actually does: budget, SOW, campaign code, list upload.
-// Fictional Northwind data only. Nothing here is a second system of record — it edits the one lifecycle.
+// Fictional data only. Nothing here is a second system of record — it edits the one lifecycle.
+const {brandName}=require('../brand');
 const fs=require('fs'),path=require('path'),zlib=require('zlib');
 const PROGRAMS=['ABM','Digital','Events','Partner','Lead gen'];
 const TYPES=['Executive event','Dinner','Roundtable','Summit','Webinar','ABM play','Digital campaign','Partner event','Lead gen'];
@@ -18,7 +19,7 @@ const ROSTER={
  Singapore:{name:'Bright Harbour Events',legal:'Bright Harbour Events Pte Ltd',email:'daniel.tan@bright-harbour.example',pm:'Daniel Tan'},
  Australia:{name:'Bright Harbour Events',legal:'Bright Harbour Events Pty Ltd',email:'jack.moore@bright-harbour.example',pm:'Jack Moore'},
  Japan:{name:'Sakura Gate Agency',legal:'Sakura Gate KK',email:'yuki.sato@sakura-gate.example',pm:'Yuki Sato'}};
-function agencyOf(f){const hit=ROSTER[f&&f.country]||{name:'Northwind Preferred Agency',legal:'Northwind Preferred Agency',email:'desk@agencies.northwind.example',pm:'Agency desk'};if(f&&f.vendor)return{...hit,name:f.vendor,legal:f.vendor};return hit}
+function agencyOf(f){const fallback=brandName()+' Preferred Agency';const hit=ROSTER[f&&f.country]||{name:fallback,legal:fallback,email:'desk@agencies.northwind.example',pm:'Agency desk'};if(f&&f.vendor)return{...hit,name:f.vendor,legal:f.vendor};return hit}
 function money(n,cur){return require('./money').format(n,cur||'USD')}
 function amountOf(v){const s=String(v??'').trim();if(!s)return null;const p=require('./money').parseMoney(s);if(p)return p.amount;const n=Number(s.replace(/[,\s]/g,'').replace(/k$/i,'000'));return Number.isFinite(n)?n:NaN}
 function agencyFor(f){return agencyOf(f).name}
@@ -48,7 +49,7 @@ function quarterChoices(current){const out=[];for(const y of [26,27,28])for(cons
 function validateBudget(v){const errors=[];const need=[['campaign_name','Campaign name'],['product','Product / architecture'],['audience','Goal or target accounts'],['country','Country'],['city','City'],['start_date','Start date'],['vendor','Agency'],['campaign_type','Campaign type'],['budget','Amount'],['currency','Currency'],['quarter','Quarter'],['program','Program'],['owner','Owner']];
  for(const[k,label]of need)if(!String(v[k]??'').trim())errors.push(label+' is required.');
  if(v.campaign_type)v.campaign_type=canonicalType(v.campaign_type,v.program);
- if(v.country&&!countries().includes(v.country))errors.push(v.country+' is not a Northwind country.');
+ if(v.country&&!countries().includes(v.country))errors.push(v.country+' is not a '+brandName()+' country.');
  if(v.program&&!PROGRAMS.includes(v.program))errors.push('Program must be ABM, Digital, Events, Partner, or Lead gen.');
  if(v.campaign_type&&!TYPES.includes(v.campaign_type))errors.push('Campaign type is not one of the Airtable types.');
  if(v.quarter&&!/^FY\d{2}Q[1-4]$/.test(v.quarter))errors.push('Quarter looks like FY27Q2.');

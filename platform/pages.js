@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { MODULES, BASELINES } = require('./modules');
+const { brandName } = require('../brand');
 const { MQL_THRESHOLD } = require('./score');
 const engage = require('./engage');
 
@@ -32,7 +33,9 @@ function layout(active, body) {
     ['/platform/ask', 'Ask', 'ask'],
     ['/platform/architecture', 'Architecture', 'arch']
   ].map(([href, label, id]) => `<a href="${href}" class="${id === active ? 'on' : ''}"><svg viewBox="0 0 24 24">${ICONS[id]}</svg><span>${label}</span></a>`).join('');
-  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Northwind Marketing Cloud</title>
+  const mark = esc(brandName());
+  const letter = esc((brandName().charAt(0) || 'N').toUpperCase());
+  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${mark} Marketing Cloud</title>
 <style>
 :root{color-scheme:light;--ink:#1c1d1a;--muted:#5f5c55;--line:#e6e1d6;--paper:#f5f4f0;--card:#fff;--lime:#e4f5a8}
 *{box-sizing:border-box}
@@ -105,7 +108,7 @@ details ul{margin:8px 0;padding-left:18px;color:#3c3b36}
 }
 </style>
 <div class="shell">
-<aside><a class="brand" href="/platform"><i>N</i><span>Northwind</span></a><nav>${nav}</nav></aside>
+<aside><a class="brand" href="/platform"><i>${letter}</i><span>${mark}</span></a><nav>${nav}</nav></aside>
 <div class="workspace">
 <header class="top"><div class="who" id="who">Signed in</div><div class="row" style="margin:0"><select id="switch" aria-label="Switch user"></select><button id="reset" class="ghost" type="button">Reset demo</button></div></header>
 <script>
@@ -152,10 +155,10 @@ document.querySelector('#reset').onclick=async()=>{
 function home() {
   const cards = MODULES.map(m => `<article class="card" data-module="${esc(m.id)}" data-status="${esc(m.status)}"><span class="tag ${esc(m.status)}">${esc(m.status)}</span><h2>${esc(m.name)}</h2><p>Replaces ${esc(m.replaces)}</p>${m.note ? `<p>${esc(m.note)}</p>` : ''}${m.href ? `<p><a class="btn" href="${esc(m.href)}">Open</a></p>` : ''}</article>`).join('');
   const names = Object.fromEntries(MODULES.map(m => [m.id, m.name]));
-  return layout('home', `<h1>One platform, six modules.</h1><p class="sub">Data core, Engage, CRM, Plan and spend, Insights, and the Brain API are running on this machine. Fictional Northwind data only.</p><div class="grid">${cards}</div><h2>What @mops did today</h2><div class="today"><div id="today" class="panel feed">Loading…</div><div id="saved" class="panel">Loading…</div></div>
+  return layout('home', `<h1>One platform, six modules.</h1><p class="sub">Data core, Engage, CRM, Plan and spend, Insights, and the Brain API are running on this machine. Fictional ${esc(brandName())} data only.</p><div class="grid">${cards}</div><h2>What @mops did today</h2><div class="today"><div id="today" class="panel feed">Loading…</div><div id="saved" class="panel">Loading…</div></div>
 <script>
 const NAME=${JSON.stringify(names)};
-function noise(why){return /Loaded the fictional Northwind book|Scored from title|Minted the campaign code from the region|Recorded \\$|Recorded opted_in|Recorded opted_out|Recorded unknown consent|Approved \\$180,000 because Chris/.test(why||'')}
+function noise(why){return /Loaded the fictional .+ book|Scored from title|Minted the campaign code from the region|Recorded \\$|Recorded opted_in|Recorded opted_out|Recorded unknown consent|Approved \\$180,000 because Chris/.test(why||'')}
 async function boot(){try{
   await window.whoReady;
   const [feed, metrics]=await Promise.all([api('/api/platform/brain/why?limit=80'), api('/api/platform/metrics')]);
