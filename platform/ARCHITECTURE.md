@@ -71,11 +71,11 @@ One Chicago send writes the segment (CIO, Illinois, opened in the 30 days before
 
 The attendee upload reads `platform/samples/chicago-attendees.xlsx`. Junk rows sit above the header. Owners are the territory AE for an executive title and the territory SDR otherwise. Held rows are listed with a reason: no consent, missing email, duplicate, and a formula in a cell. A held row is not loaded. Nina Vale is the duplicate, so she is held and she is not a campaign member. The same counts are in the ask, on the CRM page, and in the why feed. Jake Moss owns the Chicago accounts. Rosa Diaz is assigned by the SDR rule and owns none of those accounts. The campaign object is written once. Salesforce was busy, retried automatically, and the queue finishes clear.
 
-The Chicago budget of $180,000 is over $150,000, so Maria's request is Waiting on Chris. It does not approve itself. Chris M. approves it from `/platform/spend`, or with `@mops approve Chicago` while signed in as Chris. The BAN and the campaign code are minted then. $150,000 is approved by the policy. $150,001 waits for Chris M. The SOW is filled from the agency roster. Open items read Waiting on you: PM, PO, venue contact. Actuals stay hidden until Chris approves.
+The Chicago budget of $180,000 is over $150,000, so Maria's request is Waiting on Chris. It does not approve itself. Chris M. approves it from `/platform/spend`, or with `@mops approve Chicago` while signed in as Chris. The BAN and the campaign code are minted then. $150,000 is approved by the policy. $150,001 waits for Chris M. The SOW is filled from the agency roster. Open items read Waiting on you: PM, PO, venue contact. Saving those three confirms Saved, SOW ready for review and leaves the values on the form. Actuals stay hidden until Chris approves. Chicago actuals are $0 right after approval.
 
 The weekly report reads the live region and program totals. The deck states a pipeline target that is not the actual pipeline. The reply offers Download PowerPoint and Download PDF.
 
-Reset demo wipes the book back to the seed, so the next ask is a first run.
+The venue change is one why row, tagged with the Chicago security roundtable. The why answer names the source as Jordan Hale's email, 14 Oct. Reset demo wipes the book back to that seed, so the home feed, the Brain feed, and the next ask are a first run.
 
 ## Old tool vs @mops
 

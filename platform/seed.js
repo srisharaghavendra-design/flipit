@@ -283,7 +283,7 @@ const SQL = {
   score: 'UPDATE contacts SET behavior=?, score=?, stage=? WHERE id=?'
 };
 
-const SEED_VERSION = 5;
+const SEED_VERSION = 6;
 const ENVELOPES = [['Americas', 2400000], ['EMEA', 1800000], ['APJ', 1600000], ['Global', 900000]];
 
 function rows(list, cols) { return list.map(r => cols.map(k => r[k])); }
@@ -312,7 +312,7 @@ async function backfillActuals(database) {
   const regionOf = new Map(regionRows.map(r => [r.id, r.region]));
   await database.tx(async (q) => {
     for (const b of budgetRows) {
-      const actual = b.campaign_id === 'CAMP-CHI' ? 42000 : Math.round(b.amount_usd * 0.4);
+      const actual = b.campaign_id === 'CAMP-CHI' ? 0 : Math.round(b.amount_usd * 0.4);
       const pipe = b.campaign_id === 'CAMP-CHI' ? 640000 : (regionOf.get(b.campaign_id) === 'Americas' ? 120000 : 80000);
       await q.run('INSERT INTO actuals(id, campaign_id, amount_usd, note) VALUES(?,?,?,?)', ['ACTL-' + b.campaign_id, b.campaign_id, actual, 'Seeded from the fictional book']);
       await q.run('UPDATE campaigns SET pipeline_usd = ?, pipeline_target_usd = ? WHERE id = ?', [pipe, targetFor(b.campaign_id, pipe), b.campaign_id]);
@@ -349,7 +349,7 @@ async function run(database) {
     const regionRows = await q.all('SELECT id, region FROM campaigns');
     const regionOf = new Map(regionRows.map(r => [r.id, r.region]));
     for (const b of budgetRows) {
-      const actual = b.campaign_id === 'CAMP-CHI' ? 42000 : Math.round(b.amount_usd * 0.4);
+      const actual = b.campaign_id === 'CAMP-CHI' ? 0 : Math.round(b.amount_usd * 0.4);
       const pipe = b.campaign_id === 'CAMP-CHI' ? 640000 : (regionOf.get(b.campaign_id) === 'Americas' ? 120000 : 80000);
       await q.run('INSERT INTO actuals(id, campaign_id, amount_usd, note) VALUES(?,?,?,?)', ['ACTL-' + b.campaign_id, b.campaign_id, actual, 'Seeded from the fictional book']);
       await q.run('UPDATE campaigns SET pipeline_usd = ?, pipeline_target_usd = ? WHERE id = ?', [pipe, targetFor(b.campaign_id, pipe), b.campaign_id]);
@@ -362,27 +362,15 @@ async function run(database) {
     if (book.scoreUpdates.length) await q.insertMany(SQL.score, book.scoreUpdates);
 
     await q.run('UPDATE campaigns SET start_date=? WHERE id=?', ['2026-03-19', 'CAMP-CHI']);
+    await q.run('UPDATE sows SET venue=? WHERE id=?', ['River North Club, Salon B', 'SOW-CHI']);
     await q.run(INSERT, pack({
       at: '2026-10-18T16:05:00.000Z', entity: 'campaigns', entityId: 'CAMP-CHI', op: 'update',
       actor: 'Jordan Hale', channel: 'Email', sourceMessage: 'EM-JH-1014',
-      why: "Moved the event to 19 Mar because Jordan Hale's email on 14 Oct said the venue changed.",
+      why: "Moved the Chicago security roundtable to 19 Mar because Jordan Hale's email on 14 Oct said the venue changed.",
       before: { start_date: '2026-03-18', venue: 'River North Club' },
-      after: { start_date: '2026-03-19', venue: 'River North Club, Salon B' }
-    }));
-    await q.run('UPDATE sows SET venue=? WHERE id=?', ['River North Club, Salon B', 'SOW-CHI']);
-    await q.run(INSERT, pack({
-      at: '2026-10-18T16:05:01.000Z', entity: 'sows', entityId: 'SOW-CHI', op: 'update',
-      actor: 'Jordan Hale', channel: 'Email', sourceMessage: 'EM-JH-1014',
-      why: "Moved the event to 19 Mar because Jordan Hale's email on 14 Oct said the venue changed.",
-      before: { venue: 'River North Club' }, after: { venue: 'River North Club, Salon B' }
+      after: { start_date: '2026-03-19', venue: 'River North Club, Salon B', campaign: 'Chicago security roundtable' }
     }));
     await q.run('UPDATE campaigns SET owner=? WHERE id=?', ['Rosa Diaz', 'CAMP-CHI']);
-    await q.run(INSERT, pack({
-      at: '2026-10-18T16:06:00.000Z', entity: 'campaigns', entityId: 'CAMP-CHI', op: 'update',
-      actor: 'Maria Alvarez', channel: 'Webex', sourceMessage: 'WX-CHI-ROSA',
-      why: 'Set the campaign owner to Rosa Diaz, assigned by the SDR rule. She does not own the Chicago accounts.',
-      before: { owner: 'Maria Alvarez' }, after: { owner: 'Rosa Diaz' }
-    }));
 
     const created = '2026-10-18T16:07:00.000Z';
     await q.run('INSERT INTO templates(id, name, subject, html, created_at) VALUES(?,?,?,?,?)', ['TPL-CHI', 'Chicago invite', 'You are invited: Chicago security roundtable', '<p>Hi {{first}},</p><p>{{company}} is invited to {{campaign}} in {{city}}.</p><p><a href="{{link}}">Reserve a seat</a></p>', created]);

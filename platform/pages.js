@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { MODULES, BASELINES } = require('./modules');
 const { MQL_THRESHOLD } = require('./score');
+const engage = require('./engage');
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -175,7 +176,7 @@ function tableScript() {
 const LABEL={costPerLead:'Cost per lead',mqls:'MQLs',pipeline:'Pipeline',target:'Target',budget:'Budget',actual:'Actual',campaigns:'Campaigns',leads:'Leads',region:'Region',program:'Program',variance:'Left',name:'Name',title:'Title',state:'State',score:'Score',stage:'Stage',email:'Email',owner_name:'Owner',status:'Status',attempts:'Attempts',last_error:'Last error',type:'Type',company:'Company',country:'Country'};
 const MONEY=new Set(['costPerLead','pipeline','target','budget','actual','variance','amount','spend','goal','left']);
 function head(c){if(LABEL[c])return LABEL[c];const s=String(c).replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2');return s.charAt(0).toUpperCase()+s.slice(1)}
-function cell(c,v){if(v==null||v==='')return '—';const stamp=when(v);if(stamp&&(c==='at'||c==='created_at'||/^\\d{4}-\\d{2}-\\d{2}T/.test(String(v))))return esc(stamp);if(MONEY.has(c)&&v!==''&&!isNaN(Number(v)))return money(v);if(typeof v==='number')return Number(v).toLocaleString('en-US');return esc(v).slice(0,180)}
+function cell(c,v){if(v==null||v==='')return '—';if(c==='source_message'&&v==='EM-JH-1014')return "Jordan Hale's email, 14 Oct";const stamp=when(v);if(stamp&&(c==='at'||c==='created_at'||/^\\d{4}-\\d{2}-\\d{2}T/.test(String(v))))return esc(stamp);if(MONEY.has(c)&&v!==''&&!isNaN(Number(v)))return money(v);if(typeof v==='number')return Number(v).toLocaleString('en-US');return esc(v).slice(0,180)}
 function table(el, rows){if(!rows||!rows.length){el.textContent='No rows.';return}const cols=Object.keys(rows[0]);el.innerHTML='<table><thead><tr>'+cols.map(c=>'<th>'+esc(head(c))+'</th>').join('')+'</tr></thead><tbody>'+rows.slice(0,40).map(r=>'<tr>'+cols.map(c=>'<td>'+cell(c,r[c])+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}`;
 }
 
@@ -187,38 +188,47 @@ ${tableScript()}
 async function boot(){try{
   await window.whoReady;
   await paintElon();
-  const counts=await api('/api/platform/data/counts');
-  document.querySelector('#counts').textContent=counts.contacts.toLocaleString('en-US')+' contacts · '+counts.accounts+' accounts · '+counts.campaigns+' campaigns · '+counts.regions.join(', ')+' · '+counts.dialect;
   const schema=await api('/api/platform/data/schema');
   document.querySelector('#schema').innerHTML=schema.tables.map(t=>'<div class="box"><b>'+esc(t.name)+'</b><small>'+esc(t.columns.slice(0,4).join(', '))+'</small></div>').join('');
-  const tables=await api('/api/platform/data/tables');
   const sel=document.querySelector('#table');
-  sel.innerHTML=tables.tables.map(t=>'<option value="'+esc(t.name)+'">'+esc(t.name)+' ('+t.rows.toLocaleString('en-US')+')</option>').join('');
-  sel.value='contacts';
+  async function refreshCounts(){
+    const counts=await api('/api/platform/data/counts');
+    document.querySelector('#counts').textContent=counts.contacts.toLocaleString('en-US')+' contacts · '+counts.accounts+' accounts · '+counts.campaigns+' campaigns · '+counts.regions.join(', ')+' · '+counts.dialect;
+    const tables=await api('/api/platform/data/tables');
+    const keep=sel.value||'contacts';
+    sel.innerHTML=tables.tables.map(t=>'<option value="'+esc(t.name)+'">'+esc(t.name)+' ('+t.rows.toLocaleString('en-US')+')</option>').join('');
+    sel.value=[...sel.options].some(o=>o.value===keep)?keep:'contacts';
+  }
   async function show(){const q=document.querySelector('#q').value;const body=await api('/api/platform/data/tables/'+encodeURIComponent(sel.value)+'?q='+encodeURIComponent(q));table(document.querySelector('#rows'), body.rows)}
-  document.querySelector('#load').onclick=()=>show().catch(err); await show();
   async function logs(){const body=await api('/api/platform/data/log?q='+encodeURIComponent(document.querySelector('#logq').value));table(document.querySelector('#log'), body.rows)}
-  document.querySelector('#logbtn').onclick=()=>logs().catch(err); await logs();
+  document.querySelector('#load').onclick=()=>show().catch(err);
+  document.querySelector('#logbtn').onclick=()=>logs().catch(err);
+  window.afterAsk=async()=>{await refreshCounts();await show();await logs()};
+  await refreshCounts();
+  await show();
+  await logs();
 }catch(e){err(e)}}
 boot();
 </script>`);
 }
 
-function engagePage() {
+async function engagePage() {
   const proof = BASELINES.engage.proof;
-  return layout('engage', `<h1>Engage</h1><p class="sub">Replaces Eloqua. One ask builds the segment, the email, and the send. The mail catcher never leaves this machine.</p><p class="elon" id="elon" data-module="engage">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><button id="sim" class="ghost" type="button" data-simulate>Simulate a realistic response</button><span>MQLs <b data-mql-count>…</b> · an MQL is a score of ${MQL_THRESHOLD} or higher · about 45% open, about 12% click</span></div><div id="answer"></div><h2>Segments</h2><div id="segments" class="panel"></div><h2>Templates</h2><div id="templates" class="panel"></div><h2>Send log</h2><p class="sub">One row per campaign. Notes to a single person stay off this list. Simulate runs once per send.</p><div id="sends" class="panel"></div><h2>Leaderboards</h2><div class="boards"><div class="panel"><h3>Illinois</h3><div id="board-il"></div></div><div class="panel"><h3>Texas</h3><div id="board-tx"></div></div></div>
+  const board = await engage.scores();
+  const mqls = Number(board.mqls) || 0;
+  return layout('engage', `<h1>Engage</h1><p class="sub">Replaces Eloqua. One ask builds the segment, the email, and the send. The mail catcher never leaves this machine.</p><p class="elon" id="elon" data-module="engage">Measuring…</p><div class="row"><button data-proof="${esc(proof)}">Run the proof ask</button><button id="sim" class="ghost" type="button" data-simulate>Simulate a realistic response</button><span>MQLs <b data-mql-count>${mqls}</b> · an MQL is a score of ${MQL_THRESHOLD} or higher · about 45% open, about 12% click</span></div><div id="answer"></div><h2>Segments</h2><div id="segments" class="panel"></div><h2>Templates</h2><div id="templates" class="panel"></div><h2>Send log</h2><p class="sub">One row per campaign. Notes to a single person stay off this list. Simulate runs once per send.</p><div id="sends" class="panel"></div><h2>Leaderboards</h2><div class="boards"><div class="panel"><h3>Illinois</h3><div id="board-il"></div></div><div class="panel"><h3>Texas</h3><div id="board-tx"></div></div></div>
 <script>
 function pct(n){return Math.round((n||0)*100)+'%'}
 function board(el, rows){el.innerHTML='<table><tr><th>Name</th><th>Title</th><th>State</th><th>Score</th><th>Stage</th></tr>'+(rows||[]).map(p=>'<tr data-contact="'+esc(p.id)+'"><td>'+esc(p.first_name)+' '+esc(p.last_name)+'</td><td>'+esc(p.title)+'</td><td>'+esc(p.state)+'</td><td>'+Number(p.score).toLocaleString('en-US')+'</td><td><span class="tag '+(p.stage==='mql'?'ok':'')+'">'+esc(p.stage)+'</span></td></tr>').join('')+'</table>'}
 async function refresh(){
+  const all=await api('/api/platform/engage/scores');
+  document.querySelector('[data-mql-count]').textContent=all.mqls;
   const segs=await api('/api/platform/engage/segments');
   document.querySelector('#segments').innerHTML='<table><tr><th>Segment</th><th>Contacts</th></tr>'+segs.segments.map(s=>'<tr><td>'+esc(s.name)+'</td><td>'+Number(s.count).toLocaleString('en-US')+'</td></tr>').join('')+'</table>';
   const tpls=await api('/api/platform/engage/templates');
   document.querySelector('#templates').innerHTML=tpls.templates.map(t=>'<p><b>'+esc(t.name)+'</b> — '+esc(t.subject)+'</p>').join('');
   const sends=await api('/api/platform/engage/sends');
   document.querySelector('#sends').innerHTML='<table><tr><th>Campaign</th><th>Sent</th><th>Open</th><th>Click</th></tr>'+sends.sends.map(s=>'<tr data-recipients="'+s.recipients+'"><td>'+esc(s.campaign||s.campaign_id)+'</td><td>'+Number(s.recipients).toLocaleString('en-US')+'</td><td>'+pct(s.openRate)+'</td><td>'+pct(s.clickRate)+'</td></tr>').join('')+'</table>';
-  const all=await api('/api/platform/engage/scores');
-  document.querySelector('[data-mql-count]').textContent=all.mqls;
   const il=await api('/api/platform/engage/scores?state=Illinois');
   const tx=await api('/api/platform/engage/scores?state=Texas');
   board(document.querySelector('#board-il'), il.top);
@@ -304,7 +314,12 @@ async function refresh(){
   button.hidden=!(document.body.dataset.role==='approver'&&waiting);
   const sow=(packets.packets||[]).find(p=>p.campaignId==='CAMP-CHI')||(packets.packets||[])[0];
   const short={our_pm:'PM',po_number:'PO',venue_contact:'venue contact'};
-  document.querySelector('#sow').textContent=sow?(sow.open.length?('Waiting on you: '+sow.open.map(f=>f.short||short[f.key]||f.label).join(', ')):sow.sow.agency+' · '+sow.sow.status):'File the Chicago budget to draft the SOW.';
+  const fields=(sow&&sow.sow&&sow.sow.fields)||{};
+  ['our_pm','po_number','venue_contact'].forEach(function(id){const el=document.querySelector('#'+id);if(el&&fields[id])el.value=fields[id]});
+  const note=document.querySelector('#sow');
+  if(!sow)note.textContent='File the Chicago budget to draft the SOW.';
+  else if(sow.open.length)note.textContent='Waiting on you: '+sow.open.map(f=>f.short||short[f.key]||f.label).join(', ');
+  else note.textContent='Saved, SOW ready for review';
   const chicago=(packets.packets||[]).find(p=>p.campaignId==='CAMP-CHI');
   if(!chicago||chicago.status!=='approved'){
     document.querySelector('#actuals').textContent='Actuals show after approval.';

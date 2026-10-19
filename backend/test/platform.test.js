@@ -39,12 +39,16 @@ test('data core and engage finish the marketer asks', { timeout: 120000 }, async
   assert.equal(chicago.campaign.start_date, '2026-03-19');
   assert.equal(chicago.sow.venue, 'River North Club, Salon B');
   assert.equal(chicago.codes.find(c => c.kind === 'campaign').value, 'FY26Q3-USA-EVT-0101');
-  const why = await data.log({ q: 'venue', limit: 5 });
-  assert.match(why.rows.map(r => r.why).join(' '), /Jordan Hale's email on 14 Oct/);
-  assert.ok(why.rows.some(r => r.channel === 'Email' && r.source_message === 'EM-JH-1014'));
-  const rosa = await data.log({ q: 'SDR rule', limit: 3 });
-  assert.match(rosa.rows.map(r => r.why).join('\n'), /assigned by the SDR rule/);
-  assert.doesNotMatch(rosa.rows.map(r => r.why).join('\n'), /covers the Chicago accounts/);
+  const why = await data.log({ q: 'venue', limit: 10 });
+  const moved = why.rows.filter(r => /Moved the Chicago security roundtable/.test(r.why));
+  assert.equal(moved.length, 1);
+  assert.match(moved[0].why, /Jordan Hale's email on 14 Oct/);
+  assert.equal(moved[0].channel, 'Email');
+  assert.equal(moved[0].source_message, 'EM-JH-1014');
+  const chicagoFeed = await data.log({ q: 'Chicago', limit: 20 });
+  assert.equal(chicagoFeed.rows.filter(r => /Moved the Chicago security roundtable/.test(r.why)).length, 1);
+  const confusing = await data.log({ q: 'does not own', limit: 5 });
+  assert.equal(confusing.rows.length, 0);
   const lastTpl = await db.get("SELECT subject, html FROM templates WHERE id = 'TPL-N2'");
   assert.equal(lastTpl.subject, 'Last call for the Chicago security roundtable');
   assert.doesNotMatch(lastTpl.subject + lastTpl.html, /\{\{campaign\}\}/);
@@ -145,6 +149,8 @@ test('data core and engage finish the marketer asks', { timeout: 120000 }, async
   assert.doesNotMatch(draft.reply, /\{\{/);
   const venue = await brain.ask({ text: '@mops why did the Chicago venue change', channel: 'Email', actor: 'Maria Alvarez' });
   assert.match(venue.reply, /Jordan Hale's email on 14 Oct/);
+  assert.match(venue.reply, /Source Jordan Hale's email, 14 Oct/);
+  assert.doesNotMatch(venue.reply, /EM-JH-1014/);
   assert.match(venue.reply, /River North Club, Salon B/);
   assert.match(venue.reply, /19 Mar/);
   assert.equal(venue.channel, 'Email');
@@ -278,7 +284,8 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   const budgetAgain = await brain.ask({ text: '@mops new budget: Chicago security roundtable, $180K', channel: 'Webex', actor: 'Maria Alvarez' });
   assert.equal(budgetAgain.result.idempotent, true);
   assert.match(budgetAgain.reply, /already approved/);
-  assert.match(budgetAgain.reply, /\$42,000 of \$180,000/);
+  assert.match(budgetAgain.reply, /\$0 of \$180,000/);
+  assert.doesNotMatch(budgetAgain.reply, /\$42,000/);
   assert.match(budgetAgain.reply, /Waiting on you: PM, PO, venue contact/);
   const auto = await spend.file({ campaignId: 'CP-03', amount: 150000, currency: 'USD', actor: 'Maria Alvarez', channel: 'App', sourceMessage: 'test', idempotencyKey: 'test:150000' });
   assert.equal(auto.status, 'approved');
@@ -308,7 +315,9 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.ok(dash.regions.find(r => r.region === 'Americas'));
   assert.ok(dash.programs.length);
   const cpl = await brain.ask({ text: '@mops what is the cost per lead for Chicago', channel: 'App', actor: 'Maria Alvarez' });
-  assert.match(cpl.reply, /\$42,000/);
+  assert.match(cpl.reply, /\$0/);
+  assert.match(cpl.reply, /actual/);
+  assert.doesNotMatch(cpl.reply, /\$42,000/);
   const pipe = await brain.ask({ text: '@mops how much pipeline did Chicago source', channel: 'Webex', actor: 'Maria Alvarez' });
   assert.match(pipe.reply, /\$640,000/);
   assert.match(pipe.reply, /\$800,000/);
@@ -367,7 +376,9 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.locator('h2', { hasText: 'What @mops did today' }).waitFor();
     await page.locator('#saved .stat').getByText('195 min', { exact: true }).waitFor();
     assert.ok(await page.locator('#saved').getByText('<1 sec').count() >= 6);
-    await page.locator('#today').getByText(/assigned by the SDR rule|venue|River North/i).first().waitFor();
+    await page.locator('#today').getByText('Moved the Chicago security roundtable to 19 Mar').waitFor();
+    assert.equal(await page.locator('#today').getByText('Moved the Chicago security roundtable to 19 Mar').count(), 1);
+    assert.equal(await page.locator('#today').getByText('does not own').count(), 0);
     assert.equal(await page.locator('body').getByText('not measured yet').count(), 0);
     await page.locator('[data-module="data"][data-status="built"]').waitFor();
     await page.locator('[data-module="engage"][data-status="built"]').waitFor();
@@ -382,7 +393,9 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
 
     await page.goto(H + '/platform/data');
     await page.locator('#rows').getByText('@').first().waitFor();
-    await page.locator('#log').getByText(/venue|Jordan Hale|River North/i).first().waitFor();
+    await page.locator('#log').getByText("Jordan Hale's email, 14 Oct").first().waitFor();
+    assert.equal(await page.locator('#log').getByText('EM-JH-1014').count(), 0);
+    const beforeRuns = await page.locator('#table option[value="ask_runs"]').innerText();
     await page.locator('[data-proof]').click();
     await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 6 screens \/ 11 fields \/ 20 minutes · @mops: 1 ask \/ <1 sec/).waitFor();
     const dataBanner = await page.locator('#elon').innerText();
@@ -390,6 +403,13 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     assert.doesNotMatch(dataBanner, /0\.00\d seconds/);
     await page.locator('#answer .from').getByText('App').waitFor();
     await page.locator('#answer .reply').getByText(/36 opted-in/).waitFor();
+    await page.waitForFunction((start) => {
+      const opt = document.querySelector('#table option[value="ask_runs"]');
+      return opt && opt.textContent !== start;
+    }, beforeRuns);
+    const tables = await (await page.request.get(H + '/api/platform/data/tables')).json();
+    const contacts = tables.tables.find(t => t.name === 'contacts');
+    assert.equal(await page.locator('#table option[value="contacts"]').innerText(), 'contacts (' + contacts.rows.toLocaleString('en-US') + ')');
     assert.equal(await page.locator('#answer details').getAttribute('open'), null);
     await page.screenshot({ path: path.join(shot, 'platform-data.png'), fullPage: true });
 
@@ -408,7 +428,10 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     const pixel = await page.request.get(H + '/platform/p/chicago');
     assert.equal(pixel.status(), 200);
 
-    await page.goto(H + '/platform/engage');
+    const engageRes = await page.goto(H + '/platform/engage');
+    const engageHtml = await engageRes.text();
+    assert.match(engageHtml, /data-mql-count>\d+</);
+    assert.doesNotMatch(engageHtml, /data-mql-count>…/);
     await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 9 screens \/ 16 fields \/ 35 minutes · @mops: 1 ask \/ <1 sec/).waitFor();
     await page.locator('text=an MQL is a score of 70 or higher').waitFor();
     await page.locator('#templates').getByText('Last call for the Chicago security roundtable').waitFor();
@@ -478,17 +501,30 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.locator('#po_number').fill('PO-2044');
     await page.locator('#venue_contact').fill('Jordan Hale');
     await page.locator('#save').click();
-    await page.locator('#sow').getByText('ready').waitFor();
+    await page.locator('#sow').getByText('Saved, SOW ready for review').waitFor();
+    assert.equal(await page.locator('#our_pm').inputValue(), 'Maria Alvarez');
+    assert.equal(await page.locator('#po_number').inputValue(), 'PO-2044');
+    assert.equal(await page.locator('#venue_contact').inputValue(), 'Jordan Hale');
     await page.screenshot({ path: path.join(shot, 'platform-spend.png'), fullPage: true });
     await Promise.all([
       page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
       page.locator('#switch').selectOption('chris')
     ]);
     await page.locator('#who').getByText('Chris M.').waitFor();
+    await page.locator('#sow').getByText('Saved, SOW ready for review').waitFor();
+    assert.equal(await page.locator('#our_pm').inputValue(), 'Maria Alvarez');
+    assert.equal(await page.locator('#po_number').inputValue(), 'PO-2044');
+    assert.equal(await page.locator('#venue_contact').inputValue(), 'Jordan Hale');
     await page.locator('#approve').click();
     await page.locator('#packets').getByText('BAN-FY26Q3-4100-0001').waitFor();
     await page.locator('#answer .reply').getByText(/FY26Q3-USA-EVT-0101/).waitFor();
-    await page.locator('#actuals').getByText('$42,000').first().waitFor();
+    await page.locator('#actuals').getByText('Chicago security roundtable').waitFor();
+    const chicagoActual = await page.evaluate(() => {
+      const row = [...document.querySelectorAll('#actuals tr')].find(tr => /Chicago security roundtable/.test(tr.textContent));
+      return row ? row.textContent : '';
+    });
+    assert.match(chicagoActual, /\$0/);
+    assert.doesNotMatch(chicagoActual, /\$42,000/);
     assert.equal((await page.locator('#err').innerText()).trim(), '');
     await page.screenshot({ path: path.join(shot, 'platform-spend.png'), fullPage: true });
 
@@ -514,7 +550,8 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
 
     await page.goto(H + '/platform/brain');
     await page.locator('#policy').getByText('Waiting on Chris').waitFor();
-    await page.locator('#why').getByText(/assigned by the SDR rule/).waitFor();
+    await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').waitFor();
+    assert.equal(await page.locator('#why').getByText('does not own').count(), 0);
     assert.equal(await page.locator('#why').getByText('covers the Chicago accounts').count(), 0);
     assert.equal(await page.locator('#why').getByText('not measured yet').count(), 0);
     const perPerson = await page.evaluate(() => [...document.querySelectorAll('#why td')].map(n => n.textContent).filter(t => /Sent “.+” to .+ at /.test(t)));
@@ -536,6 +573,15 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
       page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
       page.locator('#reset').click()
     ]);
+    await page.goto(H + '/platform');
+    await page.locator('#today').getByText('Moved the Chicago security roundtable to 19 Mar').waitFor();
+    assert.equal(await page.locator('#today').getByText('Moved the Chicago security roundtable to 19 Mar').count(), 1);
+    assert.equal(await page.locator('#today').getByText('does not own').count(), 0);
+    assert.equal(await page.locator('#today').getByText('Sent the Chicago invite').count(), 0);
+    await page.goto(H + '/platform/brain');
+    await page.locator('#why').getByText('Moved the Chicago security roundtable to 19 Mar').waitFor();
+    assert.equal(await page.locator('#why').getByText('does not own').count(), 0);
+    assert.equal(await page.locator('#why').getByText('Sent the Chicago invite').count(), 0);
     await page.goto(H + '/platform/ask');
     await page.locator('#ask').fill('@mops send the Chicago invite to CIOs in Illinois who opened last month');
     await page.locator('#run').click();

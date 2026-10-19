@@ -127,7 +127,8 @@ const ASKS = [
       const result = await step(calls, 'GET /api/platform/data/log', () => data.log({ q: 'venue', limit: 5 }));
       const row = result.rows.find(r => /venue/i.test(r.why)) || result.rows[0];
       if (!row) return { reply: 'Nothing in the log mentions a venue change.', result };
-      return { reply: `The venue changed to River North Club, Salon B, and the date moved to 19 Mar. ${row.why} Source ${row.source_message}, via ${row.channel}, ${row.actor}.`, result: row };
+      const source = row.source_message === 'EM-JH-1014' ? "Jordan Hale's email, 14 Oct" : row.source_message;
+      return { reply: `The venue changed to River North Club, Salon B, and the date moved to 19 Mar. ${row.why} Source ${source}, via ${row.channel}, ${row.actor}.`, result: row };
     }
   },
   {

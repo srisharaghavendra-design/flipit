@@ -71,7 +71,7 @@ async function handle(req, res, u) {
     await ensure();
     if (method === 'GET' && p === '/platform') return html(res, pages.home());
     if (method === 'GET' && p === '/platform/data') return html(res, pages.dataPage());
-    if (method === 'GET' && p === '/platform/engage') return html(res, pages.engagePage());
+    if (method === 'GET' && p === '/platform/engage') return html(res, await pages.engagePage());
     if (method === 'GET' && p === '/platform/ask') return html(res, pages.askPage());
     if (method === 'GET' && p === '/platform/crm') return html(res, pages.crmPage());
     if (method === 'GET' && p === '/platform/spend') return html(res, pages.spendPage());
