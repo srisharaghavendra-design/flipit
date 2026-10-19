@@ -8,13 +8,13 @@ Data core replaces Snowflake marts and Airtable trackers. Built. Console at `/pl
 
 Engage replaces Eloqua. Built. Console at `/platform/engage`.
 
-CRM bridge replaces the Salesforce connector. Next.
+CRM bridge replaces the Salesforce connector. Built. Console at `/platform/crm`.
 
-Plan and spend replaces Command Center and Airtable. Next.
+Plan and spend replaces Command Center and Airtable. Built. Console at `/platform/spend`.
 
-Insights replaces Power BI and Tableau. Next.
+Insights replaces Power BI and Tableau. Built. Console at `/platform/insights`.
 
-Brain API is the tag, the policy, and the why feed across every module. Next. The ask box at `/platform/ask` already routes Data core and Engage.
+Brain API is the tag, the policy, and the why feed across every module. Next. The ask box at `/platform/ask` already routes Data core, Engage, CRM, Plan and spend, and Insights.
 
 ## Asks a marketer actually sends
 
@@ -34,38 +34,54 @@ Engage, running now:
 - @mops enroll clickers who have not registered into the Chicago nurture
 - @mops what is the open rate on the Chicago invite
 
-CRM bridge, next:
+CRM bridge, running now:
 
+- @mops upload this attendee file to SFDC for the Chicago roundtable
 - @mops upload this attendee file
 - @mops who owns the Chicago accounts
 - @mops sync the Chicago campaign to Salesforce
 - @mops show the sync failures
 
-Plan and spend, next:
+Plan and spend, running now:
 
+- @mops new budget: Chicago security roundtable, $180K
 - @mops file the Chicago budget
 - @mops mint the campaign code
 - @mops draft the SOW
 - @mops what is left in the Americas budget
 
-Insights, next:
+Insights, running now:
 
 - @mops weekly report for Americas
 - @mops monthly report for the portfolio
 - @mops what is the cost per lead for Chicago
 - @mops how much pipeline did Chicago source
 
-The ask box is the channel test. App, Email, and Webex are the same call. The human types the sentence. The module fills everything a human does not uniquely know. A registration form still asks for name, email, and consent, because only that person knows them.
+The ask box is the channel test. App, Email, and Webex are the same call. The human types the sentence. The module fills everything a human does not uniquely know. A registration form still asks for name, email, and consent. The SOW still asks for three fields only a person knows: our project manager, the purchase order, and the day-of venue contact.
 
-## How the Chicago send finishes
+## How a tagged ask finishes
 
-One call writes the segment (CIO, Illinois, opened in the 30 days before 19 Oct 2026, opted in), reuses the invite, merges first name and company, and delivers into the local mail catcher. Contacts without opted-in consent are held. The open pixel and the click redirect write activities. Fit plus behaviour becomes the score. A lead becomes an MQL at 70. Opens stay under that line. A click crosses it. The nurture then enrolls clickers who have not registered, sends the first note, and waits 48 hours before the next one.
+One Chicago send writes the segment (CIO, Illinois, opened in the 30 days before 19 Oct 2026, opted in), reuses the invite, merges first name and company, and delivers into the local mail catcher. Contacts without opted-in consent are held. The open pixel and the click redirect write activities. Fit plus behaviour becomes the score. A lead becomes an MQL at 70. Opens stay under that line. A click crosses it. A simulated response is about 45% open and about 12% click, and only the clickers cross the line. The nurture then enrolls clickers who have not registered, sends the first note, and waits 48 hours before the next one.
 
-## Old tool and this platform
+The attendee upload reads `platform/samples/chicago-attendees.xlsx`. Junk rows sit above the header. Owners are the territory AE for an executive title and the territory SDR otherwise. A duplicate, a German row with no consent, a bad email, and a formula are held. The campaign object is written once. The first attempt returns a simulated 503 and the retry completes it. A second ask does not create a second copy.
 
-Data core: 6 screens, 11 fields, 20 minutes in Snowflake and Airtable for one consented list. Screens are the worksheet, the filters, the export, and the Airtable check. The console shows the measured seconds for `@mops who can I email in Illinois`.
+The Chicago budget of $180,000 is over $150,000, so it goes to Chris M. $150,000 auto-approves. $150,001 waits for Chris M. The BAN and the campaign code are minted once and reused. The SOW is filled from the agency roster. Actuals sit next to the budget.
+
+The weekly report reads the live region and program totals and downloads a real PowerPoint and a real PDF.
+
+## Old tool vs @mops
+
+Each console labels the measured line Old tool vs @mops.
+
+Data core: 6 screens, 11 fields, 20 minutes in Snowflake and Airtable for one consented list. The console shows the measured seconds for `@mops who can I email in Illinois`.
 
 Engage: 9 screens, 16 fields, 35 minutes in Eloqua to build that segment, the email, and the send. The console shows the measured seconds for the Chicago invite ask.
+
+CRM bridge: 8 screens, 14 fields, 25 minutes in Salesforce to map a badge export, assign owners, and load campaign members. The console shows the measured seconds for the Chicago upload ask.
+
+Plan and spend: 7 screens, 18 fields, 40 minutes in Command Center and Airtable for the budget, the approval, the BAN, the code, and the SOW. The console shows the measured seconds for the $180K Chicago ask.
+
+Insights: 5 screens, 9 fields, 30 minutes in Power BI for a weekly regional deck and an export. The console shows the measured seconds for `@mops weekly report for Americas`.
 
 Those minutes are an operator baseline for the old tools, not a stopwatch of a Northwind employee. The seconds are the median of real runs stored in `ask_runs`. Reads on the seeded book (5,000 contacts, 300 accounts, 40 campaigns, four regions) stay under 300ms.
 

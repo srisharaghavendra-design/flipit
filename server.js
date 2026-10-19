@@ -14,6 +14,8 @@ fs.statSync(path.join(__dirname,'baselines.json'));
 fs.statSync(path.join(__dirname,'platform/ARCHITECTURE.md'));
 fs.statSync(path.join(__dirname,'platform/migrations/001_core.sql'));
 fs.statSync(path.join(__dirname,'platform/migrations/002_engage.sql'));
+fs.statSync(path.join(__dirname,'platform/migrations/003_ops.sql'));
+fs.statSync(path.join(__dirname,'platform/samples/chicago-attendees.xlsx'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/abm_target_list.csv'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/booth_badge_scans.xlsx'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/event_attendees_export.xlsx'));

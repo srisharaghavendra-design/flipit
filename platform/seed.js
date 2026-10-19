@@ -111,11 +111,19 @@ function build() {
     note({ at: LOAD_AT, entity: 'accounts', entityId: row.id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed', why: 'Loaded the fictional Northwind book.', after: { name, region } });
   }
 
+  function personName(n) {
+    const first = FIRST[(n - 1) % FIRST.length];
+    const lastIndex = Math.floor((n - 1) / FIRST.length) % LAST.length;
+    const generation = Math.floor((n - 1) / (FIRST.length * LAST.length));
+    const last = generation ? `${LAST[lastIndex]} ${generation + 1}` : LAST[lastIndex];
+    return { first, last };
+  }
   function addContact(n, spec) {
     const account = accounts[spec.account];
     const id = `CT-${pad(n, 5)}`;
-    const first = spec.first || FIRST[(n - 1) % FIRST.length];
-    const last = spec.last || LAST[(n - 1) % LAST.length];
+    const named = personName(n);
+    const first = spec.first || named.first;
+    const last = spec.last || named.last;
     const title = spec.title;
     const email = `${slug(first)}.${slug(last)}.${n}@${account.domain}`;
     const fit = fitOf(title, account.employees, account.tier);
@@ -238,6 +246,10 @@ function build() {
   if (illinoisReady.length !== 30) throw new Error('Illinois CIO cohort is ' + illinoisReady.length);
   const texasMql = contacts.filter(c => c.state === 'Texas' && c.title === 'CIO' && c.stage === 'mql');
   if (texasMql.length !== 10) throw new Error('Texas MQL cohort is ' + texasMql.length);
+  const full = contacts.map(c => c.first_name + ' ' + c.last_name);
+  if (new Set(full).size !== full.length) throw new Error('A contact name is used twice');
+  const illinoisNames = new Set(contacts.filter(c => c.state === 'Illinois').map(c => c.first_name + ' ' + c.last_name));
+  for (const c of contacts) if (c.state === 'Texas' && illinoisNames.has(c.first_name + ' ' + c.last_name)) throw new Error(c.first_name + ' ' + c.last_name + ' is in two states');
   return { accounts, contacts, consent, campaigns, events, activities, budgets, sows, codes, logs, scoreUpdates, recipients, historyStart };
 }
 
@@ -256,9 +268,25 @@ const SQL = {
 
 function rows(list, cols) { return list.map(r => cols.map(k => r[k])); }
 
+async function backfillActuals(database) {
+  const n = await database.get('SELECT COUNT(*) AS n FROM actuals');
+  if (n && n.n) return;
+  const budgetRows = await database.all('SELECT campaign_id, amount_usd FROM budgets');
+  const regionRows = await database.all('SELECT id, region FROM campaigns');
+  const regionOf = new Map(regionRows.map(r => [r.id, r.region]));
+  await database.tx(async (q) => {
+    for (const b of budgetRows) {
+      const actual = b.campaign_id === 'CAMP-CHI' ? 42000 : Math.round(b.amount_usd * 0.4);
+      const pipe = b.campaign_id === 'CAMP-CHI' ? 640000 : (regionOf.get(b.campaign_id) === 'Americas' ? 120000 : 80000);
+      await q.run('INSERT INTO actuals(id, campaign_id, amount_usd, note) VALUES(?,?,?,?)', ['ACTL-' + b.campaign_id, b.campaign_id, actual, 'Seeded from the fictional book']);
+      await q.run('UPDATE campaigns SET pipeline_usd = ? WHERE id = ?', [pipe, b.campaign_id]);
+    }
+  });
+}
+
 async function run(database) {
   const existing = await database.get("SELECT v FROM platform_meta WHERE k='seeded'");
-  if (existing) return JSON.parse(existing.v);
+  if (existing) { await backfillActuals(database); return JSON.parse(existing.v); }
   const t0 = Date.now();
   const book = build();
   const stats = await database.tx(async (q) => {
@@ -272,6 +300,20 @@ async function run(database) {
     await q.insertMany(SQL.sow, rows(book.sows, ['id', 'campaign_id', 'vendor', 'venue', 'status', 'summary']));
     await q.insertMany(SQL.code, rows(book.codes, ['id', 'campaign_id', 'kind', 'value']));
     await q.insertMany(INSERT, book.logs);
+    const budgetRows = await q.all('SELECT campaign_id, amount_usd FROM budgets');
+    const regionRows = await q.all('SELECT id, region FROM campaigns');
+    const regionOf = new Map(regionRows.map(r => [r.id, r.region]));
+    for (const b of budgetRows) {
+      const actual = b.campaign_id === 'CAMP-CHI' ? 42000 : Math.round(b.amount_usd * 0.4);
+      const pipe = b.campaign_id === 'CAMP-CHI' ? 640000 : (regionOf.get(b.campaign_id) === 'Americas' ? 120000 : 80000);
+      await q.run('INSERT INTO actuals(id, campaign_id, amount_usd, note) VALUES(?,?,?,?)', ['ACTL-' + b.campaign_id, b.campaign_id, actual, 'Seeded from the fictional book']);
+      await q.run('UPDATE campaigns SET pipeline_usd = ? WHERE id = ?', [pipe, b.campaign_id]);
+      await q.run(INSERT, pack({
+        at: LOAD_AT, entity: 'actuals', entityId: 'ACTL-' + b.campaign_id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed',
+        why: `Recorded $${actual.toLocaleString('en-US')} of actuals against the budget.`,
+        after: { amount_usd: actual, pipeline_usd: pipe }
+      }));
+    }
     if (book.scoreUpdates.length) await q.insertMany(SQL.score, book.scoreUpdates);
 
     await q.run('UPDATE campaigns SET start_date=? WHERE id=?', ['2026-03-19', 'CAMP-CHI']);
@@ -324,4 +366,4 @@ async function run(database) {
   return stats;
 }
 
-module.exports = { run, CODE_RE, quarterOf, REGIONS };
+module.exports = { run, CODE_RE, quarterOf, REGIONS, campaignCode };

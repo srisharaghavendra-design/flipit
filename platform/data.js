@@ -13,14 +13,20 @@ const SCHEMA = [
   { name: 'budgets', columns: ['id', 'campaign_id', 'amount_usd', 'currency', 'status', 'requester', 'approver'], links: 'campaigns' },
   { name: 'sows', columns: ['id', 'campaign_id', 'vendor', 'venue', 'status', 'summary'], links: 'campaigns' },
   { name: 'codes', columns: ['id', 'campaign_id', 'kind', 'value'], links: 'campaigns' },
-  { name: 'event_log', columns: ['id', 'at', 'entity', 'entity_id', 'op', 'actor', 'channel', 'source_message', 'why', 'before_json', 'after_json'], links: 'every write' }
+  { name: 'event_log', columns: ['id', 'at', 'entity', 'entity_id', 'op', 'actor', 'channel', 'source_message', 'why', 'before_json', 'after_json'], links: 'every write' },
+  { name: 'actuals', columns: ['id', 'campaign_id', 'amount_usd', 'note'], links: 'campaigns' },
+  { name: 'crm_objects', columns: ['id', 'type', 'external_id', 'name', 'email', 'owner_name', 'status'], links: 'campaigns' },
+  { name: 'crm_queue', columns: ['id', 'kind', 'status', 'attempts', 'last_error'], links: 'crm_objects' },
+  { name: 'plan_packets', columns: ['id', 'campaign_id', 'amount_usd', 'status', 'approver', 'ban'], links: 'campaigns' }
 ];
 
 const BROWSER = {
   accounts: 'name', contacts: 'email', consent: 'country', campaigns: 'name', events: 'name',
   activities: 'kind', budgets: 'status', sows: 'vendor', codes: 'value', event_log: 'why',
   segments: 'name', templates: 'name', sends: 'campaign_id', send_recipients: 'email',
-  pages: 'slug', journeys: 'name', journey_members: 'status', ask_runs: 'ask_id'
+  pages: 'slug', journeys: 'name', journey_members: 'status', ask_runs: 'ask_id',
+  actuals: 'note', envelopes: 'region', territories: 'country', crm_objects: 'email', crm_queue: 'status',
+  crm_uploads: 'filename', plan_packets: 'status'
 };
 
 function db() { return current(); }

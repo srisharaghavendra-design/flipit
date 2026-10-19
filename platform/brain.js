@@ -2,6 +2,9 @@
 
 const data = require('./data');
 const engage = require('./engage');
+const crm = require('./crm');
+const spend = require('./spend');
+const insights = require('./insights');
 const metrics = require('./metrics');
 
 function norm(text) { return String(text || '').replace(/@mops/ig, ' ').replace(/\s+/g, ' ').trim(); }
@@ -122,7 +125,7 @@ const ASKS = [
       const result = await step(calls, 'GET /api/platform/data/log', () => data.log({ q: 'venue', limit: 5 }));
       const row = result.rows.find(r => /venue/i.test(r.why)) || result.rows[0];
       if (!row) return { reply: 'Nothing in the log mentions a venue change.', result };
-      return { reply: `${row.why} Source ${row.source_message}, via ${row.channel}, ${row.actor}.`, result: row };
+      return { reply: `The venue changed to River North Club, Salon B, and the date moved to 19 Mar. ${row.why} Source ${row.source_message}, via ${row.channel}, ${row.actor}.`, result: row };
     }
   },
   {
@@ -141,15 +144,149 @@ const ASKS = [
       const result = await step(calls, 'POST /api/platform/data/held', () => data.held({ country: 'Germany', actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text }));
       return { reply: `Held ${result.count} German contacts with no opted-in consent. They will not be emailed.`, result };
     }
+  },
+  {
+    id: 'upload-chicago', module: 'crm', example: '@mops upload this attendee file to SFDC for the Chicago roundtable',
+    test: (t) => /upload this attendee file|attendee file to sfdc/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'POST /api/platform/crm/uploads', () => crm.upload({
+        campaignId: 'CAMP-CHI', actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text, idempotencyKey: 'ask:upload-chicago'
+      }));
+      const owners = (result.owners || []).filter(o => o.owner_name).map(o => `${o.owner_name} ${o.n}`).join(', ');
+      const reply = result.idempotent
+        ? `Already uploaded ${result.filename} for the Chicago roundtable. ${result.accepted} campaign members are in Salesforce. No second copy.`
+        : `Uploaded ${result.filename} to Salesforce for the Chicago roundtable. ${result.accepted} campaign members, owners by territory${owners ? ' (' + owners + ')' : ''}. Held ${result.quarantined}. ${result.retried ? 'Retried ' + result.retried + ' transient error. ' : ''}The queue is clear.`;
+      return { reply, result };
+    }
+  },
+  {
+    id: 'chicago-owners', module: 'crm', example: '@mops who owns the Chicago accounts',
+    test: (t) => /who owns the chicago accounts/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'GET /api/platform/crm/owners', () => crm.chicagoAccounts());
+      return { reply: `${result.owner.name} (${result.owner.role}) owns all ${result.count} Chicago accounts. They are named accounts, so they do not go to ${result.sdr.name}, the SDR.`, result };
+    }
+  },
+  {
+    id: 'sync-chicago', module: 'crm', example: '@mops sync the Chicago campaign to Salesforce',
+    test: (t) => /sync the chicago campaign/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'POST /api/platform/crm/sync', () => crm.syncCampaign({ actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text }));
+      const reply = result.idempotent
+        ? `The Chicago campaign is already in Salesforce as ${result.id}. No second copy.`
+        : `Synced the Chicago campaign to Salesforce as ${result.id}.`;
+      return { reply, result };
+    }
+  },
+  {
+    id: 'sync-failures', module: 'crm', example: '@mops show the sync failures',
+    test: (t) => /sync failures/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'GET /api/platform/crm/queue', () => crm.failures());
+      let reply = 'Nothing has been synced yet.';
+      if (result.jobs.length && result.open.length) reply = `${result.open.length} sync jobs are still open.`;
+      else if (result.jobs.length) reply = result.retried.length
+        ? `No open failures. ${result.retried.length} transient error was retried and the queue is clear.`
+        : 'No open failures. The queue is clear.';
+      return { reply, result };
+    }
+  },
+  {
+    id: 'budget-chicago', module: 'plan', example: '@mops new budget: Chicago security roundtable, $180K',
+    test: (t) => /new budget|file the chicago budget/i.test(t),
+    async run(ctx, calls) {
+      const Money = require('../backend/money');
+      const parsed = Money.parseMoney(ctx.text) || { amount: 180000, currency: 'USD' };
+      const result = await step(calls, 'POST /api/platform/spend/budgets', () => spend.file({
+        name: 'Chicago security roundtable', amount: parsed.amount, currency: parsed.currency,
+        actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text, idempotencyKey: 'ask:budget-chicago'
+      }));
+      const rows = await step(calls, 'GET /api/platform/spend/actuals', () => spend.actuals());
+      const chi = rows.find(r => r.id === 'CAMP-CHI');
+      const open = result.open.map(f => f.label).join(', ');
+      const rule = result.amountUsd > 150000
+        ? `That is over $150,000, so it went to Chris M.${result.status === 'approved' ? ', who approved it' : ', and it is waiting for him'}.`
+        : 'That is at or under $150,000, so it auto-approves.';
+      const again = result.idempotent ? 'No second request. ' : '';
+      return { reply: `${again}Filed ${result.sow.fields.amount} for the Chicago security roundtable. ${rule} BAN ${result.ban}. Code ${result.campaignCode}. SOW drafted for ${result.sow.agency}. Still open, because only a person knows them: ${open}. Actuals are ${spend.money(chi.actual)} of ${spend.money(chi.budget)}.`, result: { ...result, actual: chi } };
+    }
+  },
+  {
+    id: 'mint-chicago', module: 'plan', example: '@mops mint the campaign code',
+    test: (t) => /mint the campaign code/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'POST /api/platform/spend/codes', () => spend.codes({ actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text }));
+      return { reply: `The Chicago code is ${result.campaignCode}. BAN ${result.ban}. A second mint returns the same ids.`, result };
+    }
+  },
+  {
+    id: 'draft-sow', module: 'plan', example: '@mops draft the SOW',
+    test: (t) => /draft the sow/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'POST /api/platform/spend/budgets', () => spend.file({
+        name: 'Chicago security roundtable', amount: 180000, currency: 'USD',
+        actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text, idempotencyKey: 'ask:budget-chicago'
+      }));
+      const open = result.open.map(f => f.label).join(', ');
+      return { reply: `Drafted the SOW for ${result.sow.agency}. Venue ${result.sow.fields.venue}. Still open, because only a person knows them: ${open}.`, result };
+    }
+  },
+  {
+    id: 'americas-left', module: 'plan', example: '@mops what is left in the Americas budget',
+    test: (t) => /left in the americas budget/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'GET /api/platform/spend/remaining', () => spend.remaining('Americas'));
+      return { reply: `Americas has ${spend.money(result.left)} left of ${spend.money(result.envelope)} after ${spend.money(result.committed)} committed. Actuals so far are ${spend.money(result.actual)}.`, result };
+    }
+  },
+  {
+    id: 'weekly-americas', module: 'insights', example: '@mops weekly report for Americas',
+    test: (t) => /weekly report/i.test(t),
+    async run(ctx, calls) {
+      const region = place(ctx.text);
+      const facts = await step(calls, 'GET /api/platform/insights/dashboard', () => insights.deckFacts(region));
+      const q = encodeURIComponent(facts.region);
+      return { reply: `${insights.summaryText('weekly', facts)} Download /api/platform/insights/reports/weekly.pptx?region=${q} and /api/platform/insights/reports/weekly.pdf?region=${q}.`, result: facts };
+    }
+  },
+  {
+    id: 'monthly-portfolio', module: 'insights', example: '@mops monthly report for the portfolio',
+    test: (t) => /monthly report/i.test(t),
+    async run(ctx, calls) {
+      const region = place(ctx.text);
+      const facts = await step(calls, 'GET /api/platform/insights/dashboard', () => insights.deckFacts(region));
+      const q = encodeURIComponent(facts.region);
+      return { reply: `${insights.summaryText('monthly', facts)} Download /api/platform/insights/reports/monthly.pptx?region=${q} and /api/platform/insights/reports/monthly.pdf?region=${q}.`, result: facts };
+    }
+  },
+  {
+    id: 'chicago-cpl', module: 'insights', example: '@mops what is the cost per lead for Chicago',
+    test: (t) => /cost per lead/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'GET /api/platform/insights/campaigns/CAMP-CHI', () => insights.campaignFacts('CAMP-CHI'));
+      const reply = result.leads
+        ? `Cost per lead for Chicago is ${insights.money(result.costPerLead)} (${insights.money(result.actual)} actual / ${result.leads} responded leads).`
+        : `Chicago has ${insights.money(result.actual)} of actuals and no responded leads yet, so cost per lead is not a number.`;
+      return { reply, result };
+    }
+  },
+  {
+    id: 'chicago-pipeline', module: 'insights', example: '@mops how much pipeline did Chicago source',
+    test: (t) => /pipeline did chicago|chicago source/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'GET /api/platform/insights/campaigns/CAMP-CHI', () => insights.campaignFacts('CAMP-CHI'));
+      return { reply: `Chicago has sourced ${insights.money(result.pipeline)} of pipeline.`, result };
+    }
   }
 ];
 
-function later(text) {
-  if (/salesforce|attendee file|sync the chicago|who owns the chicago accounts|sync failures/i.test(text)) return { module: 'crm', reply: 'CRM bridge is next. This ask is not wired in this run.' };
-  if (/file the chicago budget|mint the campaign code|draft the sow|left in the americas budget/i.test(text)) return { module: 'plan', reply: 'Plan and spend is next. This ask is not wired in this run.' };
-  if (/weekly report|monthly report|cost per lead|pipeline did chicago/i.test(text)) return { module: 'insights', reply: 'Insights is next. This ask is not wired in this run.' };
-  return null;
+function place(text) {
+  const m = String(text).match(/\b(americas|emea|apj|global|portfolio)\b/i);
+  if (!m) return 'Americas';
+  return { americas: 'Americas', emea: 'EMEA', apj: 'APJ', global: 'Global', portfolio: 'portfolio' }[m[1].toLowerCase()];
 }
+
+function later() { return null; }
 
 async function ask({ text, channel = 'App', actor = 'Maria Alvarez' }) {
   const started = process.hrtime.bigint();
@@ -163,7 +300,7 @@ async function ask({ text, channel = 'App', actor = 'Maria Alvarez' }) {
       const next = later(clean);
       const ms = elapsed();
       if (next) return { ok: true, matched: false, ...next, ms, calls, examples: ASKS.map(a => a.example) };
-      return { ok: true, matched: false, reply: 'I can run Data core and Engage asks. Use one of the examples.', examples: ASKS.map(a => a.example), ms, calls };
+      return { ok: true, matched: false, reply: 'I can run Data core, Engage, CRM, Plan and spend, and Insights. Use one of the examples.', examples: ASKS.map(a => a.example), ms, calls };
     }
     const out = await found.run(ctx, calls);
     const ms = elapsed();

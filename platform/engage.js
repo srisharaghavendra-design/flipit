@@ -223,20 +223,40 @@ async function mark(token, kind, why) {
   return { ok: true, duplicate: false, token, ...score };
 }
 
-async function simulate(sendId, { opens = true, clicks = false } = {}) {
-  const rows = await db().all('SELECT token, opened, clicked FROM send_recipients WHERE send_id = ?', [sendId]);
+const OPEN_RATE = 0.45;
+const CLICK_RATE = 0.12;
+
+async function simulate(sendId, opts = {}) {
+  const wantOpen = opts.opens !== false;
+  const wantClick = opts.clicks === true;
+  const openRate = opts.openRate == null ? OPEN_RATE : Number(opts.openRate);
+  const clickRate = opts.clickRate == null ? CLICK_RATE : Number(opts.clickRate);
+  const rows = await db().all('SELECT token, contact_id, opened, clicked FROM send_recipients WHERE send_id = ? ORDER BY contact_id', [sendId]);
   if (!rows.length) fail(404, 'Unknown send');
+  const n = rows.length;
+  let clickN = wantClick ? Math.round(n * clickRate) : 0;
+  let openN = wantOpen ? Math.round(n * openRate) : 0;
+  if (wantClick && clickN > openN) openN = clickN;
+  openN = Math.min(n, Math.max(0, openN));
+  clickN = Math.min(openN, Math.max(0, clickN));
   let opened = 0; let clicked = 0;
-  for (const row of rows) {
-    if (opens && !row.opened) { await mark(row.token, 'open', 'Recorded an open from the tracking pixel.'); opened++; }
-    if (clicks && !row.clicked) { await mark(row.token, 'click', 'Recorded a click from the redirect.'); clicked++; }
+  for (let i = 0; i < n; i++) {
+    if (i < openN && !rows[i].opened) { await mark(rows[i].token, 'open', 'Recorded an open from the tracking pixel.'); opened++; }
+    if (i < clickN && !rows[i].clicked) { await mark(rows[i].token, 'click', 'Recorded a click from the redirect.'); clicked++; }
   }
-  return { opened, clicked, ...(await rates(sendId)) };
+  const rate = await rates(sendId);
+  return { opened, clicked, targetedOpens: openN, targetedClicks: clickN, ...rate };
 }
 
-async function scores({ segmentId } = {}) {
+async function scores({ segmentId, state } = {}) {
   const d = db();
   const totals = await d.get("SELECT COUNT(*) AS n, COALESCE(SUM(CASE WHEN stage = 'mql' THEN 1 ELSE 0 END), 0) AS mqls FROM contacts");
+  if (state) {
+    const top = await d.all(`SELECT c.id, c.first_name, c.last_name, c.title, c.state, c.score, c.fit, c.behavior, c.stage, a.name AS account_name, a.region
+      FROM contacts c JOIN accounts a ON a.id = c.account_id WHERE c.state = ? ORDER BY c.score DESC, c.id LIMIT 15`, [state]);
+    const m = await d.get("SELECT COUNT(*) AS n, COALESCE(SUM(CASE WHEN stage = 'mql' THEN 1 ELSE 0 END), 0) AS mqls FROM contacts WHERE state = ?", [state]);
+    return { state, threshold: MQL_THRESHOLD, total: m.n, mqls: m.mqls, top };
+  }
   if (!segmentId) {
     const top = await d.all(`SELECT c.id, c.first_name, c.last_name, c.title, c.state, c.score, c.fit, c.behavior, c.stage, a.name AS account_name, a.region
       FROM contacts c JOIN accounts a ON a.id = c.account_id ORDER BY c.score DESC, c.id LIMIT 25`);
@@ -375,6 +395,6 @@ async function register(slug, fields, ctx = {}) {
 }
 
 module.exports = {
-  MQL_THRESHOLD, SEND_CAP, compile, preview, members, listSegments, saveSegment, listTemplates, saveTemplate,
+  MQL_THRESHOLD, SEND_CAP, OPEN_RATE, CLICK_RATE, compile, preview, members, listSegments, saveSegment, listTemplates, saveTemplate,
   send, getSend, listSends, simulate, mark, scores, listJourneys, enrollClickers, tickJourney, page, pageHtml, register, merge
 };

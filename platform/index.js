@@ -4,6 +4,9 @@ const { open } = require('./db');
 const seed = require('./seed');
 const data = require('./data');
 const engage = require('./engage');
+const crm = require('./crm');
+const spend = require('./spend');
+const insights = require('./insights');
 const brain = require('./brain');
 const metrics = require('./metrics');
 const pages = require('./pages');
@@ -68,7 +71,15 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/platform/data') return html(res, pages.dataPage());
     if (method === 'GET' && p === '/platform/engage') return html(res, pages.engagePage());
     if (method === 'GET' && p === '/platform/ask') return html(res, pages.askPage());
+    if (method === 'GET' && p === '/platform/crm') return html(res, pages.crmPage());
+    if (method === 'GET' && p === '/platform/spend') return html(res, pages.spendPage());
+    if (method === 'GET' && p === '/platform/insights') return html(res, pages.insightsPage());
     if (method === 'GET' && p === '/platform/architecture') return html(res, pages.architecture());
+    if (method === 'GET' && p === '/platform/samples/chicago-attendees.xlsx') {
+      const buf = crm.sample.buffer();
+      res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-disposition': 'attachment; filename="chicago-attendees.xlsx"', 'cache-control': 'no-store' });
+      return res.end(buf);
+    }
     if (method === 'GET' && p === '/api/platform/modules') return json(res, 200, { modules: MODULES }, started);
     if (method === 'GET' && p === '/api/platform/metrics') return json(res, 200, await metrics.summary(), started);
     if (method === 'POST' && p === '/api/platform/ask') {
@@ -113,13 +124,45 @@ async function handle(req, res, u) {
       const body = await parseBody(req);
       return json(res, 200, await engage.simulate(m[1], body), started);
     }
-    if (method === 'GET' && p === '/api/platform/engage/scores') return json(res, 200, await engage.scores({ segmentId: u.searchParams.get('segment') || undefined }), started);
+    if (method === 'GET' && p === '/api/platform/engage/scores') return json(res, 200, await engage.scores({ segmentId: u.searchParams.get('segment') || undefined, state: u.searchParams.get('state') || undefined }), started);
     if (method === 'GET' && p === '/api/platform/engage/journeys') return json(res, 200, { journeys: await engage.listJourneys() }, started);
     if (method === 'POST' && (m = p.match(/^\/api\/platform\/engage\/journeys\/([A-Za-z0-9-]+)\/enroll$/))) {
       const body = await parseBody(req);
       return json(res, 200, await engage.enrollClickers({ journeyId: m[1], campaignId: body.campaignId, actor: actor(req), channel: body.channel || 'App', sourceMessage: body.text || '' }), started);
     }
     if (method === 'POST' && (m = p.match(/^\/api\/platform\/engage\/journeys\/([A-Za-z0-9-]+)\/tick$/))) return json(res, 200, await engage.tickJourney(m[1], { actor: actor(req) }), started);
+    if (method === 'GET' && p === '/api/platform/crm/objects') return json(res, 200, { objects: await crm.listObjects(u.searchParams.get('campaign') || 'CAMP-CHI') }, started);
+    if (method === 'GET' && p === '/api/platform/crm/queue') return json(res, 200, await crm.failures(), started);
+    if (method === 'GET' && p === '/api/platform/crm/owners') return json(res, 200, await crm.chicagoAccounts(), started);
+    if (method === 'POST' && p === '/api/platform/crm/uploads') {
+      const body = await parseBody(req);
+      return json(res, 200, await crm.upload({ filename: body.filename, campaignId: body.campaignId || 'CAMP-CHI', actor: actor(req), channel: body.channel || 'App', sourceMessage: body.text || '', idempotencyKey: body.idempotencyKey }), started);
+    }
+    if (method === 'POST' && p === '/api/platform/crm/sync') {
+      const body = await parseBody(req);
+      return json(res, 200, await crm.syncCampaign({ campaignId: body.campaignId || 'CAMP-CHI', actor: actor(req), channel: body.channel || 'App', sourceMessage: body.text || '' }), started);
+    }
+    if (method === 'GET' && p === '/api/platform/spend/packets') return json(res, 200, { packets: await spend.packets() }, started);
+    if (method === 'GET' && p === '/api/platform/spend/actuals') return json(res, 200, { rows: await spend.actuals(), americas: await spend.remaining('Americas') }, started);
+    if (method === 'POST' && p === '/api/platform/spend/budgets') {
+      const body = await parseBody(req);
+      return json(res, 200, await spend.file({ ...body, actor: actor(req), channel: body.channel || 'App' }), started);
+    }
+    if (method === 'POST' && p === '/api/platform/spend/sow') {
+      const body = await parseBody(req);
+      return json(res, 200, await spend.answer({ campaignId: body.campaignId || 'CAMP-CHI', answers: body.answers || body, actor: actor(req), channel: body.channel || 'App', sourceMessage: body.text || '' }), started);
+    }
+    if (method === 'GET' && p === '/api/platform/insights/dashboard') return json(res, 200, await insights.dashboard(u.searchParams.get('region') || ''), started);
+    if (method === 'GET' && (m = p.match(/^\/api\/platform\/insights\/reports\/(weekly|monthly)\.(pptx|pdf)$/))) {
+      const region = u.searchParams.get('region') || (m[1] === 'monthly' ? 'portfolio' : 'Americas');
+      const built = await insights.build(m[1], region);
+      const pdf = m[2] === 'pdf';
+      const buf = pdf ? built.pdf : built.pptx;
+      const name = pdf ? built.pdfName : built.pptxName;
+      const type = pdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      res.writeHead(200, { 'content-type': type, 'content-disposition': `attachment; filename="${name}"`, 'cache-control': 'no-store' });
+      return res.end(buf);
+    }
     json(res, 404, { ok: false, error: 'Unknown platform route' }, started);
   } catch (e) {
     if (e instanceof SyntaxError) return json(res, 400, { ok: false, error: 'That was not valid JSON.' }, started);
