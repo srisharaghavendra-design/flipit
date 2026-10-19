@@ -38,7 +38,7 @@ These match the project that serves flipit.fyi today. You should not have to cha
 | Build | none. Vercel installs dependencies and publishes `server.js` |
 | Output | do not set an output directory. `public/robots.txt` is the only static file; the app is served by the function, behind the passcode |
 | Production branch | the branch Vercel already deploys for flipit.fyi (normally `main`) |
-| Function timeout | `max` in `vercel.json`, which is the longest this Hobby project allows. With Fluid Compute that is 300 seconds |
+| Function timeout | Hobby default. `vercel.json` turns on Fluid Compute, and that default is 300 seconds. This project rejects an explicit `maxDuration` before the build starts, so the file does not set one |
 | Domain | `flipit.fyi` and `www.flipit.fyi` stay attached. Do not edit DNS |
 
 DNS today, which you leave alone:
