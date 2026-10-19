@@ -301,5 +301,5 @@ S_.post('/admin/seed',c=>seed(c.trace));
 S_.post('/admin/sync-interval',c=>{clearInterval(timer);timer=setInterval(syncTick,+c.body.ms||400);return{ok:true}});
 let timer=setInterval(syncTick,+(process.env.SYNC_MS||400));if(timer.unref)timer.unref();
 const pullTimer=setInterval(()=>pull().catch(()=>{}),+(process.env.PULL_MS||15000));if(pullTimer.unref)pullTimer.unref();
-async function boot(){if(one('SELECT count(*) n FROM contacts').n)return{ok:true,already:true};let last;for(let i=0;i<40;i++){try{return await seed()}catch(e){last=e;await new Promise(r=>setTimeout(r,250))}}throw last}
+async function boot(){try{if(one('SELECT count(*) n FROM contacts').n)return{ok:true,already:true}}catch(e){console.error('boot',e&&e.message||e)}let last;for(let i=0;i<8;i++){try{return await seed()}catch(e){last=e;console.error('seed',e&&e.message||e);await new Promise(r=>setTimeout(r,200))}}console.error('seed gave up',last&&last.message);return{ok:false,error:last&&last.message||'seed failed'}}
 module.exports={nlToRules,compile,canEmail,fyq,boot,seed};

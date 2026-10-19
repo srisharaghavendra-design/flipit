@@ -11,6 +11,9 @@ fs.statSync(path.join(__dirname,'ui/data.html'));
 fs.statSync(path.join(__dirname,'ui/chart.min.js'));
 fs.statSync(path.join(__dirname,'data.seed.json'));
 fs.statSync(path.join(__dirname,'baselines.json'));
+fs.statSync(path.join(__dirname,'platform/ARCHITECTURE.md'));
+fs.statSync(path.join(__dirname,'platform/migrations/001_core.sql'));
+fs.statSync(path.join(__dirname,'platform/migrations/002_engage.sql'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/abm_target_list.csv'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/booth_badge_scans.xlsx'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/event_attendees_export.xlsx'));
@@ -157,22 +160,33 @@ async function carry(req,res){let raw;try{raw=await body(req)}catch(e){return J(
   return J(res,{status,headers:rh,body:binary?buf.toString('base64'):buf.toString('utf8'),binary,log})}
 function attachLog(req,res){const journal=require('./backend/journal');
   const token=req.headers['x-mops-log'];const id=req.headers['x-mops-log-id'];
-  const have=id&&id===journal.currentSig();
-  if(!have){if(token!=null&&token!==''){try{journal.apply(Array.isArray(token)?String(token[0]):String(token))}catch(e){console.error('journal',e.message)}}
-    else if(id){res.writeHead(409,{'content-type':'application/json','x-mops-log-stale':'1','cache-control':'no-store'});res.end('{"error":"Send the saved log."}');return 'stale'}}
+  const raw=token==null?'':Array.isArray(token)?String(token[0]):String(token);
+  try{
+    if(raw!==''){const sig=journal.sigOf(raw);if(sig!==journal.currentSig())journal.apply(raw)}
+    else if(id&&id===journal.currentSig()){}
+  }catch(e){console.error('journal',e&&e.message||e)}
   const origWrite=res.writeHead.bind(res),origEnd=res.end.bind(res);
   res.writeHead=function(code,h){const headers=h&&typeof h==='object'&&!Array.isArray(h)?Object.assign({},h):{};
-    try{const log=journal.exportLog();journal.remember(log);headers['x-mops-log-id']=journal.sigOf(log);if(log.length<7000)headers['x-mops-log']=log;else{headers['x-mops-log-overflow']='1';req._overflowLog=log}}catch(e){}
-    return origWrite(code,headers)};
-  res.end=function(chunk,enc,cb){if(req._overflowLog&&chunk!=null){const text=Buffer.isBuffer(chunk)?chunk.toString('utf8'):String(chunk);
-    if(text.startsWith('{')){try{const obj=JSON.parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj)){obj.mopsLog=req._overflowLog;chunk=JSON.stringify(obj)}}catch(e){}}}
+    try{const log=journal.exportLog();journal.remember(log);req._mopsLog=log;headers['x-mops-log-id']=journal.sigOf(log);if(log.length<6000)headers['x-mops-log']=log}catch(e){console.error('journal export',e&&e.message||e)}
+    try{return origWrite(code,headers)}catch(e){console.error('headers',e&&e.message||e);delete headers['x-mops-log'];return origWrite(code,headers)}};
+  res.end=function(chunk,enc,cb){try{if(req._mopsLog&&chunk!=null){const text=Buffer.isBuffer(chunk)?chunk.toString('utf8'):String(chunk);
+    if(text.charCodeAt(0)===123){const obj=JSON.parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj)&&obj.mopsLog==null){obj.mopsLog=req._mopsLog;chunk=JSON.stringify(obj)}}}}catch(e){console.error('embed log',e&&e.message||e)}
     return origEnd(chunk,enc,cb)}}
+function servePage(res,file){try{res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(fs.readFileSync(file))}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
 async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;try{u=new URL(req.url,'http://x')}catch(e){u=new URL('/','http://x')}const p=u.pathname;
  if(p==='/login'||p==='/login/'){res.writeHead(303,{location:'/','cache-control':'no-store'});return res.end()}
- if(attachLog(req,res)==='stale')return;
- try{await ready()}catch(e){console.error(e);if(!res.headersSent)J(res,{error:'The demo is still starting. Please retry.'},503);return}
+ if(p==='/api/logout'&&req.method==='POST'){res.writeHead(200,{'content-type':'application/json','cache-control':'no-store','set-cookie':'mops_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax'});return res.end('{"ok":true}')}
+ if(p==='/health'||p==='/healthz'||p==='/api/health')return J(res,{ok:true,service:'mops',company:'Northwind Networks'});
+ ready().catch(e=>console.error('boot',e&&e.message||e));
+ if(p.startsWith('/platform/t/')||p.startsWith('/platform/p/'))return require('./platform').publicRoute(req,res,u);
+ attachLog(req,res);
  try{
  if(await guard.handle(req,res,p))return;
+ if(p.startsWith('/platform')||p.startsWith('/api/platform'))return require('./platform').handle(req,res,u);
+ if(p==='/')return servePage(res,path.join(__dirname,'ui','index.html'));
+ if(p==='/engine'||p==='/engine/')return servePage(res,path.join(__dirname,'ui','engine.html'));
+ if(p==='/engine/data'||p==='/engine/data/')return servePage(res,path.join(__dirname,'ui','data.html'));
+ await ready();
  if(p==='/api/carry'&&req.method==='POST')return carry(req,res);
  if(p==='/health'||p==='/healthz')return J(res,{ok:true,service:'mops',company:'Northwind Networks'});
  if(await HUB.handle(req,res,p,u))return;
@@ -216,11 +230,12 @@ async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;
  if((s=p.match(/^\/t\/(o|c)\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[2]);if(mm){mm.opened=true;if(s[1]==='c')mm.clicked=true;save();}res.writeHead(s[1]==='c'?302:200,s[1]==='c'?{location:'/r/'+(db.events[0]?.slug||'')}:{'content-type':'image/gif'});return res.end()}
  if((s=p.match(/^\/outbox\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[1]);res.writeHead(200,{'content-type':'text/html'});return res.end(`<div style="font-family:system-ui;max-width:620px;margin:30px auto"><p><b>To:</b> ${esc(mm.to)}<br><b>Subject:</b> ${esc(mm.subject)}</p><pre style="white-space:pre-wrap;font-family:inherit">${esc(mm.body)}</pre><a href="/t/c/${mm.id}">Reserve my seat</a><img src="/t/o/${mm.id}" width=1 height=1></div>`)}
  const root=path.join(__dirname,'ui');const f=path.join(root,p==='/'?'index.html':p);if(f.startsWith(root)&&fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});return res.end(fs.readFileSync(f))}
- res.writeHead(404);res.end('not found');}catch(e){if(e.status!==413)console.error(e);if(!res.headersSent)J(res,{error:e.status===413?'Request is too large':(e.message||'Something went wrong. Please retry.')},e.status||500)}}
+ res.writeHead(404);res.end('not found');}catch(e){if(e.status!==413)console.error(e);if(!res.headersSent){const code=e.status===413?413:(e.status&&e.status<500?e.status:200);J(res,{error:e.status===413?'Request is too large':(e.message||'Something went wrong. Please retry.')},code)}}}
 async function handleRequest(req,res){let path='/';try{path=new URL(req.url,'http://x').pathname}catch(e){}
+ try{
  if(path==='/login'||path==='/login/'){res.writeHead(303,{location:'/','cache-control':'no-store'});return res.end()}
  if(depth>0)return handleInner(req,res);
- return lock(async()=>{depth++;try{return await handleInner(req,res)}finally{depth--}})}
+ return await lock(async()=>{depth++;try{return await handleInner(req,res)}finally{depth--}})}catch(e){console.error(e);if(!res.headersSent){try{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({error:'Something went wrong. Please retry.'}))}catch(e2){console.error(e2)}}}}
 function listen(){const{listenServices}=require('./backend/lib.js');const port=process.env.PORT||process.env.MOPS_PORT||8787;
   return ready().then(()=>{const srv=http.createServer(handleRequest);srv.listen(port,'0.0.0.0',()=>console.log(`@mops on :${port} mode=${KEY?'llm':'rules'} sender=${sender.name}`));if(!process.env.VERCEL)listenServices()})}
 module.exports={handleRequest,listen,ready};

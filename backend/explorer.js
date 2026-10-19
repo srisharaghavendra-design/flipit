@@ -67,6 +67,7 @@ function tables() {
   add('audit', 'Audit log', core, 'decision_audit', 'core');
   add('trace', 'Backend trace', core, 'trace_log', 'core');
   if (engine) {
+    add('contacts', 'Contacts', engine, 'contacts', 'engine');
     add('campaigns', 'Campaigns', engine, 'campaigns', 'engine');
     add('budgets', 'Budget requests', engine, 'budget_requests', 'engine');
     add('leads', 'Leads', engine, 'leads', 'engine');

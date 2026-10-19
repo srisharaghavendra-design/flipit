@@ -52,7 +52,8 @@ function exportLog() {
   try { ledger = db.prepare('SELECT * FROM budget_ledger').all(); } catch (e) {}
   try { sows = db.prepare('SELECT * FROM sow_docs').all(); } catch (e) {}
   try { audit = db.prepare('SELECT at,user_id,role,region,action,object,before,after,prev_hash,hash FROM decision_audit ORDER BY id DESC LIMIT 20').all().reverse(); } catch (e) {}
-  try { traces = db.prepare('SELECT at,service,name,ms,status,request,response,rows FROM trace_log ORDER BY id DESC LIMIT 12').all().reverse().map(t => ({ at: t.at, service: t.service, name: t.name, ms: t.ms, status: t.status, request: t.request || '', response: t.response || '', rows: t.rows || '' })); } catch (e) {}
+  const clip = s => { const t = String(s || ''); return t.length > 480 ? t.slice(0, 480) : t; };
+  try { traces = db.prepare('SELECT at,service,name,ms,status,request,response,rows FROM trace_log ORDER BY id DESC LIMIT 12').all().reverse().map(t => ({ at: t.at, service: t.service, name: t.name, ms: t.ms, status: t.status, request: clip(t.request), response: clip(t.response), rows: clip(t.rows) })); } catch (e) {}
   const body = zlib.deflateRawSync(Buffer.from(JSON.stringify({ v: 1, rows, bans, ledger, sows, audit, traces }))).toString('base64url');
   return body + '.' + mac(body);
 }

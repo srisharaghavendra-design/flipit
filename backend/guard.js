@@ -64,12 +64,12 @@ function page() {
   const people = auth.USERS.filter(u => u.role !== 'admin').map(u => `<button type="submit" name="user" value="${u.id}"><b>${u.name}</b><span>${u.role} · ${u.persona} · ${u.regions.join(', ')}</span></button>`).join('');
   const sso = auth.provider() === 'demo' ? '' : `<p>Company SSO is configured (${auth.provider()}). The picker below is only the local demo.</p>`;
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · Northwind</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef1f4;color:#12141a;font-family:Inter,system-ui,sans-serif}
-form{width:min(520px,94vw);background:#fff;border:1px solid #e4e8ee;border-radius:20px;padding:28px}
-h1{font-size:28px;margin:0 0 6px;letter-spacing:-.03em}p{color:#5c6570;font-size:15px;line-height:1.45}
-.tag{display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;font-weight:700;border-radius:99px;padding:3px 8px;margin-bottom:8px}
-button{display:block;width:100%;text-align:left;margin:8px 0;padding:12px 14px;border-radius:12px;border:1px solid #e4e8ee;background:#fff;cursor:pointer}
-button b{display:block;font-size:16px}button span{color:#5c6570;font-size:13px}</style>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090a0c;color:#f5f5f7;font-family:Inter,system-ui,sans-serif}
+form{width:min(520px,94vw);background:#14161b;border:1px solid #2a2d34;border-radius:28px;padding:32px}
+h1{font-size:36px;margin:0 0 8px;letter-spacing:-.04em;font-weight:560}p{color:#9b9ba3;font-size:15px;line-height:1.45}
+.tag{display:inline-block;color:#d6ff4a;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
+button{display:block;width:100%;text-align:left;margin:8px 0;padding:14px 16px;border-radius:14px;border:1px solid #2a2d34;background:#101114;color:#f5f5f7;cursor:pointer}
+button b{display:block;font-size:16px}button span{color:#9b9ba3;font-size:13px}</style>
 <form method="post" action="/api/login"><p class="tag">Demo sign-in</p><h1>Who are you today?</h1>
 <p>This picker is a demo, not company SSO. Each person has a role and a region. Spend over $150,000 needs Chris M.</p>${sso}${people}</form>`;
 }
