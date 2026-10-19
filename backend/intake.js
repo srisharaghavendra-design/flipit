@@ -2,20 +2,29 @@
 const{call,PUBLIC}=require('./lib');const core=require('./core');const{FACTS,ARTEFACTS,repeatEntry}=require('./fields');
 core.db.exec('CREATE TABLE IF NOT EXISTS intakes(id TEXT PRIMARY KEY,text TEXT,fields TEXT,artefacts TEXT,timings TEXT,at TEXT);CREATE TABLE IF NOT EXISTS sows(id TEXT PRIMARY KEY,intake_id TEXT,html TEXT,vars INT,at TEXT)');
 const COUNTRY={australia:['Australia','ANZ'],'new zealand':['New Zealand','ANZ'],india:['India','India'],japan:['Japan','Japan'],singapore:['Singapore','ASEAN'],malaysia:['Malaysia','ASEAN'],indonesia:['Indonesia','ASEAN'],thailand:['Thailand','ASEAN'],germany:['Germany','EMEA'],france:['France','EMEA'],'united kingdom':['United Kingdom','EMEA'],uk:['United Kingdom','EMEA'],'united states':['United States','US'],usa:['United States','US']};
-const CITY={sydney:'Australia',melbourne:'Australia',auckland:'New Zealand',mumbai:'India',bengaluru:'India',bangalore:'India',pune:'India',delhi:'India',hyderabad:'India',tokyo:'Japan',osaka:'Japan',singapore:'Singapore','kuala lumpur':'Malaysia',jakarta:'Indonesia',bangkok:'Thailand',berlin:'Germany',london:'United Kingdom','new york':'United States'};
-const PRODUCTS=['SASE','zero trust','SD-WAN','firewall','observability','collaboration','data center','secure access','XDR','hybrid work','AI networking'];
-const MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};const iso=(y,m,d)=>`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+const CITY={sydney:'Australia',melbourne:'Australia',auckland:'New Zealand',mumbai:'India',bengaluru:'India',bangalore:'India',pune:'India',delhi:'India',hyderabad:'India',tokyo:'Japan',osaka:'Japan',singapore:'Singapore','kuala lumpur':'Malaysia',jakarta:'Indonesia',bangkok:'Thailand',berlin:'Germany',frankfurt:'Germany',munich:'Germany',london:'United Kingdom',paris:'France',chicago:'United States','new york':'United States','san francisco':'United States'};
+const PRODUCTS=['SASE','zero trust','SD-WAN','firewall','observability','collaboration','data center','secure access','XDR','hybrid work','AI networking','networking','security'];
+const MON={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+const iso=(y,m,d)=>{const dt=new Date(Date.UTC(+y,+m-1,+d));if(dt.getUTCFullYear()!==+y||dt.getUTCMonth()!==+m-1||dt.getUTCDate()!==+d)return null;return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`};
+const MONRE='january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec';
+function putDates(f,y1,m1,d1,y2,m2,d2){const a=iso(y1,MON[m1]||m1,d1),b=iso(y2,MON[m2]||m2,d2);if(!a||!b||b<a){f.date_error='End date is before the start date, or the date is not a real day.';return}f.start_date=a;f.end_date=b}
 function parse(text){const t=' '+text.replace(/@mops/ig,' ')+' ',q=t.toLowerCase(),f={};let m;
-  if(m=q.match(/(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s+([a-z]{3})[a-z]*\.?\s+(20\d\d)/)){f.start_date=iso(m[4],MON[m[3]],m[1]);f.end_date=iso(m[4],MON[m[3]],m[2])}
-  else if(m=q.match(/(\d{1,2})\s+([a-z]{3})[a-z]*\.?\s+(20\d\d)/)){f.start_date=f.end_date=iso(m[3],MON[m[2]],m[1])}
-  else if(m=q.match(/(20\d\d-\d\d-\d\d)(?:\s*(?:to|–|-)\s*(20\d\d-\d\d-\d\d))?/)){f.start_date=m[1];f.end_date=m[2]||m[1]}
-  for(const[k,v]of Object.entries(CITY))if(new RegExp('\\b'+k+'\\b').test(q)){f.city_venue=k.replace(/\b\w/g,c=>c.toUpperCase());if(!f.country)f.country=v;break}
-  if(m=t.match(/\b(?:at|venue)\s+(?:the\s+)?([A-Z][\w&' ]+(?:Hotel|Centre|Center|Club|Hall|House))/))f.city_venue=(m[1]+', '+(f.city_venue||'')).replace(/, $/,'');
-  for(const[k,[c]]of Object.entries(COUNTRY))if(new RegExp('\\b'+k+'\\b').test(q)){f.country=c;break}
-  if(f.country)f.region=Object.values(COUNTRY).find(([c])=>c===f.country)[1];
+  if(m=q.match(new RegExp('\\b(\\d{1,2})\\s+('+MONRE+')\\.?\\s+(20\\d{2})\\s+(?:to|–|-)\\s+(\\d{1,2})\\s+('+MONRE+')\\.?\\s+(20\\d{2})\\b')))putDates(f,m[3],m[2],m[1],m[6],m[5],m[4]);
+  else if(m=q.match(new RegExp('\\b('+MONRE+')\\.?\\s+(\\d{1,2})\\s*(?:-|–|to)\\s*(\\d{1,2})\\s+(20\\d{2})\\b')))putDates(f,m[4],m[1],m[2],m[4],m[1],m[3]);
+  else if(m=q.match(new RegExp('\\b(\\d{1,2})\\s*(?:-|–|to)\\s*(\\d{1,2})\\s+('+MONRE+')\\.?\\s+(20\\d{2})\\b')))putDates(f,m[4],m[3],m[1],m[4],m[3],m[2]);
+  else if(m=q.match(new RegExp('\\b('+MONRE+')\\.?\\s+(\\d{1,2})\\s+(20\\d{2})\\b')))putDates(f,m[3],m[1],m[2],m[3],m[1],m[2]);
+  else if(m=q.match(new RegExp('\\b(\\d{1,2})\\s+('+MONRE+')\\.?\\s+(20\\d{2})\\b')))putDates(f,m[3],m[2],m[1],m[3],m[2],m[1]);
+  else if(m=q.match(/\b(20\d{2}-\d{2}-\d{2})(?:\s*(?:to|–|-)\s*(20\d{2}-\d{2}-\d{2}))?\b/)){const a=m[1],b=m[2]||m[1];if(b<a)f.date_error='End date is before the start date.';else{f.start_date=a;f.end_date=b}}
+  const cities=[];for(const[k,v]of Object.entries(CITY)){if(!v)continue;const at=q.search(new RegExp('\\b'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b'));if(at>=0)cities.push({city:k.replace(/\b\w/g,c=>c.toUpperCase()),country:v,at})}
+  cities.sort((a,b)=>a.at-b.at);if(cities.length){f.cities=cities;f.city_venue=cities[0].city;f.city=cities[0].city;f.country=cities[0].country}
+  else if(m=q.match(/\b(?:in|at)\s+([a-z][a-z .'-]{2,40}?)(?=,|\.|$| for | on | with )/)){f.city=m[1].replace(/\b\w/g,c=>c.toUpperCase());f.city_venue=f.city;f.city_unconfirmed=true}
+  if(!f.city&&(m=t.trim().match(/^([A-Z][A-Za-z .'-]{2,40}?)\s+(?:security\s+|partner\s+|networking\s+)?(?:roundtable|summit|dinner|event|conference)\b/))){f.city=m[1].trim();f.city_venue=f.city;f.city_unconfirmed=true}
+  if(m=t.match(/\b(?:at|venue)\s+(?:the\s+)?([A-Z][\w&' ]+(?:Hotel|Centre|Center|Club|Hall|House))/))f.venue=m[1].trim();
+  if(!f.country){for(const[k,[c]]of Object.entries(COUNTRY))if(new RegExp('\\b'+k+'\\b').test(q)){f.country=c;break}}
+  if(f.country){const hit=Object.values(COUNTRY).find(([c])=>c===f.country);if(hit)f.region=hit[1]}
   const pr=PRODUCTS.filter(p=>q.includes(p.toLowerCase()));if(pr.length)f.product=pr.join(' / ');
   f.channel=/partner/.test(q)?'Partner':/\babm\b/.test(q)?'ABM':/summit|roundtable|event|dinner|conference|workshop/.test(q)?'Events':/webinar|digital|paid/.test(q)?'Digital':undefined;
-  if(m=q.match(/\$\s?(\d+(?:\.\d+)?)\s*(k|m)\b/))f.budget=Math.round(+m[1]*(m[2]==='m'?1e6:1e3));
+  const amounts=require('./money').parseAll(text||'');if(amounts.length){f.budget=amounts[0].amount;f.currency=amounts[0].currency;f.amounts=amounts}
   if(m=t.match(/\b(?:vendor|agency)\s*[:\-]?\s*([A-Z][\w&.' ]+?)(?=,|\.|$| for | with )/))f.vendor=m[1].trim();
   if(m=q.match(/(\d{2,5})\s*(?:seats|attendees|guests|pax|people)/))f.capacity=+m[1];
   if(m=t.match(/\b(?:cost cent(?:er|re))\s*[:\-]?\s*([A-Z]{0,3}-?\d{3,6})/i))f.cost_center=m[1].toUpperCase();

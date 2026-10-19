@@ -1,4 +1,4 @@
-// One Vercel function. routes in vercel.json send every path here so the passcode gate cannot be skipped.
+// One Vercel function. routes in vercel.json send every path here so the session gate cannot be skipped.
 if(!process.env.MOPS_DATA_DIR)process.env.MOPS_DATA_DIR='/tmp/mops';
 if(!process.env.MOPS_RUNS_DIR)process.env.MOPS_RUNS_DIR='/tmp/mops/runs';
 const{handleRequest}=require('../server');

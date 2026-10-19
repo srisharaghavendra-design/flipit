@@ -13,8 +13,7 @@ core.subscribe('inbound-email',/^mail\.inbound$/,async e=>{const m=await call('m
     text:r.reply+'\n\n— @mops (reply to this email to continue)\n\n> '+body.split('\n').join('\n> '),html:`<div style="font-family:Arial;font-size:14px;white-space:pre-wrap">${r.reply.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div><p style="color:#888;font-size:12px">— @mops · reply to continue</p>`});
   bus({svc:'mail',kind:'smtp',msg:`📤 @mops emailed reply to ${m.mail_from}${others.length?' cc '+others.join(', '):''}`,data:{},trace:r.trace})});
 // ---- surface 2: Webex-style bot webhook (HMAC-SHA1 signature like Webex's X-Spark-Signature) ----
-const WEBEX_SECRET=process.env.MOPS_WEBEX_SECRET||'dev-webex-secret';
-async function webex(raw,sig){const want=crypto.createHmac('sha1',WEBEX_SECRET).update(raw).digest('hex');if(sig!==want)return{status:401,body:{error:'bad signature'}};
+async function webex(raw,sig){const secret=process.env.MOPS_WEBEX_SECRET;if(!secret)return{status:401,body:{error:'bad signature'}};const want=crypto.createHmac('sha1',secret).update(raw).digest('hex');if(sig!==want)return{status:401,body:{error:'bad signature'}};
   const b=JSON.parse(raw);const d=b.data||{};const r=await agent.handle({text:d.text||'',surface:'webex',sender:d.personEmail||'unknown'});
   return{status:200,body:{roomId:d.roomId,markdown:r.reply,action:r.action,trace:r.trace}}}
 // ---- self-healing autopilot: watches for sync jobs landing in the failure queue, diagnoses, waits for recovery, requeues, verifies ----

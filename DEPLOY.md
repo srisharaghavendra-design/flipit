@@ -9,18 +9,21 @@ Email in the demo is caught inside the app. It is never sent to a real inbox.
 1. Open the pull request on GitHub.
 2. If it says **Draft**, click **Ready for review**.
 3. Click **Merge**. Vercel deploys the production branch by itself. Wait until the Vercel check on that commit is green.
-4. Open https://www.flipit.fyi/ . You should see a passcode page, not the old FlipIt site.
-5. Enter the passcode (see below) and open `/engine` as well.
-6. Send your boss https://www.flipit.fyi/ and the passcode.
+4. Open https://www.flipit.fyi/ . You should see a demo sign-in page, not the old FlipIt site.
+5. Pick a demo user (the page says it is a demo). Chris M. is the approver. Open `/engine` as well.
+6. Send your boss https://www.flipit.fyi/ and tell them to use the demo sign-in picker.
 
 That is the whole launch. No Render account, no card, no nameserver change.
 
-## Passcode
+## Sign-in
 
-The only setting you should add is optional.
+There is no shared passcode. The page is a demo user picker, labelled as a demo. Each user has a role (marketer, approver, or admin) and a region. The session cookie is random, HttpOnly, and expires. It is not derived from a password printed on the page.
 
-- If you set nothing, the passcode is **northwind**. The login page says this out loud. Fine for a private rehearsal. Change it before a wider audience.
-- To choose your own: Vercel → this project → **Settings** → **Environment Variables** → add `DEMO_PASSCODE`. Put the same value on **Production** (and Preview, if you want the preview link locked too). Type a short phrase you can say in the meeting. Save, then **Deployments** → the latest production deployment → **Redeploy**.
+Optional, if you later attach the company identity provider:
+
+- OIDC: set `MOPS_OIDC_ISSUER`, `MOPS_OIDC_CLIENT_ID`, and `MOPS_OIDC_CLIENT_SECRET`. Without the secret, that path fails closed.
+- SAML: set `MOPS_SAML_ENTRY`.
+- Session signing: set `MOPS_SESSION_SECRET` to a long random value. If you leave it unset, the process generates one at boot. A cold start then signs people out.
 
 Do not add an email password, SMTP host, or API key. The demo must not send real email.
 
@@ -58,7 +61,7 @@ Limits, because Hobby does not keep a server running:
 - The scale-test button uses **2,000 contacts and 200 messages** (cap 8,000 / 800), labelled on the button. It is not the million-row run. The card shows the measured rate after it finishes. On a development machine that same Hobby size finished in 37ms (catcher accepted 200 of 200; segment query p95 was 0.07ms). The 8,000 / 800 cap finished in 76ms. A full campaign run in the test suite took about 7 seconds, and the self-heal test took about 25 seconds. The function is allowed 60 seconds and 1 CPU, so both fit. Expect the live site to be slower than that machine.
 - A full campaign run is one request, up to 60 seconds, then the page shows the result.
 - "Covered for you" runs when you open that card or press Scan now. It does not tick in the background after you leave.
-- Rate limits are per instance, in memory: 4 scale-test clicks per 10 minutes from one address, plus a general cap once the passcode is in use.
+- Rate limits are per instance, in memory: 4 scale-test clicks per 10 minutes from one address, plus a general cap. The limit uses the socket address. It does not trust `X-Forwarded-For` unless `MOPS_TRUST_PROXY` or Vercel is set, and then it uses the last hop.
 
 ## Roll back to FlipIt
 

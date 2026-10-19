@@ -1,0 +1,7 @@
+fname,Organisation,Mail,Ph,note
+Arjun,Northwind Networks,arjun.shah@northwind.example,+91 98450 11111,no consent captured
+=HYPERLINK("http://evil.example","x"),Orbit Mills,priya.menon@orbitmills.example,+91 99000 22222,
+Dev,Orbit Mills,dev.rao@orbitmills.example,+91-80-5555-0101,
+Dev,Orbit Mills,dev.rao@orbitmills.example,+91-80-5555-0101,
+Blank,No Mail,,+919800011122,consent was not captured
+Meera,Lotus Lane,meera.iyer@lotus-lane.example,09845033333,

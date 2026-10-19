@@ -81,8 +81,10 @@ h1{font-size:46px;line-height:1.05;letter-spacing:-.045em;font-weight:650;margin
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=n=>'$'+Math.round(+n||0).toLocaleString('en-US');
+const SYM={USD:'$',EUR:'€',GBP:'£',INR:'₹',SGD:'S$',AUD:'A$',JPY:'¥',CAD:'C$'};
+const money=(n,cur)=> (SYM[cur]||((cur&&cur!=='USD')?cur+' ':'$'))+Math.round(+n||0).toLocaleString('en-US');
 let S,D,TH={},PF=null,PFALL=null,BR=null,LC=[],DONE=null,MINE=null,busy=false,showCovered=false,editing=null,FILT={region:'all',program:'all',quarter:'all'},delegated=false,answer='';
+let ME={id:'srisha',name:'Srisha R.',role:'marketer',regions:['Americas','EMEA','APJ']};
 const STAGES=['Budget','Setup','Invite','Engagement','Leads','SFDC sync','Opps','Attribution','Report'];
 function route(){const h=location.hash.replace(/^#/,'').replace(/^\//,'');if(h==='campaigns'||h==='quarter')return{view:'campaigns'};if(h.startsWith('c/'))return{view:'card',id:h.slice(2)};if(h.startsWith('t/'))return{view:'thread',id:h.slice(2)};if(h.startsWith('LC-'))return{view:'lc',id:h};return{view:'home'}}
 function toast(t){const x=$('toast');x.textContent=t;x.classList.add('on');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('on'),2400)}
@@ -101,7 +103,7 @@ function bitsFor(lc){const f=lc.fields||{},g=guesses(lc),over=!!(lc.budget&&lc.b
  else bits.push({key:'agency_pm',label:'Agency contact',value:g.agency_pm,note:'Who sends the SOW back.'});
  return{g,over,bits:bits.slice(0,3)}}
 function needsCards(){const out=[];
- for(const lc of LC){if(!lc||lc.error)continue;if(MINE&&lc.id!==MINE&&lc.id!=='LC-DEMO')continue;if(!['intake','budget','sow'].includes(lc.step))continue;if(DONE&&DONE.id===lc.id)continue;out.push({kind:'lc',lc})}
+ for(const lc of LC){if(!lc||lc.error||lc.id==='LC-DEMO')continue;if(MINE&&lc.id!==MINE)continue;if(!['intake','budget','sow','codes','setup'].includes(lc.step))continue;if(DONE&&DONE.id===lc.id)continue;out.push({kind:'lc',lc})}
  const book=PFALL||PF;const behind=(book?.groups?Object.values(book.groups).flat():(D?.campaigns||[])).filter(c=>c.pace==='behind');
  const code=behind.find(c=>/code/i.test(c.nextAction||''));
  if(code)out.push({kind:'code',c:code,n:behind.length});
@@ -110,16 +112,32 @@ function needsCards(){const out=[];
  return out.slice(0,3)}
 function askBox(){return `<form class="ask" id="askForm"><label class="sr" for="ask" style="position:absolute;left:-999px">Ask @mops</label><textarea id="ask" rows="1" placeholder="Singapore CISO roundtable, Feb, $40K, agency X"></textarea><button class="send" id="send" type="submit">Send</button></form>
 <div class="starts"><button type="button" data-q="Singapore CISO roundtable, Feb, $40K, agency X">Singapore CISO roundtable, Feb, $40K</button><button type="button" data-q="Which campaigns are behind?">Which campaigns are behind?</button><button type="button" data-q="What did you cover for me?">What did you cover for me?</button></div>${answer?`<p class="note">${esc(answer)}</p>`:''}`}
-function cardLc(lc){const f=lc.fields||{},b=lc.budget||{},{bits}=bitsFor(lc);const edit=editing===lc.id;
- const when=[f.city,f.start_date,b.total?money(b.total):''].filter(Boolean).join(' · ');
- const body=edit?bits.map(x=>`<label class="field">${esc(x.label)}<input data-bit="${esc(x.key)}" value="${esc(x.value)}"></label>`).join(''):`<ul class="bits">${bits.map(x=>`<li><b>${esc(x.label)}</b> ${esc(x.value)}<span>${esc(x.note)}</span></li>`).join('')}</ul>`;
- return `<article class="card" data-lc="${esc(lc.id)}"><h2>${esc(f.campaign_name||'New campaign')}</h2><p class="meta">${esc(when)}</p><p>I filled the budget. Approve, and I send the SOW and create the IDs. ${bits.length===1?'One thing is yours.':bits.length+' things are yours.'}</p>${body}<div class="row"><button class="approve" type="button" data-approve="${esc(lc.id)}">Approve</button><button class="edit" type="button" data-edit="${esc(lc.id)}">${edit?'Close':'Edit'}</button></div></article>`}
+function cardLc(lc){const f=lc.fields||{},b=lc.budget||{},cur=f.currency||b.currency||'USD';
+ const items=(lc.jobs&&lc.jobs.budget&&lc.jobs.budget.items)||[];
+ const ok=!!(lc.jobs&&lc.jobs.budget&&lc.jobs.budget.ok);
+ const errs=(lc.jobs&&lc.jobs.budget&&lc.jobs.budget.errors)||[];
+ const over=!!(b.usd>150000||/Over \$150/.test(b.route||''));
+ const pending=b.status==='pending_approval';
+ const when=[f.city,f.start_date,b.total?money(b.total,cur):'',b.usd?('about '+money(b.usd,'USD')):''].filter(Boolean).join(' · ');
+ const fields=items.map(x=>`<label class="field">${esc(x.label)}<input data-bit="${esc(x.key)}" value="${esc(x.value)}">${x.source?`<span>${esc(x.source)}</span>`:''}</label>`).join('');
+ const kids=(lc.childIds||f.childIds||[]).length?`<p class="meta">Linked requests: ${esc((lc.childIds||f.childIds).join(', '))}</p>`:'';
+ const prompt=lc.prompt?`<p>${esc(lc.prompt)}</p>`:'';
+ let label='';
+ if(!ok)label='';
+ else if(ME.role==='approver'&&pending)label='Approve';
+ else if(pending)label='';
+ else if(b.status==='approved')label='Continue';
+ else label='Submit';
+ const sow=(lc.step==='sow'&&lc.jobs&&lc.jobs.sow)?`<p>Agency contact ${esc(lc.jobs.sow.agency&&lc.jobs.sow.agency.email||'')} — ${esc(lc.sowRequest&&lc.sowRequest.note||'queued in the demo mail catcher')}.</p><label class="field">Agency SOW (PDF or DOCX)<input type="file" data-sow="${esc(lc.id)}" accept=".pdf,.docx,.txt"></label>`:'';
+ const diff=(lc.jobs&&lc.jobs.sow&&lc.jobs.sow.diff&&lc.jobs.sow.diff.length)?`<ul class="bits">${lc.jobs.sow.diff.filter(d=>d.extracted).map(d=>`<li><b>${esc(d.field)}</b> ${esc(d.extracted)} <span>${d.match?'matches the budget':'check against '+d.approved}</span></li>`).join('')}</ul>`:'';
+ const up=lc.step==='setup'||lc.step==='codes'?`<label class="field">Target list (CSV or XLSX)<input type="file" data-list="${esc(lc.id)}" accept=".csv,.xlsx"></label>`:'';
+ return `<article class="card" data-lc="${esc(lc.id)}"><h2>${esc(f.campaign_name||'New campaign')}</h2><p class="meta">${esc(when)}</p>${prompt}${kids}<p>${ok?'Check every field, then submit.':'Fill the open fields. Approve stays hidden until they are valid.'} ${over?'Over $150,000 needs Chris M.':'Inside the $150,000 rule.'}</p>${errs.length?`<p>${esc(errs[0])}</p>`:''}${fields}${sow}${diff}${up}<div class="row">${label?`<button class="approve" type="button" data-approve="${esc(lc.id)}">${label}</button>`:''}</div></article>`}
 function cardDone(r){const f=r.fields||{},c=r.codes||{},chk=r.sow&&r.sow.selfCheck;
  return `<article class="card"><p class="ok">Covered for you</p><h2>${esc(f.campaign_name||'Campaign')}</h2><p>SOW sent. IDs created.${r.step==='run'||r.step==='report'?' It is live.':''}</p><div class="bar"><i style="width:${r.step==='run'||r.step==='report'?'100':'72'}%"></i></div><div class="ids"><div><b>${esc(c.ban_id||'—')}</b><span>BAN / cost center ${esc(c.cc_id||'')}</span></div><div><b>${esc(c.campaign_code||'—')}</b><span>Campaign code</span></div><div><b>${esc(c.sfdc_campaign_id||'—')}</b><span>SFDC campaign</span></div><div><b>${esc(c.event_id||'—')}</b><span>Event</span></div></div>${chk?`<p>${esc(chk.caught)}. ${esc(chk.fix)}.</p>`:''}<a class="back" href="${r.campaign&&r.campaign.id?'#c/'+esc(r.campaign.id):'#campaigns'}">See it in my campaigns</a></article>`}
 function cardCode(x){return `<article class="card"><h2>${esc(x.c.name)}</h2><p>${x.n} campaign${x.n===1?' is':'s are'} behind. This one is missing its campaign code. I drafted the code.</p><div class="row"><button class="approve" type="button" data-code="${esc(x.c.id)}">Approve</button></div></article>`}
 function cardRegs(x){const e=x.ev;return `<article class="card"><h2>${esc(e.name)}</h2><p>${x.n} event${x.n===1?' is':'s are'} under half full. This one has ${e.registrations||0} of ${e.capacity}. I drafted a reminder to the opted-in list.</p><div class="row"><button class="approve" type="button" data-regs="${esc(e.campaignId||'')}">Approve</button></div></article>`}
 function home(){const cards=needsCards();
- let h=`<h1>Hey, Srisha.</h1><p class="did">${esc(didLine())}</p>${askBox()}<div class="sec" id="actions">`;
+ let h=`<h1>Hey, ${esc((ME.name||'there').split(' ')[0])}.</h1><p class="did">Demo sign-in · ${esc(ME.role)} · ${esc((ME.regions||[]).join(', '))}</p><p class="did">${esc(didLine())}</p>${askBox()}<div class="sec" id="actions">`;
  if(DONE)h+=cardDone(DONE);
  if(!cards.length&&!DONE){const lines=coveredLines();h+=`<article class="card"><h2>You're all caught up.</h2><p>Here's what I handled.</p>${lines.length?`<ul class="bits">${lines.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:'<p class="meta">Nothing needed a decision.</p>'}</article>`}
  else h+=cards.map(c=>c.kind==='lc'?cardLc(c.lc):c.kind==='code'?cardCode(c):cardRegs(c)).join('');
@@ -146,7 +164,8 @@ function render(){const r=route();$('navHome').classList.toggle('on',r.view==='h
  bind()}
 function bind(){const form=$('askForm');if(form){form.onsubmit=ev=>{ev.preventDefault();ask($('ask').value)};[...document.querySelectorAll('.starts button')].forEach(b=>b.onclick=()=>ask(b.dataset.q))}
  document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveLc(b.dataset.approve));
- document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{editing=editing===b.dataset.edit?null:b.dataset.edit;render()});
+ document.querySelectorAll('[data-sow]').forEach(el=>el.onchange=()=>uploadSow(el.dataset.sow,el.files[0]));
+ document.querySelectorAll('[data-list]').forEach(el=>el.onchange=()=>uploadList(el.dataset.list,el.files[0]));
  document.querySelectorAll('[data-code]').forEach(b=>b.onclick=()=>approveFix(b.dataset.code,'@mops create a campaign code'));
  document.querySelectorAll('[data-regs]').forEach(b=>b.onclick=()=>approveFix(b.dataset.regs,'@mops segment opted-in contacts and email them about a reminder, send'));
  document.querySelectorAll('[data-camp]').forEach(b=>b.onclick=()=>go('c/'+b.dataset.camp));
@@ -156,38 +175,39 @@ async function setFilt(k,v){FILT[k]=v;await loadPortfolio();render()}
 async function loadPortfolio(){const q=new URLSearchParams(FILT);try{PF=await(await fetch('/api/portfolio?'+q)).json()}catch(_){PF=PF}try{PFALL=await(await fetch('/api/portfolio?region=all&program=all&quarter=all')).json()}catch(_){PFALL=PFALL}}
 async function go(id){history.replaceState(null,'',id==='home'||id==='/'?'#/':'#'+id);if(String(id).startsWith('LC-')){try{const row=await(await fetch('/api/engine/lifecycle/'+encodeURIComponent(id))).json();const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=row;else LC.push(row)}catch(_){}}render();scrollTo(0,0)}
 async function load(){if(!delegated){delegated=true;try{await fetch('/api/delegate',{method:'POST'})}catch(_){}}
+ try{const ses=await(await fetch('/api/session')).json();if(ses.user)ME=ses.user}catch(_){}
  S=await(await fetch('/api/state')).json();D=await(await fetch('/api/data')).json();
  try{BR=await(await fetch('/api/briefing')).json()}catch(_){}
  await loadPortfolio();
  const ts=await Promise.all((S.threads||[]).map(t=>fetch('/api/thread/'+t.id).then(r=>r.json()).catch(()=>null)));TH={};ts.filter(Boolean).forEach(t=>{if(t.id)TH[t.id]=t});
- let pack=null;try{pack=await(await fetch('/api/engine/lifecycle')).json()}catch(_){}
- const ids=[...new Set(['LC-DEMO',MINE].filter(Boolean))];
- LC=(await Promise.all(ids.map(id=>fetch('/api/engine/lifecycle/'+id).then(r=>r.json()).catch(()=>null)))).filter(x=>x&&x.id);
- if(pack&&!LC.length&&pack.draft)LC=[pack.draft];
- const a=document.activeElement;if(busy)return;if(a&&(a.id==='ask'||a.dataset&&a.dataset.bit))return;render()}
+ const ids=[...new Set([MINE].filter(Boolean))];
+ LC=(await Promise.all(ids.map(id=>fetch('/api/engine/lifecycle/'+id).then(r=>r.json()).catch(()=>null)))).filter(x=>x&&x.id&&x.id!=='LC-DEMO');
+ const a=document.activeElement;if(busy)return;if(a&&(a.id==='ask'||a.dataset&&(a.dataset.bit||a.dataset.sow||a.dataset.list)))return;render()}
 function readBits(id){const root=document.querySelector(`[data-lc="${id}"]`);const o={};if(!root)return o;root.querySelectorAll('[data-bit]').forEach(el=>{if(String(el.value).trim())o[el.dataset.bit]=el.value.trim()});return o}
 async function postLc(id,action,patch){const res=await fetch('/api/engine/lifecycle/'+encodeURIComponent(id),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,patch:patch||{}})});const r=await res.json();if(!res.ok|| (r.error&&!r.step))throw new Error(r.error||'Could not do that');return r}
-async function approveLc(id){if(busy)return;const typed=readBits(id);const lc=LC.find(x=>x.id===id)||{};const g={...guesses(lc),...typed};if(typed.agency_confirm)g.agency_confirm=typed.agency_confirm;
+async function approveLc(id){if(busy)return;const lc=LC.find(x=>x.id===id);if(!lc||lc.id!==id)return;const fields=readBits(id);
  busy=true;const btn=document.querySelector(`[data-approve="${id}"]`);if(btn){btn.disabled=true;btn.textContent='Working…'}
- try{let r=await postLc(id,'answer',{fields:{venue:g.venue,cost_center:g.cost_center,client_pm:g.client_pm,agency_pm:g.agency_pm,vendor:g.agency_confirm}});
-  if(r.step==='intake'){r=await postLc(id,'save-intake',{fields:g});r=await postLc(id,'continue',{});if(r.error&&r.step==='intake')throw new Error(r.error)}
-  if(r.step==='budget'){if(!r.budget||r.budget.status==='draft')r=await postLc(id,'submit-budget',{});if(r.budget&&r.budget.status==='pending_approval')r=await postLc(id,'approve-budget',{approver:'Chris M.'});if(r.budget&&r.budget.status==='approved'&&r.step==='budget')r=await postLc(id,'continue',{})}
-  if(r.step==='sow'){const answers={venue:g.venue,cost_center:g.cost_center,client_pm:g.client_pm,agency_pm:g.agency_pm,agency_confirm:g.agency_confirm};r=await postLc(id,'save-sow',{answers});if(r.error)throw new Error(r.error);r=await postLc(id,'continue',{})}
-  if(r.step==='codes')r=await postLc(id,'continue',{});
-  if(r.step==='setup')r=await postLc(id,'continue',{});
-  if(r.step==='launch')r=await postLc(id,'launch',{});
-  DONE=r;editing=null;answer='';toast('Done. The SOW is out and the IDs are created.');
+ try{let r=await postLc(id,'save-budget',{fields});
+  if(ME.role==='approver'&&r.budget&&r.budget.status==='pending_approval')r=await postLc(id,'approve-budget',{});
+  else if(!r.budget||r.budget.status==='draft')r=await postLc(id,'submit-budget',{});
+  if(r.budget&&r.budget.status==='pending_approval'){toast('Submitted to Chris M.');const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=r;busy=false;render();return}
+  if(r.budget&&r.budget.status==='approved'&&r.step==='budget')r=await postLc(id,'continue',{});
+  const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=r;else LC.unshift(r);
+  toast(r.step==='sow'?'Budget is in. The SOW request is queued in the demo mail catcher.':'Saved.');
  }catch(err){toast(err.message||String(err))}
  busy=false;await load();render()}
+function fileB64(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=rej;fr.readAsDataURL(file)})}
+async function uploadSow(id,file){if(!file)return;busy=true;try{const b64=await fileB64(file);const r=await postLc(id,'ingest-sow',{name:file.name,base64:b64});const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=r;toast('Read the agency SOW. Compare it with the approved budget before anyone signs.');}catch(err){toast(err.message||String(err))}busy=false;render()}
+async function uploadList(id,file){if(!file)return;busy=true;try{const b64=await fileB64(file);const r=await postLc(id,'preview-upload',{name:file.name,base64:b64});const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=r;const rep=r.setup&&r.setup.uploadPreview&&r.setup.uploadPreview.report;toast(rep?`${rep.ready} ready, ${rep.consentHeld||0} held for consent, ${rep.formula||0} formulas. Confirm before anything is filed.`:'Mapped. Confirm the columns.');}catch(err){toast(err.message||String(err))}busy=false;render()}
 async function approveFix(campaignId,text){if(busy||!campaignId)return;busy=true;try{await fetch('/api/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({threadId:'T-'+campaignId,who:'Srisha R.',text})});toast('Done. I took it from here.');showCovered=true}catch(err){toast(err.message||String(err))}busy=false;await load()}
-function looksLikeCampaign(q){return /\$\s?\d|roundtable|dinner|summit|event|webinar|campaign|budget/.test(q)&&!/which |what |why |how |behind|cover/.test(q)}
+function looksLikeCampaign(q){return /(\$|€|£|₹)|(\b(sgd|aud|inr|eur|usd|gbp|jpy|lakh|crore)\b)|\b(roundtable|dinner|summit|event|webinar|campaign|abm)\b/.test(q)&&!/\b(which|what|why|how)\b|\bbehind\b|\bcover\b/.test(q)}
 async function ask(text){text=String(text||'').trim();if(!text||busy)return;const q=text.toLowerCase();answer='';showCovered=false;
  if(/behind/.test(q)){const book=PFALL||PF;const n=(book?.groups?Object.values(book.groups).flat():[]).filter(c=>c.pace==='behind').length;answer=n?`${n} campaign${n===1?' is':'s are'} behind. The fix is drafted on the card below.`:'Nothing is behind.';if(route().view!=='home')await go('home');else render();const el=$('actions');if(el)el.scrollIntoView({behavior:'smooth'});return}
  if(/cover|handled|did you|did @mops/.test(q)){showCovered=true;if(route().view!=='home')await go('home');else render();return}
  if(!looksLikeCampaign(q)){busy=true;try{const res=await(await fetch('/api/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({threadId:'T-K5',who:'Srisha R.',text:text.startsWith('@')?text:'@mops '+text})})).json();const last=(res.messages||[]).filter(m=>m.who==='@mops').at(-1);answer=last?.text||'Done.';}catch(err){answer=err.message}busy=false;if(route().view!=='home')await go('home');else render();return}
  busy=true;if($('send')){$('send').disabled=true;$('send').textContent='Working…'}
  try{const r=await(await fetch('/api/engine/lifecycle/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text})})).json();
-  if(r.error&&!r.id)throw new Error(r.error);MINE=r.id;const i=LC.findIndex(x=>x.id===r.id);if(i>=0)LC[i]=r;else LC.unshift(r);answer=r.missing&&r.missing.length?`I still need ${r.missing.map(m=>m.label).join(', ')}.`:'Drafted. Approve it and I send the SOW and create the IDs.';
+  if(r.error&&!r.id)throw new Error(r.error);MINE=r.id;const i=LC.findIndex(x=>x.id===r.id);if(i>=0)LC[i]=r;else LC.unshift(r);answer=r.missing&&r.missing.length?`I still need ${r.missing.map(m=>m.label).join(', ')}.`:(r.childIds&&r.childIds.length?`Drafted ${r.childIds.length} linked requests.`:'Drafted. Check the fields, then submit.');
  }catch(err){toast(err.message||String(err))}
  busy=false;if(route().view!=='home')await go('home');else render();const el=$('actions');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
 window.onhashchange=()=>render();

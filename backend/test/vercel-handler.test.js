@@ -23,15 +23,15 @@ function request(method,url,{headers={},body='',ip='203.0.113.10'}={}){
     Promise.resolve(handleRequest(req,res)).then(()=>{if(!res.writableEnded)reject(new Error('handler did not end '+url))}).catch(reject);
     req.flush()})}
 
-test('the Vercel handler gates the site, serves health, and accepts the default passcode',async()=>{
+test('the Vercel handler gates the site with demo sign-in',async()=>{
   const health=await request('GET','/health');
   assert.equal(health.status,200);const h=JSON.parse(health.body);assert.equal(h.ok,true);assert.equal(h.company,'Northwind Networks');
   const home=await request('GET','/');
-  assert.equal(home.status,401);assert.match(home.body,/northwind/);
-  const bad=await request('POST','/gate',{headers:{'content-type':'application/x-www-form-urlencoded'},body:'passcode=nope'});
+  assert.equal(home.status,401);assert.match(home.body,/Demo sign-in/);assert.doesNotMatch(home.body,/passcode/i);
+  const bad=await request('POST','/api/login',{headers:{'content-type':'application/json'},body:'{"user":"nobody"}'});
   assert.equal(bad.status,401);
-  const good=await request('POST','/gate',{headers:{'content-type':'application/x-www-form-urlencoded'},body:'passcode=northwind'});
-  assert.equal(good.status,303);assert.match(good.headers['set-cookie'],/mops_gate=/);
+  const good=await request('POST','/api/login',{headers:{'content-type':'application/json'},body:'{"user":"admin"}'});
+  assert.equal(good.status,200);assert.match(good.headers['set-cookie'],/mops_session=/);assert.match(good.headers['set-cookie'],/HttpOnly/);assert.match(good.headers['set-cookie'],/Secure/);
   const cookie=good.headers['set-cookie'].split(';')[0];
   const state=await request('GET','/api/state',{headers:{cookie}});
   assert.equal(state.status,200);const s=JSON.parse(state.body);assert.match(JSON.stringify(s.company||s),/Northwind/);

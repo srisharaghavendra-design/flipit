@@ -1,50 +1,27 @@
-// Public-demo gate. If DEMO_PASSCODE is unset the passcode is "northwind" and the
-// login page says so. Tracking pixels, unsubscribe links and registration forms
-// stay open: they are how the in-app email demo records opens, clicks and sign-ups.
-// Loopback is trusted only when this process is not on Vercel (local tests).
+// Session gate. Demo users sign in from a labelled picker. There is no shared passcode.
+// Loopback is not a bypass. Tracking pixels and registration stay open; click redirects
+// are allow-listed in the engine, not here.
 const crypto = require('crypto');
+const auth = require('./auth');
 
 const WINDOW_MS = 10 * 60 * 1000;
 const buckets = new Map();
 
-const DEFAULT_PASSCODE = 'northwind';
-function passcode() { return process.env.DEMO_PASSCODE || DEFAULT_PASSCODE; }
-function usingDefault() { return !process.env.DEMO_PASSCODE; }
-
-function tokenFor(pass) {
-  return crypto.createHmac('sha256', String(pass)).update('mops-demo-v1').digest('base64url');
-}
-
-function same(a, b) {
-  const ba = crypto.createHash('sha256').update(String(a)).digest();
-  const bb = crypto.createHash('sha256').update(String(b)).digest();
-  return crypto.timingSafeEqual(ba, bb);
-}
-
-function cookies(req) {
-  const out = {};
-  for (const part of String(req.headers.cookie || '').split(';')) {
-    const i = part.indexOf('=');
-    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
-  }
-  return out;
-}
-
 function clientIp(req) {
-  const xf = req.headers['x-forwarded-for'];
-  if (xf) return String(xf).split(',')[0].trim();
+  const trust = process.env.MOPS_TRUST_PROXY === '1' || process.env.VERCEL === '1';
+  if (trust) {
+    const xf = req.headers['x-forwarded-for'];
+    if (xf) {
+      const parts = String(xf).split(',').map(s => s.trim()).filter(Boolean);
+      if (parts.length) return parts[parts.length - 1];
+    }
+  }
   return req.socket?.remoteAddress || 'local';
 }
 
-// Other services on this machine call the hub over loopback. The public proxy never does.
-function fromLoopback(req) {
-  if (process.env.VERCEL) return false;
-  const a = req.socket?.remoteAddress || '';
-  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
-}
-
 function exempt(pathname) {
-  if (pathname === '/health' || pathname === '/healthz' || pathname === '/gate' || pathname === '/favicon.ico') return true;
+  if (pathname === '/health' || pathname === '/healthz' || pathname === '/favicon.ico') return true;
+  if (pathname === '/api/login' || pathname === '/api/login/users' || pathname === '/api/login/callback' || pathname === '/api/login/saml') return true;
   if (pathname.startsWith('/svc/engine/t/') || pathname.startsWith('/svc/engine/u/') || pathname.startsWith('/svc/engine/r/')) return true;
   if (pathname.startsWith('/t/') || pathname.startsWith('/r/')) return true;
   return false;
@@ -65,35 +42,36 @@ function limited(req, pathname) {
   const ip = clientIp(req);
   const method = req.method || 'GET';
   if (method === 'POST' && pathname === '/api/engine/loadtest') return !hit('load:' + ip, 4);
-  if (!passcode()) return false;
-  if (pathname === '/gate' && method === 'POST') return !hit('gate:' + ip, 12);
+  if (pathname === '/api/login' && method === 'POST') return !hit('login:' + ip, 30);
   if (method === 'GET' || method === 'HEAD') return !hit('get:' + ip, 600);
   return !hit('post:' + ip, 120);
 }
 
-function authed(req) {
-  const pass = passcode();
-  if (!pass) return true;
-  const c = cookies(req);
-  if (c.mops_gate && same(c.mops_gate, tokenFor(pass))) return true;
-  const header = req.headers['x-demo-passcode'];
-  return !!(header && same(header, pass));
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let b = ''; let n = 0;
+    req.on('data', c => {
+      n += c.length;
+      if (n > 2_000_000) { reject(Object.assign(new Error('Request is too large'), { status: 413 })); try { req.destroy(); } catch (e) {} return; }
+      b += c;
+    });
+    req.on('end', () => resolve(b));
+    req.on('error', reject);
+  });
 }
 
-function page(msg) {
-  const note = msg ? `<p class="err">${msg}</p>` : '';
-  const hint = usingDefault()
-    ? `<p>No passcode was set on the server, so this demo uses <b>northwind</b>. Set DEMO_PASSCODE in Vercel to choose your own.</p>`
-    : `<p>This is a private demo. Enter the passcode to continue.</p>`;
-  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Northwind demo</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#06070a;color:#f4f4f6;font-family:Inter,system-ui,sans-serif}
-form{width:min(420px,92vw);background:#ffffff0c;border:1px solid #ffffff18;border-radius:20px;padding:28px}
-h1{font-size:22px;margin:0 0 6px;letter-spacing:-.03em}p{color:#a4a4b0;font-size:14px;line-height:1.5}b{color:#f4f4f6}
-input{width:100%;box-sizing:border-box;margin:14px 0;padding:12px 14px;border-radius:12px;border:1px solid #ffffff22;background:#0006;color:#fff;font-size:16px}
-button{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(90deg,#9d8cff,#4fe3c1);color:#06070a;font-weight:700;font-size:15px;cursor:pointer}
-.err{color:#ffb4b4}</style>
-<form method="post" action="/gate"><h1>Northwind Networks</h1>${hint}${note}
-<input type="password" name="passcode" autocomplete="current-password" autofocus required placeholder="Passcode"><button>Enter demo</button></form>`;
+function page() {
+  const people = auth.USERS.map(u => `<button type="submit" name="user" value="${u.id}"><b>${u.name}</b><span>${u.role} · ${u.persona} · ${u.regions.join(', ')}</span></button>`).join('');
+  const sso = auth.provider() === 'demo' ? '' : `<p>Company SSO is configured (${auth.provider()}). The picker below is only the local demo.</p>`;
+  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · Northwind</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef1f4;color:#12141a;font-family:Inter,system-ui,sans-serif}
+form{width:min(520px,94vw);background:#fff;border:1px solid #e4e8ee;border-radius:20px;padding:28px}
+h1{font-size:28px;margin:0 0 6px;letter-spacing:-.03em}p{color:#5c6570;font-size:15px;line-height:1.45}
+.tag{display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;font-weight:700;border-radius:99px;padding:3px 8px;margin-bottom:8px}
+button{display:block;width:100%;text-align:left;margin:8px 0;padding:12px 14px;border-radius:12px;border:1px solid #e4e8ee;background:#fff;cursor:pointer}
+button b{display:block;font-size:16px}button span{color:#5c6570;font-size:13px}</style>
+<form method="post" action="/api/login"><p class="tag">Demo sign-in</p><h1>Who are you today?</h1>
+<p>This picker is a demo, not company SSO. Each person has a role and a region. Spend over $150,000 needs Chris M.</p>${sso}${people}</form>`;
 }
 
 function send(res, code, body, headers) {
@@ -101,44 +79,71 @@ function send(res, code, body, headers) {
   res.end(body);
 }
 
-function setCookie(res, value) {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  return `mops_gate=${encodeURIComponent(value)}; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax${secure}`;
-}
-
-function readBody(req) {
-  return new Promise(resolve => { let b = ''; req.on('data', c => b += c); req.on('end', () => resolve(b)); });
+async function login(req, res) {
+  let id = '';
+  const ct = req.headers['content-type'] || '';
+  try {
+    const raw = await readBody(req);
+    if (ct.includes('json')) id = (JSON.parse(raw || '{}').user || JSON.parse(raw || '{}').id || '');
+    else id = new URLSearchParams(raw).get('user') || '';
+  } catch (e) {
+    send(res, e.status || 400, JSON.stringify({ error: e.message || 'Bad login' }), { 'content-type': 'application/json' });
+    return;
+  }
+  const user = auth.USERS.find(u => u.id === id);
+  if (!user) {
+    const json = ct.includes('json') || (req.headers.accept || '').includes('json');
+    if (json) send(res, 401, JSON.stringify({ error: 'Unknown demo user' }), { 'content-type': 'application/json' });
+    else send(res, 401, page(), { 'content-type': 'text/html; charset=utf-8' });
+    return;
+  }
+  const token = auth.openSession(user);
+  const json = ct.includes('json');
+  if (json) send(res, 200, JSON.stringify({ ok: true, user: auth.publicUser(user) }), { 'content-type': 'application/json', 'set-cookie': auth.cookieHeader(token) });
+  else send(res, 303, '', { location: '/', 'set-cookie': auth.cookieHeader(token) });
 }
 
 async function handle(req, res, pathname) {
-  if (fromLoopback(req)) return false;
-  if (pathname === '/gate' && req.method === 'POST') {
-    if (limited(req, pathname)) { send(res, 429, page('Too many attempts. Wait a few minutes and try again.'), { 'content-type': 'text/html; charset=utf-8' }); return true; }
-    const pass = passcode();
-    const raw = await readBody(req);
-    const ct = req.headers['content-type'] || '';
-    let given = '';
-    if (ct.includes('json')) { try { given = JSON.parse(raw || '{}').passcode || ''; } catch { given = ''; } }
-    else given = new URLSearchParams(raw).get('passcode') || '';
-    if (!same(given, pass)) { send(res, 401, page('That passcode is not right.'), { 'content-type': 'text/html; charset=utf-8' }); return true; }
-    send(res, 303, '', { location: '/', 'set-cookie': setCookie(res, tokenFor(pass)) });
+  if (pathname === '/api/login/users' && req.method === 'GET') {
+    send(res, 200, JSON.stringify({ provider: auth.provider(), demo: true, users: auth.USERS.map(auth.publicUser) }), { 'content-type': 'application/json' });
     return true;
   }
-  if (exempt(pathname) || authed(req)) {
+  if (pathname === '/api/login' && req.method === 'POST') {
+    if (limited(req, pathname)) { send(res, 429, JSON.stringify({ error: 'Too many requests. Please wait a minute.' }), { 'content-type': 'application/json' }); return true; }
+    await login(req, res);
+    return true;
+  }
+  if (pathname === '/api/logout' && req.method === 'POST') {
+    send(res, 200, JSON.stringify({ ok: true }), { 'content-type': 'application/json', 'set-cookie': 'mops_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax' });
+    return true;
+  }
+  const user = auth.fromRequest(req);
+  req.mopsUser = user || null;
+  if (exempt(pathname)) return false;
+  if (pathname === '/api/session' && req.method === 'GET') {
+    if (!user) { send(res, 401, JSON.stringify({ error: 'sign in required' }), { 'content-type': 'application/json' }); return true; }
+    send(res, 200, JSON.stringify({ user: auth.publicUser(user), provider: auth.provider() }), { 'content-type': 'application/json' });
+    return true;
+  }
+  if (!user) {
     if (limited(req, pathname)) {
       const json = (req.headers.accept || '').includes('json') || pathname.startsWith('/api/');
       if (json) send(res, 429, JSON.stringify({ error: 'Too many requests. Please wait a minute.' }), { 'content-type': 'application/json' });
-      else send(res, 429, page('Too many requests. Please wait a minute.'), { 'content-type': 'text/html; charset=utf-8' });
+      else send(res, 429, page(), { 'content-type': 'text/html; charset=utf-8' });
       return true;
     }
-    return false;
-  }
-  if (pathname.startsWith('/api/') || (req.headers.accept || '').includes('application/json')) {
-    send(res, 401, JSON.stringify({ error: 'passcode required' }), { 'content-type': 'application/json' });
+    if (pathname.startsWith('/api/') || (req.headers.accept || '').includes('application/json')) {
+      send(res, 401, JSON.stringify({ error: 'sign in required' }), { 'content-type': 'application/json' });
+      return true;
+    }
+    send(res, 401, page(), { 'content-type': 'text/html; charset=utf-8' });
     return true;
   }
-  send(res, 401, page(''), { 'content-type': 'text/html; charset=utf-8' });
-  return true;
+  if (limited(req, pathname)) {
+    send(res, 429, JSON.stringify({ error: 'Too many requests. Please wait a minute.' }), { 'content-type': 'application/json' });
+    return true;
+  }
+  return false;
 }
 
-module.exports = { handle, exempt, tokenFor };
+module.exports = { handle, exempt, clientIp, readBody };

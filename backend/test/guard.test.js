@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { handle, tokenFor } = require('../guard');
+const { handle, clientIp } = require('../guard');
 
 function mockReq({ method = 'GET', headers = {}, ip = '203.0.113.8', body = '' } = {}) {
   return {
@@ -20,65 +20,50 @@ async function hit(pathname, opts) {
   const req = mockReq(opts);
   const res = mockRes();
   const handled = await handle(req, res, pathname);
-  return { handled, res };
+  return { handled, res, req };
 }
 
-test('a public visitor needs the passcode; health, tracking and loopback do not', async () => {
-  const prev = process.env.DEMO_PASSCODE;
-  process.env.DEMO_PASSCODE = 'northwind-demo';
-  try {
-    const health = await hit('/health');
-    assert.equal(health.handled, false);
-    const pixel = await hit('/svc/engine/t/o/S1.gif');
-    assert.equal(pixel.handled, false);
-    const home = await hit('/');
-    assert.equal(home.res.status, 401);
-    assert.match(home.res.body, /passcode/i);
-    const api = await hit('/api/engine/loadtest', { method: 'POST', headers: { accept: 'application/json' } });
-    assert.equal(api.res.status, 401);
-    assert.match(api.res.body, /passcode required/);
-    const bad = await hit('/gate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"passcode":"nope"}' });
-    assert.equal(bad.res.status, 401);
-    const good = await hit('/gate', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'passcode=northwind-demo' });
-    assert.equal(good.res.status, 303);
-    assert.ok(good.res.headers['set-cookie'].includes(tokenFor('northwind-demo')));
-    const cookie = good.res.headers['set-cookie'].split(';')[0];
-    const inside = await hit('/engine', { headers: { cookie } });
-    assert.equal(inside.handled, false);
-    const local = await hit('/api/engine/reset', { method: 'POST', ip: '127.0.0.1' });
-    assert.equal(local.handled, false);
-  } finally {
-    if (prev == null) delete process.env.DEMO_PASSCODE; else process.env.DEMO_PASSCODE = prev;
-  }
+test('demo sign-in replaces the passcode, and loopback is not a bypass', async () => {
+  const health = await hit('/health');
+  assert.equal(health.handled, false);
+  const pixel = await hit('/svc/engine/t/o/S1.gif');
+  assert.equal(pixel.handled, false);
+  const home = await hit('/');
+  assert.equal(home.res.status, 401);
+  assert.match(home.res.body, /Demo sign-in/);
+  assert.doesNotMatch(home.res.body, /passcode/i);
+  const api = await hit('/api/engine/loadtest', { method: 'POST', headers: { accept: 'application/json' } });
+  assert.equal(api.res.status, 401);
+  assert.match(api.res.body, /sign in required/);
+  const bad = await hit('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"user":"nobody"}' });
+  assert.equal(bad.res.status, 401);
+  const good = await hit('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"user":"maria"}' });
+  assert.equal(good.res.status, 200);
+  assert.match(good.res.headers['set-cookie'], /mops_session=/);
+  assert.match(good.res.headers['set-cookie'], /HttpOnly/);
+  assert.match(good.res.headers['set-cookie'], /SameSite=Lax/);
+  const cookie = good.res.headers['set-cookie'].split(';')[0];
+  const inside = await hit('/engine', { headers: { cookie } });
+  assert.equal(inside.handled, false);
+  assert.equal(inside.req.mopsUser.id, 'maria');
+  const local = await hit('/api/engine/reset', { method: 'POST', ip: '127.0.0.1', headers: { accept: 'application/json' } });
+  assert.equal(local.res.status, 401);
 });
 
-test('with no DEMO_PASSCODE the default is northwind and the page says so', async () => {
-  const prev = process.env.DEMO_PASSCODE;
-  delete process.env.DEMO_PASSCODE;
-  try {
-    const home = await hit('/');
-    assert.equal(home.res.status, 401);
-    assert.match(home.res.body, /northwind/);
-    const good = await hit('/gate', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'passcode=northwind' });
-    assert.equal(good.res.status, 303);
-    assert.ok(good.res.headers['set-cookie'].includes(tokenFor('northwind')));
-  } finally {
-    if (prev == null) delete process.env.DEMO_PASSCODE; else process.env.DEMO_PASSCODE = prev;
-  }
+test('the client address is the socket, not a header the caller sets', () => {
+  const req = mockReq({ headers: { 'x-forwarded-for': '198.51.100.9, 203.0.113.4' }, ip: '203.0.113.8' });
+  delete process.env.MOPS_TRUST_PROXY;
+  delete process.env.VERCEL;
+  assert.equal(clientIp(req), '203.0.113.8');
 });
 
-test('the scale-test button is rate limited for public callers', async () => {
-  const prev = process.env.DEMO_PASSCODE;
-  process.env.DEMO_PASSCODE = 'northwind-demo';
-  try {
-    const cookie = 'mops_gate=' + tokenFor('northwind-demo');
-    let blocked = 0;
-    for (let i = 0; i < 6; i++) {
-      const r = await hit('/api/engine/loadtest', { method: 'POST', headers: { cookie, accept: 'application/json' }, ip: '198.51.100.9' });
-      if (r.res.status === 429) blocked++;
-    }
-    assert.ok(blocked >= 1);
-  } finally {
-    if (prev == null) delete process.env.DEMO_PASSCODE; else process.env.DEMO_PASSCODE = prev;
+test('the scale-test button is rate limited for a signed-in caller', async () => {
+  const good = await hit('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"user":"admin"}', ip: '198.51.100.9' });
+  const cookie = good.res.headers['set-cookie'].split(';')[0];
+  let blocked = 0;
+  for (let i = 0; i < 6; i++) {
+    const r = await hit('/api/engine/loadtest', { method: 'POST', headers: { cookie, accept: 'application/json', 'x-forwarded-for': '203.0.113.' + i }, ip: '198.51.100.9' });
+    if (r.res.status === 429) blocked++;
   }
+  assert.ok(blocked >= 1);
 });

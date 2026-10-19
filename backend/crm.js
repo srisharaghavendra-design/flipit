@@ -51,11 +51,18 @@ S.get('/services/data/v59.0/sobjects/:type/:id',c=>{const t=c.params.type;if(!PF
 S.get('/services/data/v59.0/changes',c=>{gate(c,'GET','changes');const since=c.query.since||'1970';const out={};
   for(const t of['Lead','Campaign','CampaignMember'])out[t]=db.prepare(`SELECT * FROM ${t} WHERE LastModifiedDate>? AND LastModifiedById!='integration' ORDER BY LastModifiedDate`).all(since);
   out.Opportunity=db.prepare('SELECT * FROM Opportunity WHERE LastModifiedDate>?').all(since);out.cursor=now();return out});
-// Owner lookup: named account → its AE; else territory by country → SDR (new leads) — the step Srisha does by hand today.
-function lookupOwner({company,domain,email,country}){domain=domain||(email||'').split('@')[1]||'';const acct=db.prepare('SELECT * FROM Account WHERE (Domain!=\'\' AND Domain=?) OR lower(Name)=lower(?)').get(domain,company||'');
-  const u=id=>db.prepare('SELECT * FROM User WHERE Id=?').get(id);if(acct&&acct.OwnerId){const x=u(acct.OwnerId);return{OwnerId:x.Id,OwnerName:x.Name,role:x.Role,reason:`named account ${acct.Name} → account owner`}}
-  const t=db.prepare('SELECT * FROM Territory WHERE lower(Country)=lower(?)').get(country||'');if(t){const x=u(t.SDR);return{OwnerId:x.Id,OwnerName:x.Name,role:x.Role,reason:`territory ${t.Country} (${t.Region}) → SDR`}}
-  return{OwnerId:null,OwnerName:null,role:null,reason:'no territory match: route to MOps queue'}}
+// Owner lookup: named account → its AE. Otherwise round-robin inside the territory.
+// Exec titles go to the AE. Everyone else goes to the SDR. Unknown country is flagged, not guessed.
+const rr={};
+const PHONE=[['+91','India'],['+65','Singapore'],['+61','Australia'],['+49','Germany'],['+44','United Kingdom'],['+81','Japan'],['+1','United States']];
+function countryFromPhone(phone){const d=String(phone||'').replace(/[^\d+]/g,'');for(const[p,c]of PHONE)if(d.startsWith(p))return c;return''}
+function nextUser(region,role){const pool=USERS.filter(u=>u[3]===region&&u[2]===role);if(!pool.length)return null;const k=region+':'+role;const i=(rr[k]||0)%pool.length;rr[k]=i+1;return pool[i]}
+function lookupOwner({company,domain,email,country,title,phone}){domain=domain||(email||'').split('@')[1]||'';const acct=db.prepare('SELECT * FROM Account WHERE (Domain!=\'\' AND Domain=?) OR lower(Name)=lower(?)').get(domain,company||'');
+  const u=id=>db.prepare('SELECT * FROM User WHERE Id=?').get(id);if(acct&&acct.OwnerId){const x=u(acct.OwnerId);return{OwnerId:x.Id,OwnerName:x.Name,role:x.Role,reason:`named account ${acct.Name} → account owner`,unknown:false}}
+  if(!country)country=countryFromPhone(phone);
+  const t=db.prepare('SELECT * FROM Territory WHERE lower(Country)=lower(?)').get(country||'');if(!t)return{OwnerId:null,OwnerName:null,role:null,unknown:true,reason:'unknown country — flagged for a person to assign'}
+  const exec=/\b(CIO|CTO|CISO|VP|Chief|Director|Head|President)\b/i.test(title||'');const role=exec?'AE':'SDR';const picked=nextUser(t.Region,role);const x=u(picked?picked[0]:(role==='AE'?t.AE:t.SDR));
+  return{OwnerId:x.Id,OwnerName:x.Name,role:x.Role,unknown:false,reason:`territory ${t.Country} (${t.Region}) · ${role} · round-robin`}}
 S.get('/owners/lookup',c=>lookupOwner(c.query));S.post('/owners/lookup',c=>[].concat(c.body).map(lookupOwner));S.get('/territories',()=>db.prepare('SELECT t.*,a.Name AE_Name,s.Name SDR_Name FROM Territory t JOIN User a ON a.Id=t.AE JOIN User s ON s.Id=t.SDR').all());S.get('/users',()=>db.prepare('SELECT * FROM User').all());
 S.get('/export',()=>({...Object.fromEntries(Object.keys(PFX).map(t=>[t,db.prepare(`SELECT * FROM ${t}`).all()])),__columns:Object.fromEntries(Object.keys(PFX).map(t=>[t.toLowerCase(),COLS[t]]))}));
 S.get('/health',()=>({ok:true,service:'crm',counts:Object.fromEntries(Object.keys(PFX).map(t=>[t,db.prepare(`SELECT count(*) n FROM ${t}`).get().n])),chaos:{failRate:chaos.failRate,limitPer10s:chaos.limitPer10s},apiCalls24h:db.prepare("SELECT count(*) n FROM ApiLog").get().n,errors:db.prepare("SELECT count(*) n FROM ApiLog WHERE status>=400").get().n}));

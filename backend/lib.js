@@ -1,5 +1,8 @@
 // Shared helpers for @mops backend services: tiny router, JSON/form/CSV body parsing, in-process calls, event bus emitter.
-const http=require('http'),path=require('path'),fs=require('fs');
+const http=require('http'),path=require('path'),fs=require('fs'),crypto=require('crypto');
+if(!process.env.MOPS_SECRET)process.env.MOPS_SECRET=crypto.randomBytes(32).toString('base64url');
+if(!process.env.MOPS_WEBEX_SECRET)process.env.MOPS_WEBEX_SECRET=crypto.randomBytes(32).toString('base64url');
+if(!process.env.MOPS_SESSION_SECRET)process.env.MOPS_SESSION_SECRET=crypto.randomBytes(32).toString('base64url');
 if(process.env.VERCEL&&!process.env.MOPS_DATA_DIR)process.env.MOPS_DATA_DIR='/tmp/mops';
 if(process.env.VERCEL&&!process.env.MOPS_RUNS_DIR)process.env.MOPS_RUNS_DIR='/tmp/mops/runs';
 const PORTS={hub:+process.env.MOPS_PORT||+process.env.PORT||8787,engine:+process.env.ENGINE_PORT||8801,crm:+process.env.CRM_PORT||8802,mail:+process.env.MAIL_PORT||8803,smtp:+process.env.SMTP_PORT||2525,warehouse:+process.env.WH_PORT||8804};
@@ -16,7 +19,7 @@ const handlers={};
 // Event bus: every service reports what it did. Delivered in-process so it works with no open port (Vercel).
 function emitter(svc){return(kind,msg,data={},trace)=>{const ev={svc,kind,msg,data,trace:trace||null,at:now()};
   try{require('./hub').bus(ev)}catch(e){if(process.env.MOPS_DEBUG)console.error('bus',e.message)}return ev}}
-function readBody(req){return new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>r(b));if(req.flush)req.flush()})}
+function readBody(req){return new Promise((resolve,reject)=>{let b='';let n=0;req.on('data',c=>{n+=c.length;if(n>8_000_000){reject(err(413,'Request is too large'));try{req.destroy()}catch(e){}return}b+=c});req.on('end',()=>resolve(b));req.on('error',reject);if(req.flush)req.flush()})}
 function parseCSV(t){const rows=[];let row=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];
   if(q){if(c=='"'&&t[i+1]=='"'){f+='"';i++}else if(c=='"')q=false;else f+=c}
   else if(c=='"')q=true;else if(c==','){row.push(f);f=''}else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;row.push(f);f='';if(row.some(x=>x!==''))rows.push(row);row=[]}else f+=c}

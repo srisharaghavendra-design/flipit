@@ -4,7 +4,7 @@ const path=require('path'),fs=require('fs'),crypto=require('crypto'),Database=re
 const{PORTS,PUBLIC,DATA,now,emitter,parseCSV,service,err,openapi,call}=require('./lib');
 const mail=require('./mail');
 const emit=emitter('engine');const db=new Database(path.join(DATA,'engine.db'));db.pragma('journal_mode=WAL');
-const SECRET=process.env.MOPS_SECRET||'dev-only-secret';const APPROVAL_LIMIT=+(process.env.MOPS_APPROVAL_LIMIT||150000);
+const SECRET=process.env.MOPS_SECRET;const APPROVAL_LIMIT=+(process.env.MOPS_APPROVAL_LIMIT||150000);
 db.exec(`CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY,name TEXT,region TEXT,segment TEXT,industry TEXT,domain TEXT);
 CREATE TABLE IF NOT EXISTS contacts(id TEXT PRIMARY KEY,email TEXT UNIQUE,first TEXT,last TEXT,title TEXT,account_id TEXT,region TEXT,source TEXT,score REAL DEFAULT 0,created_at TEXT,updated_at TEXT);
 CREATE TABLE IF NOT EXISTS consent_ledger(id INTEGER PRIMARY KEY,contact_id TEXT,channel TEXT,status TEXT,law TEXT,basis TEXT,source TEXT,evidence TEXT,at TEXT);
@@ -218,8 +218,13 @@ S_.post('/u/:token',(c,res)=>{const s=unsubSend(c.params.token);const ct=one('SE
   emit('consent',`🛑 ${ct.email} unsubscribed → ledger opted_out; future sends suppressed`,{},c.trace);if(c.headers.accept?.includes('json'))return{ok:true};page(res,`<h2>You're unsubscribed</h2><p>${E(ct.email)} won't get marketing email from us. This was recorded in our consent ledger.</p>`)});
 S_.post('/templates',c=>{run('INSERT OR REPLACE INTO templates VALUES(?,?,?,?,?)',c.body.id||nextId('tpl','TPL-'),c.body.name,c.body.subject,c.body.html,now());return{ok:true}});
 S_.get('/templates',()=>all('SELECT id,name,subject FROM templates'));
-S_.post('/campaigns',c=>{const b=c.body;if(!b.name||!b.channel||!b.region)throw err(400,'name, channel, region required');const id=nextId('camp','K-',4),code=makeCode(b.channel,b.region,b.startDate?new Date(b.startDate):undefined),amt=+b.budget||0;
-  const needs=amt>APPROVAL_LIMIT;run('INSERT INTO campaigns(id,code,name,channel,region,fy_quarter,budget,spend,status,owner,crm_id,created_at,updated_at,start_date,end_date,country,product,intake_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',id,code,b.name,b.channel,b.region,fyq(b.startDate?new Date(b.startDate):undefined),needs?0:amt,0,needs?'Pending approval':'Planned',b.owner||'Srisha R.',null,now(),now(),b.startDate||null,b.endDate||null,b.country||null,b.product||null,b.intakeId||null);
+try{db.exec('CREATE UNIQUE INDEX IF NOT EXISTS campaigns_intake ON campaigns(intake_id) WHERE intake_id IS NOT NULL AND intake_id!=\'\'')}catch(e){}
+S_.post('/campaigns',c=>{const b=c.body;if(!b.name||!b.channel||!b.region)throw err(400,'name, channel, region required');
+  if(b.startDate&&b.endDate&&String(b.endDate)<String(b.startDate).slice(0,10))throw err(400,'end date is before the start date; no code was issued');
+  if(b.dateError)throw err(400,'the dates are not valid; no code was issued');
+  if(b.intakeId){const prev=one('SELECT * FROM campaigns WHERE intake_id=?',b.intakeId);if(prev){const br=one('SELECT * FROM budget_requests WHERE campaign_id=? ORDER BY requested_at DESC LIMIT 1',prev.id);return{id:prev.id,code:prev.code,budgetRequest:br&&br.id,status:br&&(br.status==='pending'||br.status==='pending_approval')?'pending_approval':(prev.status==='Rejected'?'rejected':'approved'),idempotent:true,demoId:true}}}
+  const id=nextId('camp','K-',4),code=makeCode(b.channel,b.region,b.startDate?new Date(b.startDate+'T12:00:00Z'):undefined),amt=+b.budget||0;
+  const usd=b.currency?require('./money').toUSD(amt,b.currency):amt;const needs=(usd==null?amt:usd)>APPROVAL_LIMIT;run('INSERT INTO campaigns(id,code,name,channel,region,fy_quarter,budget,spend,status,owner,crm_id,created_at,updated_at,start_date,end_date,country,product,intake_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',id,code,b.name,b.channel,b.region,fyq(b.startDate?new Date(b.startDate+'T12:00:00Z'):undefined),needs?0:amt,0,needs?'Pending approval':'Planned',b.owner||'Srisha R.',null,now(),now(),b.startDate||null,b.endDate||null,b.country||null,b.product||null,b.intakeId||null);
   const br=nextId('br','BR-');run('INSERT INTO budget_requests VALUES(?,?,?,?,?,?,?,?,?,?)',br,id,amt,b.purpose||b.name,needs?'pending':'auto_approved',needs?null:'policy',needs?`> $${APPROVAL_LIMIT/1000}K needs director approval`:`≤ $${APPROVAL_LIMIT/1000}K auto-approved`,b.owner||'Srisha R.',now(),needs?null:now());
   audit(b.owner||'srisha','campaign.create',id,{code,budget:amt},c.trace);audit('policy','budget.'+(needs?'route_for_approval':'auto_approve'),br,{amount:amt,limit:APPROVAL_LIMIT},c.trace);
   emit('campaign',`campaign ${id} · code ${code} generated`,{code},c.trace);emit(needs?'approval':'campaign',needs?`budget $${amt/1000}K > $${APPROVAL_LIMIT/1000}K limit → routed to approver (${br})`:`budget $${amt/1000}K auto-approved (≤ $${APPROVAL_LIMIT/1000}K)`,{},c.trace);
@@ -239,8 +244,11 @@ S_.get('/t/o/:sid',(c,res)=>{const id=c.params.sid.replace(/\.gif$/,'');const s=
   res.writeHead(200,{'content-type':'image/gif','cache-control':'no-store'});res.end(GIF)});
 S_.get('/t/c/:sid',(c,res)=>{const s=one('SELECT * FROM sends WHERE id=?',c.params.sid);const u=c.query.u||'/';
   if(s){if(!s.opened_at)run('UPDATE sends SET opened_at=? WHERE id=?',now(),s.id);if(!s.clicked_at){run('UPDATE sends SET clicked_at=? WHERE id=?',now(),s.id);upsertMember(s.campaign_id,s.contact_id,'Clicked',c.trace);const sc=rescore(s.contact_id,c.trace);emit('track',`click ${s.id} → ${u.slice(0,60)} · score ${sc}`,{},c.trace)}}
-  res.writeHead(302,{location:/^https?:\/\//.test(u)?u:'/'});res.end()});
-S_.post('/events',c=>{const b=c.body;const camp=one('SELECT * FROM campaigns WHERE id=?',b.campaignId);if(!camp)throw err(404,'campaign not found');const id=nextId('evt','EV-');
+  res.writeHead(302,{location:safeLink(u)});res.end()});
+function safeLink(u){if(!u||u==='/')return'/';if(String(u).startsWith('/')&&!String(u).startsWith('//'))return String(u);try{const url=new URL(u);const host=url.hostname.toLowerCase();if((url.protocol==='https:'||url.protocol==='http:')&&(host==='northwind.example'||host.endsWith('.northwind.example')))return url.toString()}catch(e){}return'/'}
+S_.post('/events',c=>{const b=c.body;const camp=one('SELECT * FROM campaigns WHERE id=?',b.campaignId);if(!camp)throw err(404,'campaign not found');
+  const prev=one('SELECT * FROM events WHERE campaign_id=?',b.campaignId);if(prev)return{id:prev.id,slug:prev.slug,url:`${PUBLIC}/svc/engine/r/${prev.slug}`,idempotent:true};
+  const id=nextId('evt','EV-');
   const slug=(b.slug||b.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+id.slice(-4).toLowerCase()).replace(/^-|-$/g,'');run('INSERT INTO events VALUES(?,?,?,?,?,?,?,?)',id,slug,b.name,b.campaignId,b.date,b.city,+b.capacity||100,now());
   audit('srisha','event.create',id,{slug},c.trace);emit('event',`event ${id} live at /r/${slug}`,{},c.trace);return{id,slug,url:`${PUBLIC}/svc/engine/r/${slug}`}});
 S_.get('/events',()=>all('SELECT e.*,(SELECT count(*) FROM registrations r WHERE r.event_id=e.id) registrations FROM events e'));

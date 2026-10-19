@@ -8,21 +8,22 @@ const MOPS_BOX=(process.env.MOPS_INBOX||'mops@mops.local').toLowerCase();let loa
 const KEEP=['list-unsubscribe','list-unsubscribe-post','x-mops-campaign','x-mops-send','x-mops-trace','in-reply-to','x-mops-surface'];
 function addr(v){return String(v||'').replace(/^.*</,'').replace(/>.*$/,'').trim()}
 function list(v){return [].concat(v||[]).flatMap(x=>String(x).split(',')).map(s=>s.trim()).filter(Boolean)}
-// deliver() is the only way mail enters the demo. Load-test mail is counted, not stored.
+// deliver() writes every message into mail.db. Nothing is handed to a provider.
 function deliver(opts={}){const from=addr(opts.from||'events@northwind.example');const to=list(opts.to),cc=list(opts.cc);
   const envelope=[...to,...cc];const load=envelope.some(r=>r.toLowerCase().endsWith('@load.example'))||!!(opts.headers&&(opts.headers['X-Mops-Load']||opts.headers['x-mops-load']));
-  if(load){loadAccepted++;loadBytes+=(opts.html||opts.text||'').length;return{messageId:'<load-'+loadAccepted+'@mops.local>',accepted:loadAccepted}}
-  const h={};for(const[k,v]of Object.entries(opts.headers||{})){const key=String(k).toLowerCase();if(KEEP.includes(key))h[key]=v}
+  const h={};for(const[k,v]of Object.entries(opts.headers||{})){const key=String(k).toLowerCase();if(KEEP.includes(key)||key==='x-mops-load')h[key]=v}
   if(opts.inReplyTo)h['in-reply-to']=opts.inReplyTo;if(opts.references&&!h.references)h.references=opts.references;
   const messageId=opts.messageId||('<'+crypto.randomBytes(8).toString('hex')+'@mops.local>');
   const html=opts.html||'',text=opts.text||'';
-  const info=db.prepare('INSERT INTO messages(message_id,mail_from,rcpt,subject,html,headers,size,at,text,cc) VALUES(?,?,?,?,?,?,?,?,?,?)').run(messageId,from,envelope.join(','),opts.subject||'',html,JSON.stringify(h),html.length,now(),text,cc.join(','));
-  const id=Number(info.lastInsertRowid);const box=[...envelope.map(a=>addr(a).toLowerCase())];
+  const info=db.prepare('INSERT INTO messages(message_id,mail_from,rcpt,subject,html,headers,size,at,text,cc) VALUES(?,?,?,?,?,?,?,?,?,?)').run(messageId,from,envelope.join(','),opts.subject||'',html,JSON.stringify(h),(html||text).length,now(),text,cc.join(','));
+  const id=Number(info.lastInsertRowid);
+  if(load){loadAccepted++;loadBytes+=(html||text).length;return{messageId,id,accepted:loadAccepted,stored:true,deliveredToProvider:0}}
+  const box=[...envelope.map(a=>addr(a).toLowerCase())];
   if(box.includes(MOPS_BOX))emit('inbound',`📥 email to ${MOPS_BOX} from ${from}: "${opts.subject||''}"`,{id,from},opts.headers&&(opts.headers['X-Mops-Trace']||opts.headers['x-mops-trace'])||null);
-  emit('smtp',`250 accepted → ${envelope.join(',')}`,{subject:opts.subject||''},null);return{messageId,id}}
+  emit('smtp',`250 accepted → ${envelope.join(',')}`,{subject:opts.subject||''},null);return{messageId,id,stored:true,deliveredToProvider:0}}
 function loadStats(){return{accepted:loadAccepted,bytes:loadBytes}}
 const spec=openapi('Mail sink (in-process catcher)','Captures every email the engine sends inside this process. Nothing reaches real people.',[
- ['GET /messages','Latest captured messages (?rcpt= filter)'],['GET /messages/:id','One message with HTML'],['GET /messages/:id/html','Rendered email'],['GET /health','Health + count'],['GET /load','Load-test counter (counted, not stored)'],['POST /admin/reset','Clear the inbox'],['POST /deliver','Accept one message (same path the engine uses)',{to:'a@northwind.example',subject:'Hello',text:'Hi'}]]);
+ ['GET /messages','Latest captured messages (?rcpt= filter)'],['GET /messages/:id','One message with HTML'],['GET /messages/:id/html','Rendered email'],['GET /health','Health + count'],['GET /load','Load-test counter. Rows are stored in mail.db and are not sent to a provider.'],['POST /admin/reset','Clear the inbox'],['POST /deliver','Accept one message over HTTP and write it to mail.db',{to:'a@northwind.example',subject:'Hello',text:'Hi'}]]);
 const S=service('mail',require('./lib').PORTS.mail,spec);
 S.get('/messages',c=>db.prepare(`SELECT id,message_id,mail_from,rcpt,subject,headers,at FROM messages ${c.query.rcpt?'WHERE rcpt LIKE ?':''} ORDER BY id DESC LIMIT 200`).all(...(c.query.rcpt?['%'+c.query.rcpt+'%']:[])).map(m=>({...m,headers:JSON.parse(m.headers)})));
 S.get('/messages/:id',c=>{const m=db.prepare('SELECT * FROM messages WHERE id=?').get(c.params.id);if(m)m.headers=JSON.parse(m.headers);return m||{__status:404,error:'not found'}});

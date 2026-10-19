@@ -128,7 +128,11 @@ async function architecture(){const h=await health();const core=require('./core'
 const body=req=>new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>r(b))});
 const J=(res,o,c=200)=>{res.writeHead(c,{'content-type':'application/json'});res.end(JSON.stringify(o))};
 async function handle(req,res,p,u){
-  const sv=p.match(/^\/svc\/(engine|crm|mail|warehouse)(\/.*)?$/);if(sv){proxy(req,res,sv[1],(sv[2]||'/')+(u.search||''));return true}
+  const sv=p.match(/^\/svc\/(engine|crm|mail|warehouse)(\/.*)?$/);
+  if(sv){const rest=sv[2]||'/';const pub=/^\/(t|u|r)\//.test(rest);
+    if(!pub){if(sv[1]==='warehouse'&&/^\/sql/.test(rest)){res.writeHead(403,{'content-type':'application/json'});res.end(JSON.stringify({error:'Warehouse SQL is not available from the browser.'}));return true}
+      const user=req.mopsUser;if(!user||user.role!=='admin'){res.writeHead(403,{'content-type':'application/json'});res.end(JSON.stringify({error:'Admin only.'}));return true}}
+    proxy(req,res,sv[1],rest+(u.search||''));return true}
   if(p==='/engine'||p==='/engine/'){res.writeHead(200,{'content-type':'text/html'});res.end(fs.readFileSync(path.join(__dirname,'..','ui','engine.html')));return true}
   if(!p.startsWith('/api/engine/'))return false;const r=p.slice(12);
   if(r==='bus'&&req.method==='POST'){bus(JSON.parse(await body(req)));J(res,{ok:1});return true}
@@ -148,10 +152,10 @@ async function handle(req,res,p,u){
   if(r==='demo/email'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');const info=require('./mail').deliver({from:'"Srisha R." <srisha@northwind.example>',to:'chris@northwind.example',cc:process.env.MOPS_INBOX||'mops@mops.local',subject:b.subject||'Partner webinar for Japan',text:b.text||'Chris, planning a partner webinar for Japan next quarter.\n\n@mops new partner webinar in Japan, budget $60K\n\nThanks,\nSrisha'});
     await CORE.drain(8000);J(res,{sent:true,messageId:info.messageId});return true}
   if(r==='demo/webex'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');const raw=JSON.stringify({resource:'messages',event:'created',data:{roomId:'Y2lzY29zcGFyazovL2RlbW8',personEmail:b.from||'priya.n@northwind.example',text:b.text||'@mops what is the pipeline by channel?'}});
-    const sig=require('crypto').createHmac('sha1',process.env.MOPS_WEBEX_SECRET||'dev-webex-secret').update(raw).digest('hex');const x=await W.webex(raw,sig);J(res,x.body,x.status);return true}
-  if(r==='heal/inject'&&req.method==='POST'){J(res,await W.injectFailure());return true}
+    const sig=require('crypto').createHmac('sha1',process.env.MOPS_WEBEX_SECRET).update(raw).digest('hex');const x=await W.webex(raw,sig);J(res,x.body,x.status);return true}
+  if(r==='heal/inject'&&req.method==='POST'){if(!req.mopsUser||req.mopsUser.role!=='admin'){J(res,{error:'Admin only.'},403);return true}J(res,await W.injectFailure());return true}
   if(r==='heal/incidents'){J(res,W.incidents);return true}
-  if(r==='loadtest'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,await W.startLoad(b));return true}
+  if(r==='loadtest'&&req.method==='POST'){if(!req.mopsUser||req.mopsUser.role!=='admin'){J(res,{error:'Admin only.'},403);return true}const b=JSON.parse(await body(req)||'{}');J(res,await W.startLoad(b));return true}
   if(r==='loadtest'){const f=path.join(RUNS,'loadtest-latest.json');const lim=W.loadLimits();J(res,{live:W.getLoad(),latest:fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):null,defaults:{contacts:lim.defaultContacts,sends:lim.defaultSends,maxContacts:lim.maxContacts,maxSends:lim.maxSends,memoryGb:lim.memoryGb,vercel:!!lim.vercel,label:lim.label}});return true}
   const INT=require('./intake'),MAP=require('./mapper');let mm;
   if(r==='intake'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,await INT.run(b));return true}
@@ -164,14 +168,15 @@ async function handle(req,res,p,u){
   mm=r.match(/^sow\/(SOW-\w+)\/(state|answer|sign)$/);if(mm){const b=req.method==='POST'?JSON.parse(await body(req)||'{}'):{};J(res,mm[2]==='state'?ZT.sowGet(mm[1]):mm[2]==='answer'?ZT.sowAnswer(mm[1],b.answers||{}):ZT.sowSign(mm[1],b.by));return true}
   if(r==='zero/data'){J(res,ZT.DATA);return true}
   const LC=require('./lifecycle');
-  if(r==='lifecycle/start'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,await LC.start(b));return true}
+  if(r==='lifecycle/start'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,await LC.start({...b,user:req.mopsUser}));return true}
   if(r==='lifecycle/reset'&&req.method==='POST'){J(res,LC.present(LC.resetDemo()));return true}
-  if(r==='lifecycle'){J(res,{draft:LC.present(LC.ensure()),items:LC.list(),steps:LC.STEPS});return true}
+  if(r==='lifecycle'){J(res,{draft:LC.present(LC.ensure()),items:LC.list(req.mopsUser),steps:LC.STEPS});return true}
   mm=r.match(/^lifecycle\/(LC-[\w]+)\/sow\.(docx|pdf|html)$/);if(mm){const kind=mm[2]==='html'?'html':mm[2];const f=LC.file(mm[1],kind);if(!f){res.writeHead(404);return res.end('not ready'),true}
     const h={'content-type':f.type};if(kind!=='html'&&f.name)h['content-disposition']=`attachment; filename="${f.name}"`;res.writeHead(200,h);res.end(f.body);return true}
   mm=r.match(/^lifecycle\/(LC-[\w]+)\/upload\.csv$/);if(mm){const f=LC.file(mm[1],'csv');if(!f){res.writeHead(404);return res.end(''),true}res.writeHead(200,{'content-type':'text/csv','content-disposition':`attachment; filename="${f.name}"`});res.end(f.body);return true}
-  mm=r.match(/^lifecycle\/(LC-[\w]+)$/);if(mm&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');try{const out=await LC.act(mm[1],b);J(res,out||{error:'not found'},out?200:404)}catch(e){J(res,{error:e.message},500)}return true}
-  if(mm){const out=LC.get(mm[1]);J(res,out||{error:'not found'},out?200:404);return true}
+  mm=r.match(/^lifecycle\/(LC-[\w]+)\/upload-errors\.csv$/);if(mm){const row=LC.get(mm[1]);const csv=row&&row.setup&&row.setup.uploadPreview&&row.setup.uploadPreview.errorCsv;if(!csv){res.writeHead(404);return res.end(''),true}res.writeHead(200,{'content-type':'text/csv','content-disposition':'attachment; filename="upload-errors.csv"'});res.end(csv);return true}
+  mm=r.match(/^lifecycle\/(LC-[\w]+)$/);if(mm&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');try{const out=await LC.act(mm[1],b,req.mopsUser);if(out&&out.forbidden){J(res,{error:out.error},403);return true}J(res,out||{error:'not found'},out?200:404)}catch(e){J(res,{error:e.message},500)}return true}
+  if(mm){const out=LC.read(mm[1],req.mopsUser);if(out&&out.forbidden){J(res,{error:out.error},403);return true}J(res,out||{error:'not found'},out?200:404);return true}
   if(r==='intakes'){J(res,INT.list());return true}
   if(r==='repeat-entry'){J(res,require('./fields').repeatEntry());return true}
   mm=r.match(/^sow\/(SOW-[\w-]+)$/);if(mm){const s=INT.sow(mm[1]);res.writeHead(s?200:404,{'content-type':'text/html'});res.end(s?s.html:'not found');return true}
@@ -185,6 +190,6 @@ async function handle(req,res,p,u){
   if(r==='covered'){if(!global.__mopsCoveredOnce){global.__mopsCoveredOnce=true;try{await COV.scan('startup')}catch(e){}}J(res,COV.list());return true}
   if(r==='covered/scan'&&req.method==='POST'){J(res,await COV.scan('manual'));return true}
   const um=r.match(/^covered\/(COV-\d+)\/undo$/);if(um&&req.method==='POST'){try{J(res,await COV.undo(um[1]))}catch(e){J(res,{error:e.message},409)}return true}
-  if(r==='reset'&&req.method==='POST'){current=null;ring.length=0;require('./core').reset();const s=await call('engine','/admin/seed',{body:{}});await call('mail','/admin/reset',{body:{}});await call('warehouse','/elt/run',{body:{}});J(res,s);return true}
+  if(r==='reset'&&req.method==='POST'){if(!req.mopsUser||req.mopsUser.role!=='admin'){J(res,{error:'Admin only.'},403);return true}current=null;ring.length=0;require('./core').reset();const s=await call('engine','/admin/seed',{body:{}});await call('mail','/admin/reset',{body:{}});await call('warehouse','/elt/run',{body:{}});J(res,s);return true}
   J(res,{error:'unknown engine route'},404);return true}
 module.exports={handle,bus,health,runCampaign};setImmediate(()=>require('./workers'));
