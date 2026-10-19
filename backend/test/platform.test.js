@@ -117,6 +117,7 @@ test('data core and engage finish the marketer asks', { timeout: 120000 }, async
   assert.equal(againSim.opened, 0);
   assert.equal(againSim.clicked, 0);
   assert.equal(againSim.opens, 14);
+  assert.equal(againSim.idempotent, true);
 
   const mql = await brain.ask({ text: '@mops who is an MQL on the Chicago invite', channel: 'App', actor: 'Maria Alvarez' });
   assert.match(mql.reply, /4 of 30/);
@@ -147,7 +148,11 @@ test('data core and engage finish the marketer asks', { timeout: 120000 }, async
   assert.equal(later.matched, true);
   assert.equal(later.askId, 'weekly-americas');
   assert.match(later.reply, /Weekly report for Americas/);
-  assert.match(later.reply, /weekly\.pptx/);
+  assert.equal(later.downloads[0].label, 'Download PowerPoint');
+  assert.equal(later.downloads[1].label, 'Download PDF');
+  assert.match(later.downloads[0].href, /weekly\.pptx/);
+  assert.doesNotMatch(later.reply, /\/api\//);
+  assert.notEqual(later.result.goal, later.result.pipeline);
   assert.ok(later.ms < 300, 'weekly ask ' + later.ms + 'ms');
   assert.equal(later.channel, 'Email');
 
@@ -179,6 +184,10 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   const il = await data.emailable({ state: 'Illinois', country: 'United States' });
   const ilNames = il.sample.map(p => p.first_name + ' ' + p.last_name);
   assert.equal(new Set(ilNames).size, ilNames.length);
+  const everyIl = await db.all("SELECT first_name || ' ' || last_name AS name FROM contacts WHERE state = 'Illinois'");
+  const everyName = everyIl.map(r => r.name);
+  assert.equal(new Set(everyName).size, everyName.length);
+  assert.ok(everyName.filter(n => n === 'Sofia Almeida').length <= 1);
   const states = await db.all("SELECT state, first_name || ' ' || last_name AS name FROM contacts WHERE state IN ('Illinois','Texas')");
   const byState = { Illinois: new Set(), Texas: new Set() };
   for (const row of states) byState[row.state].add(row.name);
@@ -194,9 +203,14 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.equal(upload.result.duplicates, 1);
   assert.equal(upload.result.retried, 1);
   assert.ok(upload.ms < 300, 'upload ' + upload.ms + 'ms');
+  assert.match(upload.reply, /no consent/);
+  assert.match(upload.reply, /missing email/);
+  assert.match(upload.reply, /duplicate/);
+  assert.match(upload.reply, /Jake Moss \(AE\): 8 Chicago accounts, 2 campaign members/);
+  assert.match(upload.reply, /Rosa Diaz \(SDR\): 0 Chicago accounts, 2 campaign members/);
   const again = await brain.ask({ text: '@mops upload this attendee file to SFDC for the Chicago roundtable', channel: 'Webex', actor: 'Maria Alvarez' });
   assert.equal(again.result.idempotent, true);
-  assert.match(again.reply, /No second copy/);
+  assert.match(again.reply, /Already uploaded/);
   const leads = await db.all("SELECT owner_name, title FROM crm_objects WHERE type = 'Lead' ORDER BY email");
   assert.equal(leads.length, 4);
   assert.equal(leads.filter(r => r.owner_name === 'Jake Moss').length, 2);
@@ -210,8 +224,8 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.equal(campaignJob.attempts, 2);
   assert.match(campaignJob.last_error, /503/);
   const owners = await brain.ask({ text: '@mops who owns the Chicago accounts', channel: 'App', actor: 'Maria Alvarez' });
-  assert.match(owners.reply, /Jake Moss/);
-  assert.match(owners.reply, /8 Chicago accounts/);
+  assert.match(owners.reply, /Jake Moss \(AE\): 8 Chicago accounts, 2 campaign members/);
+  assert.match(owners.reply, /Rosa Diaz \(SDR\): 0 Chicago accounts, 2 campaign members/);
   const fails = await brain.ask({ text: '@mops show the sync failures', channel: 'App', actor: 'Maria Alvarez' });
   assert.match(fails.reply, /No open failures/);
   assert.equal(fails.result.open.length, 0);
@@ -219,23 +233,38 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   const budget = await brain.ask({ text: '@mops new budget: Chicago security roundtable, $180K', channel: 'Webex', actor: 'Maria Alvarez' });
   assert.equal(budget.ok, true);
   assert.equal(budget.result.amountUsd, 180000);
-  assert.equal(budget.result.status, 'approved');
+  assert.equal(budget.result.status, 'pending');
+  assert.equal(budget.result.label, 'Waiting on Chris');
   assert.equal(budget.result.approver, 'Chris M.');
-  assert.equal(budget.result.ban, 'BAN-FY26Q3-4100-0001');
-  assert.equal(budget.result.campaignCode, 'FY26Q3-USA-EVT-0101');
+  assert.equal(budget.result.ban, null);
+  assert.equal(budget.result.campaignCode, null);
   assert.equal(budget.result.open.length, 3);
-  assert.match(budget.reply, /River North Club, Salon B|Harbor North/);
+  assert.match(budget.reply, /Waiting on Chris/);
+  assert.match(budget.reply, /\$180,000/);
+  assert.doesNotMatch(budget.reply, /No second request/);
+  assert.doesNotMatch(budget.reply, /BAN-/);
+  assert.match(budget.reply, /Harbor North/);
   assert.match(budget.reply, /\$42,000 of \$180,000/);
   assert.ok(budget.ms < 300, 'budget ' + budget.ms + 'ms');
+  const denied = await brain.ask({ text: '@mops approve Chicago', channel: 'App', actor: 'Maria Alvarez', role: 'marketer' });
+  assert.match(denied.reply, /Only Chris M/);
+  assert.match(denied.reply, /Waiting on Chris/);
+  const approved = await brain.ask({ text: '@mops approve Chicago', channel: 'App', actor: 'Chris M.', role: 'approver' });
+  assert.equal(approved.result.status, 'approved');
+  assert.equal(approved.result.ban, 'BAN-FY26Q3-4100-0001');
+  assert.equal(approved.result.campaignCode, 'FY26Q3-USA-EVT-0101');
+  assert.match(approved.reply, /BAN-FY26Q3-4100-0001/);
   const budgetAgain = await brain.ask({ text: '@mops new budget: Chicago security roundtable, $180K', channel: 'Webex', actor: 'Maria Alvarez' });
   assert.equal(budgetAgain.result.idempotent, true);
-  assert.match(budgetAgain.reply, /No second request/);
+  assert.match(budgetAgain.reply, /already approved/);
   const auto = await spend.file({ campaignId: 'CP-03', amount: 150000, currency: 'USD', actor: 'Maria Alvarez', channel: 'App', sourceMessage: 'test', idempotencyKey: 'test:150000' });
   assert.equal(auto.status, 'approved');
   assert.equal(auto.approver, null);
   const pending = await spend.file({ campaignId: 'CP-04', amount: 150001, currency: 'USD', actor: 'Maria Alvarez', channel: 'App', sourceMessage: 'test', idempotencyKey: 'test:150001' });
   assert.equal(pending.status, 'pending');
+  assert.equal(pending.label, 'Waiting on Chris');
   assert.equal(pending.approver, 'Chris M.');
+  assert.equal(pending.ban, null);
   const minted = await brain.ask({ text: '@mops mint the campaign code', channel: 'App', actor: 'Maria Alvarez' });
   assert.match(minted.reply, /FY26Q3-USA-EVT-0101/);
   assert.match(minted.reply, /BAN-FY26Q3-4100-0001/);
@@ -258,6 +287,7 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.match(cpl.reply, /\$42,000/);
   const pipe = await brain.ask({ text: '@mops how much pipeline did Chicago source', channel: 'Webex', actor: 'Maria Alvarez' });
   assert.match(pipe.reply, /\$640,000/);
+  assert.match(pipe.reply, /\$800,000/);
   const monthly = await brain.ask({ text: '@mops monthly report for the portfolio', channel: 'Email', actor: 'Maria Alvarez' });
   assert.equal(monthly.askId, 'monthly-portfolio');
   assert.match(monthly.reply, /Monthly report for the portfolio/);
@@ -266,6 +296,20 @@ test('crm, plan, and insights finish the marketer asks', { timeout: 120000 }, as
   assert.equal(file.pptx.slice(0, 2).toString(), 'PK');
   assert.equal(file.pdf.slice(0, 5).toString(), '%PDF-');
   assert.ok(file.pptx.length > 1000 && file.pdf.length > 500);
+  assert.notEqual(file.facts.goal, file.facts.pipeline);
+  assert.match(file.pdf.toString('utf8'), /Target pipeline/);
+  assert.ok(file.facts.goal > file.facts.pipeline);
+
+  const { reset } = require('../../platform/seed');
+  await reset(db);
+  const freshSend = await brain.ask({ text: '@mops send the Chicago invite to CIOs in Illinois who opened last month', channel: 'App', actor: 'Maria Alvarez' });
+  assert.match(freshSend.reply, /^Sent the Chicago invite/);
+  assert.doesNotMatch(freshSend.reply, /Already/);
+  const freshBudget = await brain.ask({ text: '@mops new budget: Chicago security roundtable, $180K', channel: 'App', actor: 'Maria Alvarez' });
+  assert.match(freshBudget.reply, /Waiting on Chris/);
+  assert.doesNotMatch(freshBudget.reply, /No second/);
+  const names = await db.all("SELECT first_name || ' ' || last_name AS name FROM contacts WHERE state = 'Illinois'");
+  assert.equal(new Set(names.map(r => r.name)).size, names.length);
 });
 
 test('platform consoles in the browser', { timeout: 240000 }, async () => {
@@ -296,9 +340,10 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.locator('[data-module="crm"][data-status="built"]').waitFor();
     await page.locator('[data-module="plan"][data-status="built"]').waitFor();
     await page.locator('[data-module="insights"][data-status="built"]').waitFor();
-    await page.locator('[data-module="brain"][data-status="next"]').waitFor();
-    assert.equal(await page.locator('[data-status="built"]').count(), 5);
-    assert.equal(await page.locator('[data-status="next"]').count(), 1);
+    await page.locator('[data-module="brain"][data-status="built"]').waitFor();
+    assert.equal(await page.locator('[data-status="built"]').count(), 6);
+    assert.equal(await page.locator('[data-status="next"]').count(), 0);
+    await page.locator('#who').getByText('Maria Alvarez').waitFor();
     await page.screenshot({ path: path.join(shot, 'platform-home.png'), fullPage: true });
 
     await page.goto(H + '/platform/data');
@@ -314,6 +359,9 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.goto(H + '/platform/ask');
     assert.equal(await page.locator('#ask').inputValue(), '');
     await page.locator('#channel').selectOption('Webex');
+    await page.goto(H + '/platform/data');
+    await page.goto(H + '/platform/ask');
+    assert.equal(await page.locator('#channel').inputValue(), 'Webex');
     await page.locator('#ask').fill('@mops send the Chicago invite to CIOs in Illinois who opened last month');
     await page.locator('#run').click();
     await page.locator('#answer .from').getByText('Webex').waitFor();
@@ -335,6 +383,13 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.waitForFunction((start) => Number(document.querySelector('[data-mql-count]').textContent) > start, before);
     await page.locator('#sends').getByText('47%').first().waitFor();
     await page.locator('#sends').getByText('13%').first().waitFor();
+    const smallSends = await page.evaluate(() => [...document.querySelectorAll('#sends tr[data-recipients]')].map(n => Number(n.getAttribute('data-recipients'))).filter(n => n < 2));
+    assert.deepEqual(smallSends, []);
+    const repeated = await page.evaluate(() => {
+      const names = [...document.querySelectorAll('#board-il tr[data-contact] td:first-child')].map(n => n.textContent.trim());
+      return names.filter((n, i) => names.indexOf(n) !== i);
+    });
+    assert.deepEqual(repeated, []);
     await page.locator('#board-il').getByText('mql').first().waitFor();
     const shared = await page.evaluate(() => {
       const ids = (sel) => [...document.querySelectorAll(sel)].map(n => n.getAttribute('data-contact'));
@@ -348,6 +403,10 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     await page.goto(H + '/platform/crm');
     await page.locator('[data-proof]').click();
     await page.locator('#answer .reply').getByText(/4 campaign members/).waitFor();
+    await page.locator('#answer .reply').getByText(/no consent/).waitFor();
+    await page.locator('#held').getByText('missing email').waitFor();
+    await page.locator('#held').getByText('duplicate').waitFor();
+    await page.locator('#owners').getByText('8 Chicago accounts, 2 campaign members').waitFor();
     await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 8 screens \/ 14 fields \/ 25 minutes/).waitFor();
     await page.locator('#objects').getByText('Jake Moss').first().waitFor();
     await page.locator('#queue').getByText('503').first().waitFor();
@@ -356,23 +415,39 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
 
     await page.goto(H + '/platform/spend');
     await page.locator('[data-proof]').click();
-    await page.locator('#answer .reply').getByText(/Chris M\./).waitFor();
-    await page.locator('#answer .reply').getByText(/BAN-FY26Q3-4100-0001/).waitFor();
+    await page.locator('#answer .reply').getByText('Waiting on Chris').waitFor();
+    assert.equal(await page.locator('#answer .reply').getByText('BAN-').count(), 0);
     await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 7 screens \/ 18 fields \/ 40 minutes/).waitFor();
-    await page.locator('#actuals').getByText('42000').first().waitFor();
+    await page.locator('#actuals').getByText('$42,000').first().waitFor();
+    await page.locator('#packets').getByText('Waiting on Chris').waitFor();
     await page.locator('#our_pm').fill('Maria Alvarez');
     await page.locator('#po_number').fill('PO-2044');
     await page.locator('#venue_contact').fill('Jordan Hale');
     await page.locator('#save').click();
     await page.locator('#sow').getByText('ready').waitFor();
+    await page.screenshot({ path: path.join(shot, 'platform-spend.png'), fullPage: true });
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      page.locator('#switch').selectOption('chris')
+    ]);
+    await page.locator('#who').getByText('Chris M.').waitFor();
+    await page.locator('#approve').click();
+    await page.locator('#packets').getByText('BAN-FY26Q3-4100-0001').waitFor();
+    await page.locator('#answer .reply').getByText(/FY26Q3-USA-EVT-0101/).waitFor();
     assert.equal((await page.locator('#err').innerText()).trim(), '');
     await page.screenshot({ path: path.join(shot, 'platform-spend.png'), fullPage: true });
 
     await page.goto(H + '/platform/insights');
     await page.locator('[data-proof]').click();
     await page.locator('#answer .reply').getByText(/Weekly report for Americas/).waitFor();
+    await page.locator('#answer').getByRole('link', { name: 'Download PowerPoint' }).waitFor();
+    await page.locator('#answer').getByRole('link', { name: 'Download PDF' }).waitFor();
+    assert.equal(await page.locator('#answer .reply').getByText('/api/platform').count(), 0);
     await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 5 screens \/ 9 fields \/ 30 minutes/).waitFor();
     await page.locator('#regions').getByText('Americas').waitFor();
+    await page.locator('#regions').getByText('Cost per lead').waitFor();
+    await page.locator('#regions').getByText('MQLs').waitFor();
+    await page.locator('#regions').getByText('Pipeline').waitFor();
     const pptx = await page.request.get(H + '/api/platform/insights/reports/weekly.pptx?region=Americas');
     const pdf = await page.request.get(H + '/api/platform/insights/reports/weekly.pdf?region=Americas');
     assert.equal(pptx.status(), 200);
@@ -382,12 +457,31 @@ test('platform consoles in the browser', { timeout: 240000 }, async () => {
     assert.equal((await page.locator('#err').innerText()).trim(), '');
     await page.screenshot({ path: path.join(shot, 'platform-insights.png'), fullPage: true });
 
+    await page.goto(H + '/platform/brain');
+    await page.locator('#policy').getByText('Waiting on Chris').waitFor();
+    await page.locator('#why').getByText(/Chicago|venue|Rosa Diaz/i).first().waitFor();
+    await page.locator('[data-proof]').click();
+    await page.locator('#answer .reply').waitFor();
+    await page.locator('#elon').getByText(/Old tool vs @mops: Old tool: 11 screens \/ 22 fields \/ 45 minutes/).waitFor();
+    assert.equal((await page.locator('#err').innerText()).trim(), '');
+    await page.screenshot({ path: path.join(shot, 'platform-brain.png'), fullPage: true });
+
     await page.goto(H + '/platform/architecture');
     const archText = await page.locator('.arch').innerText();
     assert.equal(archText.includes('`'), false);
     assert.match(archText, /SSO via OIDC/);
     assert.match(archText, /Old tool vs @mops/);
     await page.screenshot({ path: path.join(shot, 'platform-architecture.png'), fullPage: true });
+    page.once('dialog', d => d.accept());
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      page.locator('#reset').click()
+    ]);
+    await page.goto(H + '/platform/ask');
+    await page.locator('#ask').fill('@mops send the Chicago invite to CIOs in Illinois who opened last month');
+    await page.locator('#run').click();
+    await page.locator('#answer .reply').getByText(/^Sent the Chicago invite to 30/).waitFor();
+    assert.equal((await page.locator('#err').innerText()).trim(), '');
     assert.deepEqual(failures, []);
   } finally {
     await browser.close();

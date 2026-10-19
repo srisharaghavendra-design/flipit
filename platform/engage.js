@@ -147,6 +147,18 @@ async function listSends() {
   return out;
 }
 
+async function sendLog() {
+  const rows = await listSends();
+  const by = new Map();
+  for (const row of rows) {
+    const n = row.recipients || 0;
+    if (n < 2) continue;
+    const prev = by.get(row.campaign_id);
+    if (!prev || n > (prev.recipients || 0)) by.set(row.campaign_id, row);
+  }
+  return [...by.values()];
+}
+
 async function deliverOne(q, { contact, template, campaign, sendId, actor, channel, sourceMessage }) {
   const token = crypto.randomBytes(9).toString('base64url');
   const link = `${publicBase()}/platform/t/c/${token}`;
@@ -245,7 +257,7 @@ async function simulate(sendId, opts = {}) {
     if (i < clickN && !rows[i].clicked) { await mark(rows[i].token, 'click', 'Recorded a click from the redirect.'); clicked++; }
   }
   const rate = await rates(sendId);
-  return { opened, clicked, targetedOpens: openN, targetedClicks: clickN, ...rate };
+  return { opened, clicked, targetedOpens: openN, targetedClicks: clickN, idempotent: opened === 0 && clicked === 0, ...rate };
 }
 
 async function scores({ segmentId, state } = {}) {
@@ -396,5 +408,5 @@ async function register(slug, fields, ctx = {}) {
 
 module.exports = {
   MQL_THRESHOLD, SEND_CAP, OPEN_RATE, CLICK_RATE, compile, preview, members, listSegments, saveSegment, listTemplates, saveTemplate,
-  send, getSend, listSends, simulate, mark, scores, listJourneys, enrollClickers, tickJourney, page, pageHtml, register, merge
+  send, getSend, listSends, sendLog, simulate, mark, scores, listJourneys, enrollClickers, tickJourney, page, pageHtml, register, merge
 };

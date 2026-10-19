@@ -266,7 +266,26 @@ const SQL = {
   score: 'UPDATE contacts SET behavior=?, score=?, stage=? WHERE id=?'
 };
 
+const SEED_VERSION = 4;
+const ENVELOPES = [['Americas', 2400000], ['EMEA', 1800000], ['APJ', 1600000], ['Global', 900000]];
+
 function rows(list, cols) { return list.map(r => cols.map(k => r[k])); }
+
+function targetFor(campaignId, pipeline) {
+  if (campaignId === 'CAMP-CHI') return 800000;
+  return Math.round((pipeline || 0) * 1.25) || 100000;
+}
+
+async function wipe(database) {
+  if (database.dialect === 'postgres') return;
+  await database.exec('PRAGMA foreign_keys = OFF');
+  const tables = await database.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'schema_migrations'");
+  for (const table of tables) {
+    if (!/^[a-z0-9_]+$/i.test(table.name)) continue;
+    await database.run('DELETE FROM ' + table.name);
+  }
+  await database.exec('PRAGMA foreign_keys = ON');
+}
 
 async function backfillActuals(database) {
   const n = await database.get('SELECT COUNT(*) AS n FROM actuals');
@@ -279,14 +298,23 @@ async function backfillActuals(database) {
       const actual = b.campaign_id === 'CAMP-CHI' ? 42000 : Math.round(b.amount_usd * 0.4);
       const pipe = b.campaign_id === 'CAMP-CHI' ? 640000 : (regionOf.get(b.campaign_id) === 'Americas' ? 120000 : 80000);
       await q.run('INSERT INTO actuals(id, campaign_id, amount_usd, note) VALUES(?,?,?,?)', ['ACTL-' + b.campaign_id, b.campaign_id, actual, 'Seeded from the fictional book']);
-      await q.run('UPDATE campaigns SET pipeline_usd = ? WHERE id = ?', [pipe, b.campaign_id]);
+      await q.run('UPDATE campaigns SET pipeline_usd = ?, pipeline_target_usd = ? WHERE id = ?', [pipe, targetFor(b.campaign_id, pipe), b.campaign_id]);
     }
   });
 }
 
 async function run(database) {
   const existing = await database.get("SELECT v FROM platform_meta WHERE k='seeded'");
-  if (existing) { await backfillActuals(database); return JSON.parse(existing.v); }
+  if (existing) {
+    let stats = {};
+    try { stats = JSON.parse(existing.v); } catch (e) { stats = {}; }
+    if (stats.version === SEED_VERSION) {
+      await backfillActuals(database);
+      await backfillTargets(database);
+      return stats;
+    }
+    await wipe(database);
+  }
   const t0 = Date.now();
   const book = build();
   const stats = await database.tx(async (q) => {
@@ -307,7 +335,7 @@ async function run(database) {
       const actual = b.campaign_id === 'CAMP-CHI' ? 42000 : Math.round(b.amount_usd * 0.4);
       const pipe = b.campaign_id === 'CAMP-CHI' ? 640000 : (regionOf.get(b.campaign_id) === 'Americas' ? 120000 : 80000);
       await q.run('INSERT INTO actuals(id, campaign_id, amount_usd, note) VALUES(?,?,?,?)', ['ACTL-' + b.campaign_id, b.campaign_id, actual, 'Seeded from the fictional book']);
-      await q.run('UPDATE campaigns SET pipeline_usd = ? WHERE id = ?', [pipe, b.campaign_id]);
+      await q.run('UPDATE campaigns SET pipeline_usd = ?, pipeline_target_usd = ? WHERE id = ?', [pipe, targetFor(b.campaign_id, pipe), b.campaign_id]);
       await q.run(INSERT, pack({
         at: LOAD_AT, entity: 'actuals', entityId: 'ACTL-' + b.campaign_id, op: 'insert', actor: 'Seed', channel: 'system', sourceMessage: 'seed',
         why: `Recorded $${actual.toLocaleString('en-US')} of actuals against the budget.`,
@@ -357,7 +385,10 @@ async function run(database) {
     await q.insertMany('INSERT INTO send_recipients(token, send_id, contact_id, email, opened, clicked, mail_id) VALUES(?,?,?,?,?,?,NULL)',
       book.recipients.map(r => [r.token, 'SND-SEP', r.contact_id, r.email, r.opened, r.clicked]));
 
-    const stats = { accounts: book.accounts.length, contacts: book.contacts.length, campaigns: book.campaigns.length, regions: REGIONS, demoDay: demoDay(), ms: Date.now() - t0 };
+    for (const [region, amount] of ENVELOPES) {
+      await q.run('INSERT INTO envelopes(region, amount_usd) VALUES(?,?) ON CONFLICT(region) DO NOTHING', [region, amount]);
+    }
+    const stats = { version: SEED_VERSION, accounts: book.accounts.length, contacts: book.contacts.length, campaigns: book.campaigns.length, regions: REGIONS, demoDay: demoDay(), ms: Date.now() - t0 };
     await q.run('INSERT INTO platform_meta(k, v) VALUES(?,?)', ['seeded', JSON.stringify(stats)]);
     return stats;
   });
@@ -366,4 +397,18 @@ async function run(database) {
   return stats;
 }
 
-module.exports = { run, CODE_RE, quarterOf, REGIONS, campaignCode };
+async function backfillTargets(database) {
+  const n = await database.get('SELECT COUNT(*) AS n FROM campaigns WHERE pipeline_target_usd > 0');
+  if (n && n.n) return;
+  const rows = await database.all('SELECT id, pipeline_usd FROM campaigns');
+  await database.tx(async (q) => {
+    for (const row of rows) await q.run('UPDATE campaigns SET pipeline_target_usd = ? WHERE id = ?', [targetFor(row.id, row.pipeline_usd), row.id]);
+  });
+}
+
+async function reset(database) {
+  await wipe(database);
+  return run(database);
+}
+
+module.exports = { run, reset, CODE_RE, quarterOf, REGIONS, campaignCode, SEED_VERSION };

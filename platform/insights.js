@@ -8,13 +8,15 @@ const RESPONSE = "('open','click','registration','attendance')";
 
 function db() { return current(); }
 function money(n) { return '$' + Math.round(n || 0).toLocaleString('en-US'); }
+function integer(n) { return Math.round(Number(n) || 0).toLocaleString('en-US'); }
 
 async function regions() {
   const rows = await db().all(`SELECT c.region AS region,
       COUNT(*) AS campaigns,
       COALESCE(SUM(b.amount_usd), 0) AS budget,
       COALESCE(SUM(a.amount_usd), 0) AS actual,
-      COALESCE(SUM(c.pipeline_usd), 0) AS pipeline
+      COALESCE(SUM(c.pipeline_usd), 0) AS pipeline,
+      COALESCE(SUM(c.pipeline_target_usd), 0) AS target
     FROM campaigns c
     LEFT JOIN budgets b ON b.campaign_id = c.id
     LEFT JOIN actuals a ON a.campaign_id = c.id
@@ -47,7 +49,7 @@ async function programs(region) {
 }
 
 async function campaignFacts(id) {
-  const row = await db().get(`SELECT c.id, c.name, c.region, c.pipeline_usd AS pipeline, b.amount_usd AS budget, COALESCE(a.amount_usd, 0) AS actual
+  const row = await db().get(`SELECT c.id, c.name, c.region, c.pipeline_usd AS pipeline, c.pipeline_target_usd AS target, b.amount_usd AS budget, COALESCE(a.amount_usd, 0) AS actual
     FROM campaigns c JOIN budgets b ON b.campaign_id = c.id LEFT JOIN actuals a ON a.campaign_id = c.id WHERE c.id = ?`, [id]);
   if (!row) return null;
   const leads = await db().get(`SELECT COUNT(DISTINCT contact_id) AS n FROM activities WHERE campaign_id = ? AND kind IN ${RESPONSE}`, [id]);
@@ -72,6 +74,11 @@ async function deckFacts(region) {
   const sum = (k) => slice.reduce((s, r) => s + (r[k] || 0), 0);
   const chicago = await campaignFacts('CAMP-CHI');
   const risks = [];
+  const pipeline = sum('pipeline');
+  const goal = sum('target');
+  if (goal && goal !== pipeline) {
+    risks.push({ name: 'Pipeline against target', note: `${money(pipeline)} actual pipeline, target ${money(goal)}`, fixed: pipeline >= goal });
+  }
   if (chicago && (!all ? chicago.region === scope : true)) {
     risks.push({ name: chicago.name, note: `${money(chicago.actual)} actual of ${money(chicago.budget)} budget`, fixed: chicago.actual <= chicago.budget });
   }
@@ -84,7 +91,7 @@ async function deckFacts(region) {
     leads: sum('leads'),
     mqls: sum('mqls'),
     pipeline: sum('pipeline'),
-    goal: sum('pipeline'),
+    goal: sum('target'),
     bars: bars.map(b => ({ label: b.program, spend: b.actual, budget: b.budget })),
     risks: risks.length ? risks : [{ name: 'Nothing over budget', note: 'Actuals are inside the plan', fixed: true }],
     actions: ['Read the actuals against the budget.', 'Chicago over $150,000 stays with Chris M.'],
@@ -120,7 +127,7 @@ function summaryText(period, facts) {
   const place = facts.region === 'portfolio' ? 'the portfolio' : facts.region;
   const label = period === 'monthly' ? 'Monthly report' : 'Weekly report';
   const cpl = facts.leads ? money(Math.round(facts.spend / facts.leads)) : 'n/a';
-  return `${label} for ${place}. ${facts.campaigns} campaigns, ${money(facts.spend)} actual of ${money(facts.budget)} budget, ${facts.leads} responded leads, ${facts.mqls} MQLs, ${money(facts.pipeline)} pipeline. Cost per lead ${cpl}. The PowerPoint and the PDF are ready.`;
+  return `${label} for ${place}. ${facts.campaigns} campaigns, ${money(facts.spend)} actual of ${money(facts.budget)} budget, ${integer(facts.leads)} responded leads, ${integer(facts.mqls)} MQLs, ${money(facts.pipeline)} pipeline against a target of ${money(facts.goal)}. Cost per lead ${cpl}.`;
 }
 
 module.exports = { regions, programs, campaignFacts, dashboard, deckFacts, build, summaryText, money };

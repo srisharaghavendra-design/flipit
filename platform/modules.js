@@ -7,7 +7,7 @@ const MODULES = [
   { id: 'crm', name: 'CRM bridge', replaces: 'Salesforce', status: 'built', href: '/platform/crm' },
   { id: 'plan', name: 'Plan and spend', replaces: 'Command Center and Airtable', status: 'built', href: '/platform/spend' },
   { id: 'insights', name: 'Insights', replaces: 'Power BI and Tableau', status: 'built', href: '/platform/insights' },
-  { id: 'brain', name: 'Brain API', replaces: 'The tag, the policy, and the why feed', status: 'next', href: '/platform/ask', note: 'The ask box already routes Data core, Engage, CRM, Plan and spend, and Insights.' }
+  { id: 'brain', name: 'Brain API', replaces: 'The tag, the policy, and the why feed', status: 'built', href: '/platform/brain' }
 ];
 
 const BASELINES = {
@@ -55,6 +55,15 @@ const BASELINES = {
     askId: 'weekly-americas',
     proof: '@mops weekly report for Americas',
     source: 'Operator baseline for a weekly regional deck and a slide export. Not a stopwatch of a Northwind employee.'
+  },
+  brain: {
+    replaces: 'The tag, the policy, and the why feed',
+    screens: 11,
+    fields: 22,
+    minutes: 45,
+    askId: 'chicago-changes',
+    proof: '@mops what changed on the Chicago roundtable',
+    source: 'Operator baseline for reading policy, approval, and the why across the old tools. Not a stopwatch of a Northwind employee.'
   }
 };
 

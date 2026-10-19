@@ -93,31 +93,37 @@ function mapRows(grid) {
   }
   const col = (t) => mapping.find(m => m.target === t);
   const get = (r, t) => { const m = col(t); return m ? String(r[m.index] ?? '').trim() : ''; };
-  const accepted = []; const quarantined = [];
+  const accepted = []; const quarantined = []; const duplicatesHeld = [];
   const body = grid.slice(headerAt + 1).filter(r => r.some(c => String(c).trim()));
   for (const r of body) {
+    const named = splitName(get(r, 'FullName'));
+    const label = `${named.first} ${named.last}`.trim() || 'This row';
     if (r.some(c => { const s = String(c ?? '').trim(); return FORMULA.test(s) && !/^\+\d[\d\s().-]{6,}$/.test(s); })) {
-      quarantined.push({ email: get(r, 'Email'), reason: 'formula cell — not imported' });
+      quarantined.push({ name: label, email: get(r, 'Email'), reason: 'formula in a cell' });
       continue;
     }
     const email = get(r, 'Email').toLowerCase();
-    if (!isEmail(email)) { quarantined.push({ email, reason: 'missing or invalid email' }); continue; }
-    const name = splitName(get(r, 'FullName'));
+    if (!isEmail(email)) { quarantined.push({ name: label, email, reason: 'missing email' }); continue; }
     const country = countryOf(get(r, 'Country'));
     const consent = get(r, 'Consent').trim().toLowerCase();
     const yes = /^(y|yes|true|1|opted[ _-]?in|granted|express)$/.test(consent);
-    if (STRICT.has(country) && !yes) { quarantined.push({ email, reason: `no consent on record for ${country}` }); continue; }
+    if (STRICT.has(country) && !yes) { quarantined.push({ name: label, email, reason: 'no consent' }); continue; }
     const status = /^(y|yes|true|1|attended|checked in|present)$/.test(norm(get(r, 'Status'))) ? 'Attended' : 'Registered';
-    accepted.push({ first: name.first, last: name.last, email, company: get(r, 'Company'), title: get(r, 'Title'), phone: get(r, 'Phone'), country, status, consent: yes ? 'yes' : consent || 'unknown' });
+    accepted.push({ first: named.first, last: named.last, email, company: get(r, 'Company'), title: get(r, 'Title'), phone: get(r, 'Phone'), country, status, consent: yes ? 'yes' : consent || 'unknown' });
   }
   const seen = new Set(); let duplicates = 0;
   const rows = [];
   for (const row of accepted) {
-    if (seen.has(row.email)) { duplicates++; continue; }
+    if (seen.has(row.email)) {
+      duplicates++;
+      duplicatesHeld.push({ name: `${row.first} ${row.last}`.trim(), email: row.email, reason: 'duplicate' });
+      continue;
+    }
     seen.add(row.email);
     rows.push(row);
   }
-  return { headerRow: headerAt + 1, mapping: mapping.filter(m => m.column), rows, quarantined, duplicates };
+  const held = quarantined.concat(duplicatesHeld);
+  return { headerRow: headerAt + 1, mapping: mapping.filter(m => m.column), rows, quarantined, duplicates, held };
 }
 
 function sfid(type, externalId) {
@@ -181,8 +187,10 @@ async function upload({ filename, buffer, campaignId = 'CAMP-CHI', actor, channe
   const key = idempotencyKey || `upload:${filename || sample.filename}:${campaignId}`;
   const prev = await d.get('SELECT * FROM crm_uploads WHERE idempotency_key = ?', [key]);
   if (prev) {
-    const objects = await listObjects(campaignId);
-    return { ...prev, idempotent: true, objects: objects.length, owners: await ownerSummary(campaignId) };
+    const objects = await listObjects(prev.campaign_id || campaignId);
+    let held = [];
+    try { held = JSON.parse(prev.held_json || '[]'); } catch (e) { held = []; }
+    return { id: prev.id, filename: prev.filename, campaignId: prev.campaign_id, accepted: prev.accepted, quarantined: prev.quarantined, duplicates: prev.duplicates, held, retried: 0, idempotent: true, objects: objects.length, owners: (await ownership(prev.campaign_id)).owners };
   }
   const campaign = await d.get('SELECT * FROM campaigns WHERE id = ?', [campaignId]);
   if (!campaign) fail(404, 'Unknown campaign');
@@ -202,8 +210,8 @@ async function upload({ filename, buffer, campaignId = 'CAMP-CHI', actor, channe
       owned.push({ ...row, ...who });
     }
     const id = 'UPL-' + crypto.randomBytes(3).toString('hex');
-    await q.run('INSERT INTO crm_uploads(id, filename, campaign_id, idempotency_key, accepted, quarantined, duplicates, at) VALUES(?,?,?,?,?,?,?,?)',
-      [id, filename || sample.filename, campaignId, key, owned.length, mapped.quarantined.length, mapped.duplicates, now()]);
+    await q.run('INSERT INTO crm_uploads(id, filename, campaign_id, idempotency_key, accepted, quarantined, duplicates, held_json, at) VALUES(?,?,?,?,?,?,?,?,?)',
+      [id, filename || sample.filename, campaignId, key, owned.length, mapped.quarantined.length, mapped.duplicates, JSON.stringify(mapped.held), now()]);
     const code = await q.get("SELECT value FROM codes WHERE campaign_id = ? AND kind = 'sfdc'", [campaignId]);
     const campaignExt = campaignId;
     const campaignSf = code && code.value ? code.value : sfid('Campaign', campaignExt);
@@ -229,9 +237,9 @@ async function upload({ filename, buffer, campaignId = 'CAMP-CHI', actor, channe
       why: `Uploaded ${filename || sample.filename} for ${campaign.name}. ${owned.length} campaign members synced. Held ${mapped.quarantined.length}.`,
       after: { accepted: owned.length, quarantined: mapped.quarantined.length, duplicates: mapped.duplicates, retried: drained.retried }
     });
-    result = { id, filename: filename || sample.filename, campaignId, accepted: owned.length, quarantined: mapped.quarantined.length, duplicates: mapped.duplicates, held: mapped.quarantined, rows: owned, retried: drained.retried, idempotent: false, skippedUnknown: held.length };
+    result = { id, filename: filename || sample.filename, campaignId, accepted: owned.length, quarantined: mapped.quarantined.length, duplicates: mapped.duplicates, held: mapped.held, rows: owned, retried: drained.retried, idempotent: false, skippedUnknown: held.length };
   });
-  result.owners = await ownerSummary(campaignId);
+  result.owners = (await ownership(campaignId)).owners;
   return result;
 }
 
@@ -251,18 +259,42 @@ async function ownerSummary(campaignId) {
   return rows;
 }
 
-async function chicagoAccounts() {
+async function ownership(campaignId = 'CAMP-CHI') {
   await db().tx(async (q) => { await ensureOrg(q); });
   const accounts = await db().all(`SELECT id, name, city, country, tier FROM accounts
     WHERE country = 'United States' AND city IN ('Chicago','Naperville','Aurora','Springfield','Peoria','Rockford','Joliet','Evanston')
     ORDER BY id`);
   const terr = await db().get("SELECT * FROM territories WHERE country = 'United States'");
+  const members = await db().all("SELECT owner_name, COUNT(*) AS n FROM crm_objects WHERE type = 'Lead' AND campaign_ext = ? GROUP BY owner_name", [campaignId]);
+  const memberOf = Object.fromEntries(members.map(r => [r.owner_name, r.n]));
+  const ae = terr ? terr.ae_name : '';
+  const sdr = terr ? terr.sdr_name : '';
+  const owners = terr ? [
+    { name: ae, role: 'AE', accounts: accounts.length, members: memberOf[ae] || 0 },
+    { name: sdr, role: 'SDR', accounts: 0, members: memberOf[sdr] || 0 }
+  ] : [];
   return {
     count: accounts.length,
-    owner: terr ? { id: terr.ae_id, name: terr.ae_name, role: 'AE' } : null,
-    sdr: terr ? { id: terr.sdr_id, name: terr.sdr_name, role: 'SDR' } : null,
+    owners,
+    owner: terr ? { id: terr.ae_id, name: ae, role: 'AE' } : null,
+    sdr: terr ? { id: terr.sdr_id, name: sdr, role: 'SDR' } : null,
     accounts
   };
+}
+
+async function chicagoAccounts() { return ownership('CAMP-CHI'); }
+
+function ownerLine(owners) {
+  return (owners || []).map(o => `${o.name} (${o.role}): ${o.accounts} Chicago accounts, ${o.members} campaign members`).join('. ');
+}
+
+async function listUploads(campaignId = 'CAMP-CHI') {
+  const rows = await db().all('SELECT * FROM crm_uploads WHERE campaign_id = ? ORDER BY at DESC', [campaignId]);
+  return rows.map(row => {
+    let held = [];
+    try { held = JSON.parse(row.held_json || '[]'); } catch (e) { held = []; }
+    return { id: row.id, filename: row.filename, accepted: row.accepted, quarantined: row.quarantined, duplicates: row.duplicates, held };
+  });
 }
 
 async function syncCampaign({ campaignId = 'CAMP-CHI', actor, channel, sourceMessage }) {
@@ -293,4 +325,4 @@ async function failures() {
   return { open, retried, jobs };
 }
 
-module.exports = { upload, listObjects, listQueue, chicagoAccounts, syncCampaign, failures, mapRows, sample };
+module.exports = { upload, listObjects, listQueue, listUploads, chicagoAccounts, ownership, ownerLine, syncCampaign, failures, mapRows, sample };

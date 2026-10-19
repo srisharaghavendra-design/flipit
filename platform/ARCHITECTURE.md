@@ -14,7 +14,7 @@ Plan and spend replaces Command Center and Airtable. Built. Console at `/platfor
 
 Insights replaces Power BI and Tableau. Built. Console at `/platform/insights`.
 
-Brain API is the tag, the policy, and the why feed across every module. Next. The ask box at `/platform/ask` already routes Data core, Engage, CRM, Plan and spend, and Insights.
+Brain API is the tag, the policy, and the why feed across every module. Built. Console at `/platform/brain`. The ask box at `/platform/ask` routes every module.
 
 ## Asks a marketer actually sends
 
@@ -57,17 +57,25 @@ Insights, running now:
 - @mops what is the cost per lead for Chicago
 - @mops how much pipeline did Chicago source
 
+Brain API, running now:
+
+- @mops what changed on the Chicago roundtable
+- @mops what is the approval policy
+- @mops approve Chicago
+
 The ask box is the channel test. App, Email, and Webex are the same call. The human types the sentence. The module fills everything a human does not uniquely know. A registration form still asks for name, email, and consent. The SOW still asks for three fields only a person knows: our project manager, the purchase order, and the day-of venue contact.
 
 ## How a tagged ask finishes
 
 One Chicago send writes the segment (CIO, Illinois, opened in the 30 days before 19 Oct 2026, opted in), reuses the invite, merges first name and company, and delivers into the local mail catcher. Contacts without opted-in consent are held. The open pixel and the click redirect write activities. Fit plus behaviour becomes the score. A lead becomes an MQL at 70. Opens stay under that line. A click crosses it. A simulated response is about 45% open and about 12% click, and only the clickers cross the line. The nurture then enrolls clickers who have not registered, sends the first note, and waits 48 hours before the next one.
 
-The attendee upload reads `platform/samples/chicago-attendees.xlsx`. Junk rows sit above the header. Owners are the territory AE for an executive title and the territory SDR otherwise. A duplicate, a German row with no consent, a bad email, and a formula are held. The campaign object is written once. The first attempt returns a simulated 503 and the retry completes it. A second ask does not create a second copy.
+The attendee upload reads `platform/samples/chicago-attendees.xlsx`. Junk rows sit above the header. Owners are the territory AE for an executive title and the territory SDR otherwise. Held rows are listed with a reason: no consent, missing email, duplicate, and a formula in a cell. Account owners and campaign members are counted per person. Jake Moss owns the Chicago accounts. Rosa Diaz owns the non-executive members. The campaign object is written once. The first attempt returns a simulated 503 and the retry completes it.
 
-The Chicago budget of $180,000 is over $150,000, so it goes to Chris M. $150,000 auto-approves. $150,001 waits for Chris M. The BAN and the campaign code are minted once and reused. The SOW is filled from the agency roster. Actuals sit next to the budget.
+The Chicago budget of $180,000 is over $150,000, so Maria's request is Waiting on Chris. It does not approve itself. Chris M. approves it from `/platform/spend`, or with `@mops approve Chicago` while signed in as Chris. The BAN and the campaign code are minted then. $150,000 is approved by the policy. $150,001 waits for Chris M. The SOW is filled from the agency roster. Actuals sit next to the budget.
 
-The weekly report reads the live region and program totals and downloads a real PowerPoint and a real PDF.
+The weekly report reads the live region and program totals. The deck states a pipeline target that is not the actual pipeline. The reply offers Download PowerPoint and Download PDF.
+
+Reset demo wipes the book back to the seed, so the next ask is a first run.
 
 ## Old tool vs @mops
 
@@ -82,6 +90,8 @@ CRM bridge: 8 screens, 14 fields, 25 minutes in Salesforce to map a badge export
 Plan and spend: 7 screens, 18 fields, 40 minutes in Command Center and Airtable for the budget, the approval, the BAN, the code, and the SOW. The console shows the measured seconds for the $180K Chicago ask.
 
 Insights: 5 screens, 9 fields, 30 minutes in Power BI for a weekly regional deck and an export. The console shows the measured seconds for `@mops weekly report for Americas`.
+
+Brain API: 11 screens, 22 fields, 45 minutes to check policy and the why across the old tools. The console shows the measured seconds for `@mops what changed on the Chicago roundtable`.
 
 Those minutes are an operator baseline for the old tools, not a stopwatch of a Northwind employee. The seconds are the median of real runs stored in `ask_runs`. Reads on the seeded book (5,000 contacts, 300 accounts, 40 campaigns, four regions) stay under 300ms.
 

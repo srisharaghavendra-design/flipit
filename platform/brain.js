@@ -6,6 +6,8 @@ const crm = require('./crm');
 const spend = require('./spend');
 const insights = require('./insights');
 const metrics = require('./metrics');
+const policy = require('./policy');
+const why = require('./why');
 
 function norm(text) { return String(text || '').replace(/@mops/ig, ' ').replace(/\s+/g, ' ').trim(); }
 
@@ -152,10 +154,11 @@ const ASKS = [
       const result = await step(calls, 'POST /api/platform/crm/uploads', () => crm.upload({
         campaignId: 'CAMP-CHI', actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text, idempotencyKey: 'ask:upload-chicago'
       }));
-      const owners = (result.owners || []).filter(o => o.owner_name).map(o => `${o.owner_name} ${o.n}`).join(', ');
+      const owners = crm.ownerLine(result.owners);
+      const held = (result.held || []).map(row => `${row.name} (${row.reason})`).join('; ');
       const reply = result.idempotent
-        ? `Already uploaded ${result.filename} for the Chicago roundtable. ${result.accepted} campaign members are in Salesforce. No second copy.`
-        : `Uploaded ${result.filename} to Salesforce for the Chicago roundtable. ${result.accepted} campaign members, owners by territory${owners ? ' (' + owners + ')' : ''}. Held ${result.quarantined}. ${result.retried ? 'Retried ' + result.retried + ' transient error. ' : ''}The queue is clear.`;
+        ? `Already uploaded ${result.filename} for the Chicago roundtable. ${result.accepted} campaign members are in Salesforce. ${owners}.`
+        : `Uploaded ${result.filename} to Salesforce for the Chicago roundtable. ${result.accepted} campaign members. ${owners}. Held ${result.held.length}: ${held}. ${result.retried ? 'Retried ' + result.retried + ' transient error. ' : ''}The queue is clear.`;
       return { reply, result };
     }
   },
@@ -164,7 +167,7 @@ const ASKS = [
     test: (t) => /who owns the chicago accounts/i.test(t),
     async run(ctx, calls) {
       const result = await step(calls, 'GET /api/platform/crm/owners', () => crm.chicagoAccounts());
-      return { reply: `${result.owner.name} (${result.owner.role}) owns all ${result.count} Chicago accounts. They are named accounts, so they do not go to ${result.sdr.name}, the SDR.`, result };
+      return { reply: crm.ownerLine(result.owners) + '.', result };
     }
   },
   {
@@ -204,17 +207,29 @@ const ASKS = [
       const rows = await step(calls, 'GET /api/platform/spend/actuals', () => spend.actuals());
       const chi = rows.find(r => r.id === 'CAMP-CHI');
       const open = result.open.map(f => f.label).join(', ');
-      const rule = result.amountUsd > 150000
-        ? `That is over $150,000, so it went to Chris M.${result.status === 'approved' ? ', who approved it' : ', and it is waiting for him'}.`
-        : 'That is at or under $150,000, so it auto-approves.';
-      const again = result.idempotent ? 'No second request. ' : '';
-      return { reply: `${again}Filed ${result.sow.fields.amount} for the Chicago security roundtable. ${rule} BAN ${result.ban}. Code ${result.campaignCode}. SOW drafted for ${result.sow.agency}. Still open, because only a person knows them: ${open}. Actuals are ${spend.money(chi.actual)} of ${spend.money(chi.budget)}.`, result: { ...result, actual: chi } };
+      const actuals = `Actuals are ${spend.money(chi.actual)} of ${spend.money(chi.budget)}.`;
+      const sow = `SOW drafted for ${result.sow.agency}. Still open, because only a person knows them: ${open}.`;
+      let reply;
+      if (result.status === 'pending') {
+        const again = result.idempotent ? 'Already filed. ' : '';
+        reply = `${again}Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. Waiting on Chris. The BAN and the campaign code are minted when he approves. ${sow} ${actuals}`;
+      } else if (result.approver) {
+        const again = result.idempotent ? 'Chris M. already approved this. ' : '';
+        reply = `${again}Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. Chris M. approved it. BAN ${result.ban}. Code ${result.campaignCode}. ${sow} ${actuals}`;
+      } else {
+        reply = `Filed ${spend.money(result.amountUsd)} for the Chicago security roundtable. That is at or under $150,000, so the policy approves it. BAN ${result.ban}. Code ${result.campaignCode}. ${sow} ${actuals}`;
+      }
+      return { reply, result: { ...result, actual: chi } };
     }
   },
   {
     id: 'mint-chicago', module: 'plan', example: '@mops mint the campaign code',
     test: (t) => /mint the campaign code/i.test(t),
     async run(ctx, calls) {
+      const packet = await step(calls, 'GET /api/platform/spend/packets', () => spend.chicagoPacket());
+      if (!packet || packet.status !== 'approved') {
+        return { reply: 'The Chicago BAN and campaign code are minted when Chris M. approves. The request is Waiting on Chris.', result: packet };
+      }
       const result = await step(calls, 'POST /api/platform/spend/codes', () => spend.codes({ actor: ctx.actor, channel: ctx.channel, sourceMessage: ctx.text }));
       return { reply: `The Chicago code is ${result.campaignCode}. BAN ${result.ban}. A second mint returns the same ids.`, result };
     }
@@ -246,7 +261,14 @@ const ASKS = [
       const region = place(ctx.text);
       const facts = await step(calls, 'GET /api/platform/insights/dashboard', () => insights.deckFacts(region));
       const q = encodeURIComponent(facts.region);
-      return { reply: `${insights.summaryText('weekly', facts)} Download /api/platform/insights/reports/weekly.pptx?region=${q} and /api/platform/insights/reports/weekly.pdf?region=${q}.`, result: facts };
+      return {
+        reply: insights.summaryText('weekly', facts),
+        result: facts,
+        downloads: [
+          { label: 'Download PowerPoint', href: `/api/platform/insights/reports/weekly.pptx?region=${q}` },
+          { label: 'Download PDF', href: `/api/platform/insights/reports/weekly.pdf?region=${q}` }
+        ]
+      };
     }
   },
   {
@@ -256,7 +278,14 @@ const ASKS = [
       const region = place(ctx.text);
       const facts = await step(calls, 'GET /api/platform/insights/dashboard', () => insights.deckFacts(region));
       const q = encodeURIComponent(facts.region);
-      return { reply: `${insights.summaryText('monthly', facts)} Download /api/platform/insights/reports/monthly.pptx?region=${q} and /api/platform/insights/reports/monthly.pdf?region=${q}.`, result: facts };
+      return {
+        reply: insights.summaryText('monthly', facts),
+        result: facts,
+        downloads: [
+          { label: 'Download PowerPoint', href: `/api/platform/insights/reports/monthly.pptx?region=${q}` },
+          { label: 'Download PDF', href: `/api/platform/insights/reports/monthly.pdf?region=${q}` }
+        ]
+      };
     }
   },
   {
@@ -275,7 +304,39 @@ const ASKS = [
     test: (t) => /pipeline did chicago|chicago source/i.test(t),
     async run(ctx, calls) {
       const result = await step(calls, 'GET /api/platform/insights/campaigns/CAMP-CHI', () => insights.campaignFacts('CAMP-CHI'));
-      return { reply: `Chicago has sourced ${insights.money(result.pipeline)} of pipeline.`, result };
+      return { reply: `Chicago has sourced ${insights.money(result.pipeline)} of pipeline. The target is ${insights.money(result.target)}.`, result };
+    }
+  },
+  {
+    id: 'approve-chicago', module: 'brain', example: '@mops approve Chicago',
+    test: (t) => /approve chicago/i.test(t),
+    async run(ctx, calls) {
+      if (!policy.isApprover(ctx.actor, ctx.role)) {
+        const waiting = await step(calls, 'GET /api/platform/spend/packets', () => spend.chicagoPacket());
+        return { reply: 'Only Chris M. can approve the Chicago budget. It is Waiting on Chris.', result: waiting };
+      }
+      const result = await step(calls, 'POST /api/platform/spend/approve', () => spend.approve({
+        campaignId: 'CAMP-CHI', actor: ctx.actor, role: ctx.role, channel: ctx.channel, sourceMessage: ctx.text
+      }));
+      const again = result.idempotent ? 'Chris M. already approved this. ' : '';
+      return { reply: `${again}Chris M. approved ${spend.money(result.amountUsd)} for the Chicago security roundtable. BAN ${result.ban}. Code ${result.campaignCode}.`, result };
+    }
+  },
+  {
+    id: 'approval-policy', module: 'brain', example: '@mops what is the approval policy',
+    test: (t) => /approval policy|what is the policy/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'GET /api/platform/brain/policy', async () => ({ rules: policy.RULES, chicago: policy.explain(180000) }));
+      return { reply: result.chicago + ' ' + policy.RULES.map(r => r.name + ': ' + r.text).join(' '), result };
+    }
+  },
+  {
+    id: 'chicago-changes', module: 'brain', example: '@mops what changed on the Chicago roundtable',
+    test: (t) => /what changed on the chicago/i.test(t),
+    async run(ctx, calls) {
+      const result = await step(calls, 'GET /api/platform/brain/why', () => why.feed({ q: 'Chicago', limit: 12 }));
+      const lines = result.rows.slice(0, 4).map(r => `${r.module} via ${r.channel}: ${r.why}`);
+      return { reply: lines.length ? lines.join(' ') : 'Nothing in the why feed mentions Chicago yet.', result };
     }
   }
 ];
@@ -288,24 +349,24 @@ function place(text) {
 
 function later() { return null; }
 
-async function ask({ text, channel = 'App', actor = 'Maria Alvarez' }) {
+async function ask({ text, channel = 'App', actor = 'Maria Alvarez', role = 'marketer' }) {
   const started = process.hrtime.bigint();
   const elapsed = () => Math.round(Number(process.hrtime.bigint() - started) / 1e6);
   const clean = norm(text);
   const calls = [];
-  const ctx = { text: clean, channel, actor };
+  const ctx = { text: clean, channel, actor, role };
   try {
     const found = ASKS.find(item => item.test(clean));
     if (!found) {
       const next = later(clean);
       const ms = elapsed();
       if (next) return { ok: true, matched: false, ...next, ms, calls, examples: ASKS.map(a => a.example) };
-      return { ok: true, matched: false, reply: 'I can run Data core, Engage, CRM, Plan and spend, and Insights. Use one of the examples.', examples: ASKS.map(a => a.example), ms, calls };
+      return { ok: true, matched: false, reply: 'I can run Data core, Engage, CRM, Plan and spend, Insights, and the Brain. Use one of the examples.', examples: ASKS.map(a => a.example), ms, calls };
     }
     const out = await found.run(ctx, calls);
     const ms = elapsed();
     await metrics.record({ askId: found.id, module: found.module, text: clean, ms, ok: 1 });
-    return { ok: true, matched: true, askId: found.id, module: found.module, reply: out.reply, result: out.result, calls, ms, channel, actor };
+    return { ok: true, matched: true, askId: found.id, module: found.module, reply: out.reply, result: out.result, downloads: out.downloads || [], calls, ms, channel, actor };
   } catch (e) {
     return { ok: false, error: e.message || 'The ask failed', calls, ms: elapsed() };
   }

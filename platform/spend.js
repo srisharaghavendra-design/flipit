@@ -7,6 +7,7 @@ const { now } = require('./clock');
 const { quarterOf } = require('./seed');
 const { LIMIT_USD, toUSD, format } = require('../backend/money');
 const { agencyOf, taxOf, milestonesOf } = require('../backend/jobs');
+const policy = require('./policy');
 
 const OPEN = [
   { key: 'our_pm', label: 'Our project manager' },
@@ -85,30 +86,18 @@ async function file({ campaignId, name, amount, currency = 'USD', actor, channel
     const pin = process.env.PLATFORM_REGION || '';
     if (pin && campaign.region !== pin && campaign.region !== 'Global') fail(400, `This deployment holds ${pin} only.`);
     const sow = await q.get('SELECT venue, vendor FROM sows WHERE campaign_id = ?', [campaign.id]);
-    const existing = await q.get('SELECT * FROM budgets WHERE campaign_id = ?', [campaign.id]);
-    const over = usd > LIMIT_USD;
-    let status; let approver;
-    if (existing && existing.amount_usd === usd && existing.status === 'approved') {
-      status = 'approved';
-      approver = existing.approver || (over ? 'Chris M.' : null);
-    } else if (over) {
-      status = 'pending';
-      approver = 'Chris M.';
-    } else {
-      status = 'approved';
-      approver = null;
-    }
-    const codes = await mint(q, campaign);
+    const decision = policy.budget(usd);
+    const codes = decision.mint ? await mint(q, campaign) : { campaignCode: '', ban: '' };
     const draft = draftSow(campaign, { amount, currency, venue: sow && sow.venue }, codes, answers || {});
     const id = 'PKT-' + crypto.randomBytes(3).toString('hex');
     const at = now();
     await q.run(`INSERT INTO plan_packets(id, campaign_id, idempotency_key, amount, currency, amount_usd, status, approver, ban, campaign_code, sow_json, open_json, actor, channel, source_message, at)
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, campaign.id, key, amount, currency, usd, status, approver, codes.ban, codes.campaignCode, JSON.stringify(draft), JSON.stringify(draft.open), actor || 'Maria Alvarez', channel || 'App', sourceMessage || '', at]);
-    const why = over
-      ? `Filed ${format(amount, currency)} for ${campaign.name}. That is about ${money(usd)}, over $150,000, so Chris M. has to approve.`
-      : `Filed ${format(amount, currency)} for ${campaign.name}. That is about ${money(usd)}, at or under $150,000, so it auto-approves.`;
-    await append(q, { entity: 'plan_packets', entityId: id, op: 'insert', actor, channel, sourceMessage, why, after: { status, approver, ban: codes.ban, code: codes.campaignCode, usd } });
+      [id, campaign.id, key, amount, currency, usd, decision.status, decision.approver, codes.ban, codes.campaignCode, JSON.stringify(draft), JSON.stringify(draft.open), actor || 'Maria Alvarez', channel || 'App', sourceMessage || '', at]);
+    const why = decision.mint
+      ? `Filed ${format(amount, currency)} for ${campaign.name}. That is about ${money(usd)}, at or under $150,000, so the policy approves it.`
+      : `Filed ${format(amount, currency)} for ${campaign.name}. Waiting on Chris. The BAN and the campaign code are minted when he approves.`;
+    await append(q, { entity: 'plan_packets', entityId: id, op: 'insert', actor, channel, sourceMessage, why, after: { status: decision.status, approver: decision.approver, ban: codes.ban, code: codes.campaignCode, usd } });
     packet = await q.get('SELECT * FROM plan_packets WHERE id = ?', [id]);
   });
   return present(packet, false);
@@ -117,11 +106,37 @@ async function file({ campaignId, name, amount, currency = 'USD', actor, channel
 function present(row, idempotent) {
   const sow = JSON.parse(row.sow_json);
   const open = JSON.parse(row.open_json);
+  const pending = row.status === 'pending';
   return {
     id: row.id, campaignId: row.campaign_id, amount: row.amount, currency: row.currency, amountUsd: row.amount_usd,
-    status: row.status, approver: row.approver || null, ban: row.ban, campaignCode: row.campaign_code,
+    status: row.status, label: pending ? 'Waiting on Chris' : 'Approved', approver: row.approver || null,
+    ban: row.ban || null, campaignCode: row.campaign_code || null,
     sow, open, idempotent: !!idempotent, threshold: LIMIT_USD, actor: row.actor, channel: row.channel
   };
+}
+
+async function approve({ campaignId = 'CAMP-CHI', actor, role, channel, sourceMessage }) {
+  if (!policy.isApprover(actor, role)) fail(403, 'Only Chris M. can approve this. It is Waiting on Chris.');
+  const d = db();
+  const row = await d.get('SELECT * FROM plan_packets WHERE campaign_id = ? ORDER BY at DESC LIMIT 1', [campaignId]);
+  if (!row) fail(404, 'Nothing is waiting on Chris. File the budget first.');
+  if (row.status === 'approved' && row.approver) return present(row, true);
+  let packet;
+  await d.tx(async (q) => {
+    const campaign = await q.get('SELECT * FROM campaigns WHERE id = ?', [row.campaign_id]);
+    const codes = await mint(q, campaign);
+    const sow = JSON.parse(row.sow_json);
+    sow.fields.campaign_code = codes.campaignCode;
+    sow.fields.ban = codes.ban;
+    await q.run("UPDATE plan_packets SET status = 'approved', approver = 'Chris M.', ban = ?, campaign_code = ?, sow_json = ? WHERE id = ?", [codes.ban, codes.campaignCode, JSON.stringify(sow), row.id]);
+    await append(q, {
+      entity: 'plan_packets', entityId: row.id, op: 'update', actor: actor || 'Chris M.', channel, sourceMessage,
+      why: `Chris M. approved ${money(row.amount_usd)} for ${campaign.name}. Minted ${codes.ban} and ${codes.campaignCode}.`,
+      before: { status: 'pending' }, after: { status: 'approved', approver: 'Chris M.', ban: codes.ban, code: codes.campaignCode }
+    });
+    packet = await q.get('SELECT * FROM plan_packets WHERE id = ?', [row.id]);
+  });
+  return present(packet, false);
 }
 
 async function answer({ campaignId = 'CAMP-CHI', answers = {}, actor, channel, sourceMessage }) {
@@ -177,4 +192,4 @@ async function chicagoPacket() {
   return row ? present(row, false) : null;
 }
 
-module.exports = { file, answer, packets, actuals, remaining, codes, chicagoPacket, OPEN, LIMIT_USD, money, present };
+module.exports = { file, approve, answer, packets, actuals, remaining, codes, chicagoPacket, OPEN, LIMIT_USD, money, present };

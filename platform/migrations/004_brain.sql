@@ -1,0 +1,2 @@
+ALTER TABLE campaigns ADD COLUMN pipeline_target_usd INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE crm_uploads ADD COLUMN held_json TEXT NOT NULL DEFAULT '[]';

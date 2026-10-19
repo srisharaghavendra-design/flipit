@@ -10,6 +10,8 @@ const insights = require('./insights');
 const brain = require('./brain');
 const metrics = require('./metrics');
 const pages = require('./pages');
+const policy = require('./policy');
+const why = require('./why');
 const { MODULES } = require('./modules');
 
 const PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
@@ -74,6 +76,7 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/platform/crm') return html(res, pages.crmPage());
     if (method === 'GET' && p === '/platform/spend') return html(res, pages.spendPage());
     if (method === 'GET' && p === '/platform/insights') return html(res, pages.insightsPage());
+    if (method === 'GET' && p === '/platform/brain') return html(res, pages.brainPage());
     if (method === 'GET' && p === '/platform/architecture') return html(res, pages.architecture());
     if (method === 'GET' && p === '/platform/samples/chicago-attendees.xlsx') {
       const buf = crm.sample.buffer();
@@ -84,7 +87,7 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/api/platform/metrics') return json(res, 200, await metrics.summary(), started);
     if (method === 'POST' && p === '/api/platform/ask') {
       const body = await parseBody(req);
-      const out = await brain.ask({ text: body.text, channel: body.channel || 'App', actor: actor(req) });
+      const out = await brain.ask({ text: body.text, channel: body.channel || 'App', actor: actor(req), role: (req.mopsUser && req.mopsUser.role) || 'marketer' });
       return json(res, out.ok === false ? 400 : 200, out, started);
     }
     if (method === 'GET' && p === '/api/platform/data/schema') return json(res, 200, data.schema(), started);
@@ -114,7 +117,7 @@ async function handle(req, res, u) {
       const body = await parseBody(req);
       return json(res, 200, await engage.saveTemplate({ ...body, actor: actor(req), channel: body.channel || 'App', sourceMessage: body.sourceMessage || '' }), started);
     }
-    if (method === 'GET' && p === '/api/platform/engage/sends') return json(res, 200, { sends: await engage.listSends() }, started);
+    if (method === 'GET' && p === '/api/platform/engage/sends') return json(res, 200, { sends: await engage.sendLog() }, started);
     if (method === 'POST' && p === '/api/platform/engage/sends') {
       const body = await parseBody(req);
       return json(res, 200, await engage.send({ ...body, actor: actor(req), channel: body.channel || 'App' }), started);
@@ -134,6 +137,7 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/api/platform/crm/objects') return json(res, 200, { objects: await crm.listObjects(u.searchParams.get('campaign') || 'CAMP-CHI') }, started);
     if (method === 'GET' && p === '/api/platform/crm/queue') return json(res, 200, await crm.failures(), started);
     if (method === 'GET' && p === '/api/platform/crm/owners') return json(res, 200, await crm.chicagoAccounts(), started);
+    if (method === 'GET' && p === '/api/platform/crm/uploads') return json(res, 200, { uploads: await crm.listUploads(u.searchParams.get('campaign') || 'CAMP-CHI') }, started);
     if (method === 'POST' && p === '/api/platform/crm/uploads') {
       const body = await parseBody(req);
       return json(res, 200, await crm.upload({ filename: body.filename, campaignId: body.campaignId || 'CAMP-CHI', actor: actor(req), channel: body.channel || 'App', sourceMessage: body.text || '', idempotencyKey: body.idempotencyKey }), started);
@@ -148,11 +152,18 @@ async function handle(req, res, u) {
       const body = await parseBody(req);
       return json(res, 200, await spend.file({ ...body, actor: actor(req), channel: body.channel || 'App' }), started);
     }
+    if (method === 'POST' && p === '/api/platform/spend/approve') {
+      const body = await parseBody(req);
+      return json(res, 200, await spend.approve({ campaignId: body.campaignId || 'CAMP-CHI', actor: actor(req), role: (req.mopsUser && req.mopsUser.role) || 'marketer', channel: body.channel || 'App', sourceMessage: body.text || '' }), started);
+    }
     if (method === 'POST' && p === '/api/platform/spend/sow') {
       const body = await parseBody(req);
       return json(res, 200, await spend.answer({ campaignId: body.campaignId || 'CAMP-CHI', answers: body.answers || body, actor: actor(req), channel: body.channel || 'App', sourceMessage: body.text || '' }), started);
     }
     if (method === 'GET' && p === '/api/platform/insights/dashboard') return json(res, 200, await insights.dashboard(u.searchParams.get('region') || ''), started);
+    if (method === 'GET' && p === '/api/platform/brain/policy') return json(res, 200, { rules: policy.RULES, chicago: policy.explain(180000) }, started);
+    if (method === 'GET' && p === '/api/platform/brain/why') return json(res, 200, await why.feed({ q: u.searchParams.get('q') || '', limit: u.searchParams.get('limit') || 40 }), started);
+    if (method === 'POST' && p === '/api/platform/reset') return json(res, 200, await seed.reset(require('./db').current()), started);
     if (method === 'GET' && (m = p.match(/^\/api\/platform\/insights\/reports\/(weekly|monthly)\.(pptx|pdf)$/))) {
       const region = u.searchParams.get('region') || (m[1] === 'monthly' ? 'portfolio' : 'Americas');
       const built = await insights.build(m[1], region);
