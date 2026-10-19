@@ -22,17 +22,21 @@ function agencyOf(f){const hit=ROSTER[f&&f.country]||{name:'Northwind Preferred 
 function money(n,cur){return require('./money').format(n,cur||'USD')}
 function amountOf(v){const s=String(v??'').trim();if(!s)return null;const p=require('./money').parseMoney(s);if(p)return p.amount;const n=Number(s.replace(/[,\s]/g,'').replace(/k$/i,'000'));return Number.isFinite(n)?n:NaN}
 function agencyFor(f){return agencyOf(f).name}
+const TYPE_ALIAS={partner:'Partner event','partner event':'Partner event',abm:'ABM play','abm play':'ABM play',events:'Executive event','executive event':'Executive event',dinner:'Dinner',roundtable:'Roundtable',summit:'Summit',webinar:'Webinar',digital:'Digital campaign','digital campaign':'Digital campaign','lead gen':'Lead gen'};
+const PROGRAM_TYPE={Events:'Executive event',ABM:'ABM play',Partner:'Partner event',Digital:'Digital campaign','Lead gen':'Lead gen'};
+function canonicalType(value,program){const s=String(value||'').trim();if(TYPES.includes(s))return s;const hit=TYPE_ALIAS[s.toLowerCase()];if(hit)return hit;if(program&&PROGRAM_TYPE[program])return PROGRAM_TYPE[program];return s}
 function budgetForm(f){f=f||{};
  const quarter=f.quarter||quarterOf(f.start_date);
  const items=[
   {key:'campaign_name',label:'Campaign name',value:f.campaign_name||'',source:'the brief'},
   {key:'product',label:'Product / architecture',value:f.product||'',source:'the brief'},
+  {key:'audience',label:'Goal or target accounts',value:f.audience||'',source:'the brief'},
   {key:'country',label:'Country',value:f.country||'',source:'the brief'},
   {key:'city',label:'City',value:f.city||f.city_venue||'',source:'the brief'},
   {key:'start_date',label:'Start date',value:(f.start_date||'').slice(0,10),source:'calendar hold',type:'date'},
   {key:'end_date',label:'End date',value:(f.end_date||f.start_date||'').slice(0,10),source:'calendar hold',type:'date'},
   {key:'vendor',label:'Agency',value:agencyFor(f),source:f.vendor?'the brief':'agency roster'},
-  {key:'campaign_type',label:'Campaign type',value:f.campaign_type||(f.program==='Events'?'Executive event':f.program||''),source:'program plan'},
+  {key:'campaign_type',label:'Campaign type',value:canonicalType(f.campaign_type,f.program),source:'program plan'},
   {key:'budget',label:'Amount',value:f.budget!=null&&f.budget!==''?String(f.budget):'',source:'the brief',type:'money'},
   {key:'currency',label:'Currency',value:f.currency||({Germany:'EUR',France:'EUR','United Kingdom':'GBP',India:'INR',Singapore:'SGD','United States':'USD',Australia:'AUD',Japan:'JPY'}[f.country])||'USD',source:f.currency?'the brief':'country table'},
   {key:'quarter',label:'Quarter',value:quarter,source:'fiscal calendar (August start)'},
@@ -41,8 +45,9 @@ function budgetForm(f){f=f||{};
  const errors=validateBudget(Object.fromEntries(items.map(i=>[i.key,i.value])));
  return{items,errors,ok:!errors.length,choices:{country:countries(),program:PROGRAMS,campaign_type:TYPES,quarter:quarterChoices(quarter)}}}
 function quarterChoices(current){const out=[];for(const y of [26,27,28])for(const q of [1,2,3,4])out.push(`FY${y}Q${q}`);if(current&&!out.includes(current))out.unshift(current);return out}
-function validateBudget(v){const errors=[];const need=[['campaign_name','Campaign name'],['product','Product / architecture'],['country','Country'],['city','City'],['start_date','Start date'],['vendor','Agency'],['campaign_type','Campaign type'],['budget','Amount'],['currency','Currency'],['quarter','Quarter'],['program','Program'],['owner','Owner']];
+function validateBudget(v){const errors=[];const need=[['campaign_name','Campaign name'],['product','Product / architecture'],['audience','Goal or target accounts'],['country','Country'],['city','City'],['start_date','Start date'],['vendor','Agency'],['campaign_type','Campaign type'],['budget','Amount'],['currency','Currency'],['quarter','Quarter'],['program','Program'],['owner','Owner']];
  for(const[k,label]of need)if(!String(v[k]??'').trim())errors.push(label+' is required.');
+ if(v.campaign_type)v.campaign_type=canonicalType(v.campaign_type,v.program);
  if(v.country&&!countries().includes(v.country))errors.push(v.country+' is not a Northwind country.');
  if(v.program&&!PROGRAMS.includes(v.program))errors.push('Program must be ABM, Digital, Events, Partner, or Lead gen.');
  if(v.campaign_type&&!TYPES.includes(v.campaign_type))errors.push('Campaign type is not one of the Airtable types.');
@@ -71,11 +76,11 @@ function taxOf(country,amount,currency){const t=TAX[country]||{name:'Tax',rate:0
  return{name:t.name,rate:t.rate,rateLabel:t.rate?Math.round(t.rate*1000)/10+'%':'none',base,tax,total:base+tax,currency:cur,note:t.rate?`${t.name} ${Math.round(t.rate*1000)/10}% on ${money(base,cur)} is ${money(tax,cur)}. Total with tax ${money(base+tax,cur)}. The budget amount is before tax.`:`No GST or VAT is added for ${country||'this country'}.`}}
 function milestonesOf(amount,country){const base=Math.round(+amount||0);const split=country==='Japan'?[30,70]:[50,50];
  return[{name:'Signature',pct:split[0],amount:Math.round(base*split[0]/100),when:'On signature'},{name:'Delivery',pct:split[1],amount:base-Math.round(base*split[0]/100),when:'When the attendee list or the campaign report is delivered'}]}
-function signRoute(amount,country,currency){const usd=require('./money').toUSD(+amount||0,currency||'USD')||0;const steps=[{role:'Our PM checks the draft',who:'Srisha R.',required:true}];
+function signRoute(amount,country,currency,owner){const usd=require('./money').toUSD(+amount||0,currency||'USD')||0;const who=owner||'the marketer';const steps=[{role:'Our PM checks the draft',who,required:true}];
  if(usd>150000){steps.push({role:'Director approval',who:'Chris M.',required:true});steps.push({role:'Procurement',who:'Procurement',required:true})}
- else steps.push({role:'Field marketing manager signs',who:'Srisha R.',required:true});
+ else steps.push({role:'Field marketing manager signs',who,required:true});
  if(country==='Japan')steps.push({role:'Country lead co-sign',who:'Japan country lead',required:true});
- return{steps,signer:usd>150000?'Chris M.':'Srisha R.',usd,note:usd>150000?'Over $150,000 USD. Chris M. signs, then procurement.':'At or under $150,000 USD. You can sign this.'}}
+ return{steps,signer:usd>150000?'Chris M.':who,usd,note:usd>150000?'Over $150,000 USD. Chris M. signs, then procurement.':'At or under $150,000 USD. '+who+' can sign this.'}}
 function unzipEntry(buf,want){let off=0;while(off+30<buf.length){if(buf.readUInt32LE(off)!==0x04034b50){off++;continue}
   const method=buf.readUInt16LE(off+8),comp=buf.readUInt32LE(off+18),nameLen=buf.readUInt16LE(off+26),extra=buf.readUInt16LE(off+28);
   const name=buf.slice(off+30,off+30+nameLen).toString();const start=off+30+nameLen+extra;
@@ -94,9 +99,15 @@ function extractSow(name,buf){const base=path.basename(String(name||'sow.txt')).
   const grab=(...labels)=>{for(const label of labels){const m=text.match(new RegExp('(?:^|\\n)\\s*'+label+'\\s*[:\\-]\\s*([^\\n]+)', 'i'));if(m)return m[1].trim().slice(0,240)}return''};
   const taxLine=(text.match(/\b(GST|VAT|consumption tax)\b[^.\n]{0,40}/i)||[])[0]||'';
   const rate=taxLine.match(/(\d+(?:\.\d+)?)\s*%/);
-  return{file:base,source:'extracted from '+base,text:text.slice(0,1500),currency:(grab('currency')||'').replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,3),
+  const gstin=(text.match(/\bGSTIN\b\s*[:\-]?\s*([0-9A-Z]{15})/i)||[])[1]||'';
+  let amount=grab('professional fees','not-to-exceed','amount','budget','fee');
+  const bare=text.match(/\b(EUR|USD|INR|SGD|AUD|GBP|JPY|CAD|CHF)\s*[0-9][0-9,]*(?:\.\d+)?/i);
+  if(!amount&&bare)amount=bare[0].trim();
+  let currency=(grab('currency')||'').replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,3);
+  if(!currency&&bare)currency=bare[1].toUpperCase();
+  return{file:base,source:'extracted from '+base,text:text.slice(0,1500),currency,
    venue:grab('venue'),city:grab('city'),agency:grab('agency','agency legal name','legal name'),ourPm:grab('our pm','client pm','northwind pm'),agencyPm:grab('agency pm','vendor pm'),
-   amount:grab('not-to-exceed','amount','budget','fee'),tax:taxLine.trim(),taxRate:rate?rate[1]+'%':'',signing:grab('signing authority'),start:grab('start date','event date'),end:grab('end date'),milestone:grab('payment milestones','milestones','milestone')}}
+   amount,tax:taxLine.trim(),taxRate:rate?rate[1]+'%':'',gstin,signing:grab('signing authority'),start:grab('start date','event date'),end:grab('end date'),milestone:grab('payment milestones','milestones','milestone','payment')}}
 function applyExtract(row,ex){if(!row.sow)throw new Error('Send the SOW request first.');
  const set=(field,value)=>{if(!value)return;let f=row.sow.fields.find(x=>x.field.toLowerCase()===field.toLowerCase());if(!f){f={field,value:'',source:'',confidence:'extracted'};row.sow.fields.push(f)}f.value=value;f.source=ex.source;f.confidence='extracted'};
  if(ex.city){set('City',ex.city);if(!row.fields.city)row.fields.city=ex.city}
@@ -107,6 +118,7 @@ function applyExtract(row,ex){if(!row.sow)throw new Error('Send the SOW request 
  if(ex.currency)set('Currency',ex.currency);
  if(ex.amount)set('Not-to-exceed',ex.amount);
  if(ex.tax)set('Tax (GST/VAT)',ex.tax);
+ if(ex.gstin)set('GSTIN',ex.gstin);
  if(ex.signing)set('Signing authority',ex.signing);
  if(ex.milestone)set('Payment milestones',ex.milestone);
  const country=row.fields.country,expect=(TAX[country]||{}).name;
@@ -128,7 +140,7 @@ function saveCode(row,code){code=String(code||'').trim().toUpperCase();if(!row.c
 function consentOf(emails){const out={};let db;try{db=engineDb(true)}catch(e){return out}
  const stmt=db.prepare("SELECT c.email,c.region,COALESCE((SELECT status FROM consent_ledger cl WHERE cl.contact_id=c.id AND channel='email' ORDER BY id DESC LIMIT 1),'unknown') status FROM contacts c WHERE lower(c.email)=lower(?)");
  try{for(const e of emails){const r=stmt.get(e);out[e.toLowerCase()]=r?{known:true,region:r.region,status:r.status}:{known:false,status:'unknown'}}}finally{db.close()}return out}
-function holdReason(email,info,country){if(!info||!info.known)return'not in the contact book — consent unknown, held out';
+function holdReason(email,info,country){if(!info||!info.known)return'';
  if(info.status==='opted_out')return`opted out${info.region?' · '+info.region:''} — do not upload`;
  if(info.status==='opted_in')return'';
  if(info.region==='US'||country==='United States')return'';
@@ -145,8 +157,8 @@ async function previewUpload(row,{name,buf,csv,overrides}){
  for(const r of mapped.rows){const why=holdReason(r.Email,book[r.Email.toLowerCase()],r.Country);if(why)held.push({email:r.Email,name:(r.FirstName+' '+r.LastName).trim(),issue:why,owner:r._owner||'',ownerReason:r._ownerReason||''});else clean.push(r)}
  const text=buf.toString('utf8');const emails=(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)||[]).map(e=>e.toLowerCase());const count={};for(const e of emails)count[e]=(count[e]||0)+1;
  const duplicates=Object.entries(count).filter(([,n])=>n>1).map(([email,n])=>({email,issue:`duplicate email on ${n} rows — one kept`}));
- const invalid=(mapped.quarantined||[]).slice(0,30).map(q=>({email:'',issue:q.reason||'invalid row'}));
- const report={input:mapped.stats.inputRows,ready:clean.length,duplicates:duplicates.length,invalid:invalid.length,consentHeld:held.length,formula:(mapped.quarantined||[]).filter(q=>/formula/i.test(q.reason||'')).length,owners:clean.filter(r=>r.OwnerId).length,unknownOwners:clean.filter(r=>r._unknown).length,rows:[...duplicates.slice(0,15),...invalid,...held.slice(0,40)]};
+ const invalid=(mapped.quarantined||[]).map(q=>({email:q.email||'',issue:q.reason||'invalid row'}));
+ const report={input:mapped.stats.inputRows,ready:clean.length,duplicates:duplicates.length,invalid:invalid.length,consentHeld:held.length,formula:(mapped.quarantined||[]).filter(q=>/formula/i.test(q.reason||'')).length,injection:(mapped.quarantined||[]).filter(q=>/injection/i.test(q.reason||'')).length,owners:clean.filter(r=>r.OwnerId).length,unknownOwners:clean.filter(r=>r._unknown).length,rows:[...duplicates,...invalid,...held]};
  const esc=v=>{const s=String(v??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s};
  const errorCsv='issue,email,detail\n'+report.rows.map(r=>[esc(r.issue),esc(r.email),esc(r.name||'')].join(',')).join('\n')+'\n';
  const TEMPLATE=mapped.template;const csvOut=TEMPLATE.join(',')+'\n'+clean.map(r=>TEMPLATE.map(k=>esc(r[k])).join(',')).join('\n')+(clean.length?'\n':'');
@@ -154,10 +166,10 @@ async function previewUpload(row,{name,buf,csv,overrides}){
   preview:clean.slice(0,12).map(r=>({name:(r.FirstName+' '+r.LastName).trim(),email:r.Email,company:r.Company,country:r.Country,owner:r._owner||'unassigned',ownerWhy:r._ownerReason||'no territory match',campaign:r.CampaignId})),
   stats:mapped.stats,report,errorCsv,csv:csvOut,confirmed:false,targets:TEMPLATE,needsConfirm:true}}
 function sowDiff(row){const ex=row.sow&&row.sow.extracted;if(!ex)return[];const f=row.fields||{};const amount=row.budget&&row.budget.total||f.budget||'';const cur=f.currency||'';const tax=taxOf(f.country,amount);
- const pairs=[['Agency legal name',ex.agency,f.vendor],['Venue',ex.venue,f.venue],['City',ex.city,f.city],['Dates',[ex.start,ex.end].filter(Boolean).join(' to '),[f.start_date,f.end_date].filter(Boolean).join(' to ')],['Currency',ex.currency,cur],['Amount',ex.amount,amount?require('./money').format(amount,cur||'USD'):''],['Tax',ex.tax,tax.note],['Signing authority',ex.signing,(row.sow.signOffRoute&&row.sow.signOffRoute.signer)||''],['Our PM',ex.ourPm,f.client_pm],['Agency PM',ex.agencyPm,f.agency_pm],['Milestones',ex.milestone,milestonesOf(amount,f.country).map(m=>m.pct+'% '+m.name).join(', ')]];
- return pairs.map(([field,extracted,approved])=>{const a=String(extracted||'').trim(),b=String(approved||'').trim();return{field,extracted:a,approved:b,match:!!a&&!!b&&(a.toLowerCase()===b.toLowerCase()||b.toLowerCase().includes(a.toLowerCase())||a.toLowerCase().includes(b.toLowerCase()))}})}
+ const pairs=[['Agency legal name',ex.agency,f.vendor],['Venue',ex.venue,f.venue],['City',ex.city,f.city],['Dates',[ex.start,ex.end].filter(Boolean).join(' to '),[f.start_date,f.end_date].filter(Boolean).join(' to ')],['Currency',ex.currency,cur],['Amount',ex.amount,amount?require('./money').format(amount,cur||'USD'):''],['Tax',ex.tax,tax.note],['GSTIN',ex.gstin,''],['Signing authority',ex.signing,(row.sow.signOffRoute&&row.sow.signOffRoute.signer)||''],['Our PM',ex.ourPm,f.client_pm],['Agency PM',ex.agencyPm,f.agency_pm],['Milestones',ex.milestone,milestonesOf(amount,f.country).map(m=>m.pct+'% '+m.name).join(', ')]];
+ return pairs.map(([field,extracted,approved])=>{const a=String(extracted||'').trim(),b=String(approved||'').trim();const x=a.toLowerCase(),y=b.toLowerCase();const short=x.length<=y.length?x:y,long=x.length<=y.length?y:x;const match=!!x&&!!y&&(x===y||(short.length>8&&long.includes(short)));return{field,extracted:a,approved:b,match}})}
 function sowJob(row){const f=row.fields||{};const amount=row.budget&&row.budget.total||f.budget||0;const cur=f.currency||'USD';const tax=taxOf(f.country,amount);
- return{ready:!!row.sow,status:row.sow?row.sow.status:'not requested',request:row.sowRequest||null,agency:agencyOf(f),tax,milestones:milestonesOf(amount,f.country),route:signRoute(amount,f.country,cur),diff:sowDiff(row),
+ return{ready:!!row.sow,status:row.sow?row.sow.status:'not requested',request:row.sowRequest||null,agency:agencyOf(f),tax,milestones:milestonesOf(amount,f.country),route:signRoute(amount,f.country,cur,f.owner),diff:sowDiff(row),
   ourPm:f.client_pm||'',agencyPm:f.agency_pm||'',fields:row.sow?row.sow.fields:[],questions:row.sow?row.sow.questions:[],answers:row.sow?row.sow.answers||{}:{},extracted:row.sow&&row.sow.extracted||null,extractNote:row.sow&&row.sow.extractNote||'',signedBy:row.sow&&row.sow.signedBy||null,selfCheck:row.sow&&row.sow.selfCheck||null}}
 function pack(row){const upload=row.setup&&row.setup.uploadPreview||null;return{budget:budgetForm(row.fields),sow:sowJob(row),code:codeJob(row),upload:upload?{...upload,csv:undefined,csvReady:!!(upload.csv)}:null}}
 module.exports={budgetForm,validateBudget,writeBudget,taxOf,milestonesOf,signRoute,extractSow,applyExtract,codeJob,saveCode,previewUpload,pack,quarterOf,CODE_RE,agencyOf,sowDiff,ROSTER};

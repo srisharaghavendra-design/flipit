@@ -8,8 +8,8 @@
   "scripts": {
     "start": "node server.js",
     "demo": "node backend/demo.js",
-    "test": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js backend/test/preview.test.js",
-    "test:backend": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js backend/test/preview.test.js",
+    "test": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js backend/test/preview.test.js backend/test/browser.test.js",
+    "test:backend": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js backend/test/preview.test.js backend/test/browser.test.js",
     "stop": "sh backend/stop.sh",
     "demo:run": "node backend/demo.js --run"
   },
@@ -19,5 +19,8 @@
   },
   "allowScripts": {
     "better-sqlite3@11.10.0": true
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
   }
 }

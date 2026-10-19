@@ -49,18 +49,10 @@ function oidcStart(base) {
 }
 // completeOidc is the plug-in point. It fails closed until the token endpoint returns an id_token
 // whose iss matches MOPS_OIDC_ISSUER. Group names map onto marketer, approver, and admin.
-async function completeOidc(code) {
+async function completeOidc() {
   if (provider() !== 'oidc' || !process.env.MOPS_OIDC_CLIENT_SECRET) return { error: 'OIDC is not configured.' };
-  const body = new URLSearchParams({ grant_type: 'authorization_code', code, client_id: process.env.MOPS_OIDC_CLIENT_ID, client_secret: process.env.MOPS_OIDC_CLIENT_SECRET, redirect_uri: process.env.MOPS_OIDC_REDIRECT || '' });
-  const res = await fetch(String(process.env.MOPS_OIDC_ISSUER).replace(/\/$/, '') + '/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body });
-  if (!res.ok) return { error: 'The identity provider rejected the login.' };
-  const tok = await res.json();
-  const payload = JSON.parse(Buffer.from(String(tok.id_token || '').split('.')[1] || '', 'base64url').toString() || '{}');
-  if (payload.iss && !String(process.env.MOPS_OIDC_ISSUER).startsWith(payload.iss)) return { error: 'Identity token issuer does not match.' };
-  const groups = [].concat(payload.groups || payload.roles || []);
-  const role = groups.includes('admin') ? 'admin' : groups.includes('approver') ? 'approver' : 'marketer';
-  const regions = [].concat(payload.region || payload.regions || ['Americas', 'EMEA', 'APJ']);
-  return { id: 'oidc:' + (payload.sub || payload.email), name: payload.name || payload.email || 'SSO user', role, regions, persona: 'Company SSO' };
+  if (!process.env.MOPS_OIDC_JWKS) return { error: 'OIDC is selected but MOPS_OIDC_JWKS is not set. Refusing an id_token whose signature cannot be checked.' };
+  return { error: 'Refusing the id_token. This demo does not accept an unverified token or grant a session from it.' };
 }
 function samlStart() {
   if (!process.env.MOPS_SAML_ENTRY) return null;
@@ -82,7 +74,7 @@ function readSession(token) {
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   const row = db.prepare('SELECT * FROM sessions WHERE id=?').get(id);
   if (!row || row.expires_at < Date.now()) return null;
-  if (row.user_id.startsWith('oidc:')) return { id: row.user_id, name: row.user_id, role: 'marketer', regions: ['Americas', 'EMEA', 'APJ'], persona: 'Company SSO' };
+  if (row.user_id.startsWith('oidc:')) return null;
   return BY_ID[row.user_id] || null;
 }
 function cookies(req) {

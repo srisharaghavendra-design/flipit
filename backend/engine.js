@@ -231,7 +231,7 @@ S_.post('/campaigns',c=>{const b=c.body;if(!b.name||!b.channel||!b.region)throw 
   enqueue('Campaign',id,c.trace);return{id,code,budgetRequest:br,status:needs?'pending_approval':'approved'}});
 S_.get('/campaigns',()=>all('SELECT * FROM campaigns ORDER BY created_at DESC'));
 S_.get('/budget',()=>all('SELECT * FROM budget_requests ORDER BY requested_at DESC'));
-S_.post('/budget/:id/decide',c=>{const b=one('SELECT * FROM budget_requests WHERE id=?',c.params.id);if(!b)throw err(404,'not found');if(b.status!=='pending')throw err(409,'already '+b.status);
+S_.post('/budget/:id/decide',c=>{const secret=process.env.MOPS_SECRET||'';const got=String(c.headers['x-mops-internal']||'');if(!secret||got!==secret)throw err(403,'The approver is taken from the signed-in session, not from the request body.');const b=one('SELECT * FROM budget_requests WHERE id=?',c.params.id);if(!b)throw err(404,'not found');if(b.status!=='pending')throw err(409,'already '+b.status);
   const ok=c.body.decision==='approve';run('UPDATE budget_requests SET status=?,approver=?,decided_at=? WHERE id=?',ok?'approved':'rejected',c.body.approver||'approver',now(),b.id);
   run('UPDATE campaigns SET status=?,budget=?,updated_at=? WHERE id=?',ok?'Planned':'Rejected',ok?b.amount:0,now(),b.campaign_id);audit(c.body.approver||'approver','budget.'+(ok?'approve':'reject'),b.id,{amount:b.amount},c.trace);
   emit('approval',`${c.body.approver||'approver'} ${ok?'approved':'rejected'} ${b.id} ($${b.amount/1000}K)`,{},c.trace);enqueue('Campaign',b.campaign_id,c.trace);return{ok:true,status:ok?'approved':'rejected'}});

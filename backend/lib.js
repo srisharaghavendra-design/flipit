@@ -66,7 +66,8 @@ function invoke(name,method,urlPath,opts={}){const handler=handlers[name];if(!ha
       resolve({status,headers:resHeaders,body,text,raw:buf})}
     Promise.resolve(handler(req,res)).then(()=>{if(res.writableEnded)finish()}).catch(reject);req.flush()})}
 async function call(svc,path,opts={},trace){const t0=Date.now();const method=opts.method||(opts.body!=null?'POST':'GET');
-  const r=await invoke(svc,method,path,{...opts,trace:trace||opts.trace});
+  const headers={...(opts.headers||{}),'x-mops-internal':process.env.MOPS_SECRET||''};
+  const r=await invoke(svc,method,path,{...opts,headers,trace:trace||opts.trace});
   let j=r.body;if(j==null||typeof j!=='object')j={text:r.text};
   if(!Array.isArray(j)){j.__ms=Date.now()-t0;j.__http=r.status}
   if(r.status>=400&&!opts.ok){const e=new Error(`${svc}${path} → ${r.status} ${(j&&j.error)||''}`);e.status=r.status;throw e}return j}

@@ -30,7 +30,10 @@ h1{font-size:46px;line-height:1.05;letter-spacing:-.045em;font-weight:650;margin
 .bits b{font-weight:650}
 .bits span{color:var(--mu);display:block;font-size:13px}
 .field{display:block;margin:8px 0;font-size:13px;color:var(--mu)}
-.field input{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;color:var(--tx);background:#fff}
+.field input,.field select{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;color:var(--tx);background:#fff}
+.err{color:var(--warn);font-size:14px;margin:0 0 8px}
+.reject{background:#fff;color:var(--warn);border:1px solid #f3d3a1;border-radius:12px;padding:11px 18px;font-weight:680}
+.map{margin-top:8px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .approve{background:var(--ac);color:#fff;border-radius:12px;padding:11px 18px;font-weight:680}
 .approve:disabled{opacity:.5}
@@ -96,51 +99,58 @@ function didLine(){const n=handledCount();const b=BR;let s=n?`I handled ${n} thi
  return s}
 function statusOf(c){if(c.needsApproval)return{t:'Waiting on you',c:'wait'};if(c.pace==='behind')return{t:'Behind',c:'bad'};if(c.status==='Live'||c.stage==='Run')return{t:'Running',c:''};if(c.stage==='Report')return{t:'Wrapped up',c:''};return{t:'On track',c:''}}
 function pctOf(c){let i=STAGES.indexOf(c.stage||'');if(c.status==='Live'||c.stage==='Run')i=6;if(i<0)i=3;return Math.round((i+1)/STAGES.length*100)}
-function guesses(lc){const f=lc.fields||{};return{venue:f.venue||((f.city||'City')+' — Main Tower'),cost_center:f.cost_center||'CC-4408',client_pm:f.client_pm||f.owner||'Srisha R.',agency_pm:f.agency_pm||'Ada Klein',agency_confirm:f.vendor||(f.country==='Germany'?'Rhine & Co Events':'the agency on the roster')}}
-function bitsFor(lc){const f=lc.fields||{},g=guesses(lc),over=!!(lc.budget&&lc.budget.total>150000);
- const bits=[{key:'venue',label:'Venue',value:g.venue,note:'I guessed this from the city.'},{key:'signer',label:'Who signs',value:over?'Chris M.':'Srisha R.',note:over?'Over $150,000, so Chris M. approves.':'Under $150,000, so you can sign this.'}];
- if(!f.vendor)bits.push({key:'agency_confirm',label:'Agency',value:g.agency_confirm,note:'From the agency roster.'});
- else bits.push({key:'agency_pm',label:'Agency contact',value:g.agency_pm,note:'Who sends the SOW back.'});
- return{g,over,bits:bits.slice(0,3)}}
-function needsCards(){const out=[];
- for(const lc of LC){if(!lc||lc.error||lc.id==='LC-DEMO')continue;if(MINE&&lc.id!==MINE)continue;if(!['intake','budget','sow','codes','setup'].includes(lc.step))continue;if(DONE&&DONE.id===lc.id)continue;out.push({kind:'lc',lc})}
- const book=PFALL||PF;const behind=(book?.groups?Object.values(book.groups).flat():(D?.campaigns||[])).filter(c=>c.pace==='behind');
- const code=behind.find(c=>/code/i.test(c.nextAction||''));
- if(code)out.push({kind:'code',c:code,n:behind.length});
- const ev=(D?.events||[]).filter(e=>e.capacity&&(e.registrations||0)/e.capacity<0.5).sort((a,b)=>(a.registrations/a.capacity)-(b.registrations/b.capacity))[0];
- if(ev)out.push({kind:'regs',ev,n:(D.events||[]).filter(e=>e.capacity&&(e.registrations||0)/e.capacity<0.5).length});
- return out.slice(0,3)}
+function visible(lc){if(!lc||lc.error||!lc.id||lc.id==='LC-DEMO')return false;if(lc.childIds&&lc.childIds.length)return false;if(lc.budget&&lc.budget.status==='rejected')return false;if(!['intake','budget','sow','codes','setup'].includes(lc.step))return false;if(DONE&&DONE.id===lc.id)return false;const f=lc.fields||{};const mine=f.openedBy===ME.id||f.owner===ME.name;const pending=!!(lc.budget&&lc.budget.status==='pending_approval');const over=!!(lc.budget&&lc.budget.usd>150000);const sowNeeds=lc.step==='sow'&&over&&!(lc.sow&&lc.sow.signedBy);if(ME.role==='approver')return pending||sowNeeds||mine;return mine}
+function needsCards(){return LC.filter(visible).map(lc=>({kind:'lc',lc}))}
 function askBox(){return `<form class="ask" id="askForm"><label class="sr" for="ask" style="position:absolute;left:-999px">Ask @mops</label><textarea id="ask" rows="1" placeholder="Singapore CISO roundtable, Feb, $40K, agency X"></textarea><button class="send" id="send" type="submit">Send</button></form>
 <div class="starts"><button type="button" data-q="Singapore CISO roundtable, Feb, $40K, agency X">Singapore CISO roundtable, Feb, $40K</button><button type="button" data-q="Which campaigns are behind?">Which campaigns are behind?</button><button type="button" data-q="What did you cover for me?">What did you cover for me?</button></div>${answer?`<p class="note">${esc(answer)}</p>`:''}`}
+function fieldControl(x,choices){const val=x.value==null?'':String(x.value);
+ if(['country','program','campaign_type','quarter'].includes(x.key)){let opts=(choices&&choices[x.key])||[];if(val&&!opts.includes(val))opts=[val,...opts];
+  return `<label class="field">${esc(x.label)}<select data-bit="${esc(x.key)}">${val?'':`<option value="" selected></option>`}${opts.map(o=>`<option value="${esc(o)}"${o===val?' selected':''}>${esc(o)}</option>`).join('')}</select>${x.source?`<span>${esc(x.source)}</span>`:''}</label>`}
+ return `<label class="field">${esc(x.label)}<input data-bit="${esc(x.key)}" type="${x.type==='date'?'date':'text'}" value="${esc(val)}">${x.source?`<span>${esc(x.source)}</span>`:''}</label>`}
+function guessAnswer(lc,key){const f=lc.fields||{},ag=(lc.jobs&&lc.jobs.sow&&lc.jobs.sow.agency)||{};
+ if(key==='agency_confirm')return f.vendor||ag.name||'';
+ if(key==='venue')return f.venue||(f.city?f.city+' — to confirm':'');
+ if(key==='cost_center')return f.cost_center||'CC-4408';
+ if(key==='client_pm')return f.client_pm||f.owner||ME.name||'';
+ if(key==='agency_pm')return f.agency_pm||(ag.pm?ag.pm+' <'+(ag.email||'')+'>':'');
+ return ''}
+function sowBlock(lc){if(lc.step!=='sow'||!lc.jobs||!lc.jobs.sow)return '';const sow=lc.jobs.sow,ag=sow.agency||{},req=sow.request||lc.sowRequest||{};
+ const qs=(sow.questions||[]).map(q=>`<label class="field">${esc(q.label)}<input data-ans="${esc(q.key)}" value="${esc((sow.answers||{})[q.key]||guessAnswer(lc,q.key))}"></label>`).join('');
+ const diff=(sow.diff||[]).filter(d=>d.extracted).map(d=>`<li><b>${esc(d.field)}</b> ${esc(d.extracted)} <span>${d.match?'matches the budget':'check against '+esc(d.approved||'the budget')}</span></li>`).join('');
+ const over=!!(lc.budget&&lc.budget.usd>150000);
+ return `<p>SOW request <b>${esc(req.status||'queued')}</b> to ${esc(ag.email||req.to||'the roster agency')} · ${esc(ag.legal||ag.name||'')}. ${esc(req.note||'Queued in the demo mail catcher. This was not sent through a company mail system.')}</p><label class="field">Agency SOW (PDF, DOCX, or text)<input type="file" data-sow="${esc(lc.id)}" accept=".pdf,.docx,.txt,application/pdf"></label>${sow.extractNote?`<p>${esc(sow.extractNote)}</p>`:''}${diff?`<ul class="bits">${diff}</ul>`:''}${qs}<p class="meta">${over?'Over $150,000. Chris M. has to sign this.':'At or under $150,000. You can sign this.'}${sow.signedBy?' Signed by '+esc(sow.signedBy)+'.':''}</p>`}
+function codesBlock(lc){if(!lc.codes)return '';const c=lc.codes;const box=(key,label)=>`<label class="field">${label}<input data-id="${key}" value="${esc(c[key]||'')}"></label>`;
+ return `<div class="ids">${box('ban_id','BAN')}${box('cc_id','Cost center')}<label class="field">Campaign code<input data-code-input value="${esc(c.campaign_code||'')}"></label>${box('sfdc_campaign_id','SFDC campaign id')}${box('event_id','Event id')}</div><button class="edit" type="button" data-save-code="${esc(lc.id)}">Save ids</button>`}
+function uploadBlock(lc){if(lc.step!=='codes'&&lc.step!=='setup')return '';const up=lc.jobs&&lc.jobs.upload;const rep=up&&up.report;const targets=[''].concat((up&&up.targets)||['FirstName','LastName','Email','Company','Title','Phone','Country','CampaignId','Status','LeadSource','OwnerId']).concat(['Consent','FullName']);
+ let map='';if(up&&up.mapping){const confirmed=!!(up.confirmed||(lc.setup&&lc.setup.mapping&&lc.setup.mapping.confirmed));
+  map=`<div class="map"><p><b>${rep?rep.input:0}</b> rows in the file · <b>${rep?rep.ready:0}</b> ready for Salesforce · ${rep?rep.duplicates:0} duplicate emails · ${rep?rep.invalid:0} quarantined · ${rep?rep.consentHeld:0} held for consent · ${rep?rep.formula:0} formulas · ${rep?(rep.injection||0):0} injection</p>${(up.preview||[]).map(p=>`<p class="meta">${esc(p.name)} · ${esc(p.email)} · owner ${esc(p.owner)} (${esc(p.ownerWhy)})</p>`).join('')}${(rep&&rep.rows||[]).slice(0,8).map(r=>`<p class="meta">${esc(r.issue)} ${esc(r.email||'')}</p>`).join('')}${rep&&rep.rows&&rep.rows.length>8?`<p class="meta">The error report lists all ${rep.rows.length} rows.</p>`:''}${up.mapping.map(m=>`<label class="field">${esc(m.column||('Column '+(m.index+1)))}<select data-map-col="${esc(m.column)}" data-map-index="${m.index}">${targets.map(t=>`<option value="${esc(t)}"${(m.target||'')===t?' selected':''}>${esc(t||'Ignore')}</option>`).join('')}</select><span>${esc(m.method||'')}</span></label>`).join('')}<button class="approve" type="button" data-confirm="${esc(lc.id)}">Confirm mapping</button><p><a href="/api/engine/lifecycle/${esc(lc.id)}/upload-errors.csv">Download the error report</a>${confirmed?` · <a href="/api/engine/lifecycle/${esc(lc.id)}/upload.csv">Download the SFDC-ready CSV</a>`:''}</p></div>`}
+ return `<label class="field">Target list (CSV or XLSX)<input type="file" data-list="${esc(lc.id)}" accept=".csv,.xlsx,text/csv"></label>${map}`}
 function cardLc(lc){const f=lc.fields||{},b=lc.budget||{},cur=f.currency||b.currency||'USD';
- const items=(lc.jobs&&lc.jobs.budget&&lc.jobs.budget.items)||[];
- const ok=!!(lc.jobs&&lc.jobs.budget&&lc.jobs.budget.ok);
- const errs=(lc.jobs&&lc.jobs.budget&&lc.jobs.budget.errors)||[];
+ const bud=lc.jobs&&lc.jobs.budget||{};const items=bud.items||[];const choices=bud.choices||{};
+ const ok=!!bud.ok;const errs=bud.errors||[];
  const over=!!(b.usd>150000||/Over \$150/.test(b.route||''));
- const pending=b.status==='pending_approval';
+ const pending=b.status==='pending_approval';const approved=b.status==='approved';
  const when=[f.city,f.start_date,b.total?money(b.total,cur):'',b.usd?('about '+money(b.usd,'USD')):''].filter(Boolean).join(' · ');
- const fields=items.map(x=>`<label class="field">${esc(x.label)}<input data-bit="${esc(x.key)}" value="${esc(x.value)}">${x.source?`<span>${esc(x.source)}</span>`:''}</label>`).join('');
- const kids=(lc.childIds||f.childIds||[]).length?`<p class="meta">Linked requests: ${esc((lc.childIds||f.childIds).join(', '))}</p>`:'';
+ const fields=(lc.step==='intake'||lc.step==='budget')?items.map(x=>fieldControl(x,choices)).join(''):'';
  const prompt=lc.prompt?`<p>${esc(lc.prompt)}</p>`:'';
- let label='';
- if(!ok)label='';
+ const links=(lc.childIds||[]).map(id=>`<a href="#${esc(id)}">${esc(id)}</a>`).join(' · ');
+ let label='Submit',hide=false;
+ if(lc.step==='sow')label=(lc.sow&&lc.sow.signedBy)?'Continue':'Sign and continue';
+ else if(lc.step==='codes'||lc.step==='setup')hide=true;
  else if(ME.role==='approver'&&pending)label='Approve';
- else if(pending)label='';
- else if(b.status==='approved')label='Continue';
- else label='Submit';
- const sow=(lc.step==='sow'&&lc.jobs&&lc.jobs.sow)?`<p>Agency contact ${esc(lc.jobs.sow.agency&&lc.jobs.sow.agency.email||'')} — ${esc(lc.sowRequest&&lc.sowRequest.note||'queued in the demo mail catcher')}.</p><label class="field">Agency SOW (PDF or DOCX)<input type="file" data-sow="${esc(lc.id)}" accept=".pdf,.docx,.txt"></label>`:'';
- const diff=(lc.jobs&&lc.jobs.sow&&lc.jobs.sow.diff&&lc.jobs.sow.diff.length)?`<ul class="bits">${lc.jobs.sow.diff.filter(d=>d.extracted).map(d=>`<li><b>${esc(d.field)}</b> ${esc(d.extracted)} <span>${d.match?'matches the budget':'check against '+d.approved}</span></li>`).join('')}</ul>`:'';
- const up=lc.step==='setup'||lc.step==='codes'?`<label class="field">Target list (CSV or XLSX)<input type="file" data-list="${esc(lc.id)}" accept=".csv,.xlsx"></label>`:'';
- return `<article class="card" data-lc="${esc(lc.id)}"><h2>${esc(f.campaign_name||'New campaign')}</h2><p class="meta">${esc(when)}</p>${prompt}${kids}<p>${ok?'Check every field, then submit.':'Fill the open fields. Approve stays hidden until they are valid.'} ${over?'Over $150,000 needs Chris M.':'Inside the $150,000 rule.'}</p>${errs.length?`<p>${esc(errs[0])}</p>`:''}${fields}${sow}${diff}${up}<div class="row">${label?`<button class="approve" type="button" data-approve="${esc(lc.id)}">${label}</button>`:''}</div></article>`}
+ else if(pending)hide=true;
+ else if(approved)label='Continue';
+ else {label='Submit';hide=!ok}
+ const reject=ME.role==='approver'&&pending&&(lc.step==='budget'||lc.step==='intake')?`<button class="reject" type="button" data-reject="${esc(lc.id)}">Reject</button>`:'';
+ const btn=(lc.step==='codes'||lc.step==='setup')?'':`<button class="approve" type="button" data-approve="${esc(lc.id)}" ${hide?'hidden':''}>${label}</button>`;
+ return `<article class="card" data-lc="${esc(lc.id)}" data-step="${esc(lc.step)}"><h2><a href="#${esc(lc.id)}">${esc(f.campaign_name||'New campaign')}</a></h2><p class="meta">${esc(when)}</p>${prompt}${links?`<p class="meta">Linked cities ${links}</p>`:''}<p>${lc.step==='sow'?'Check the agency SOW against the budget, then sign.':lc.step==='codes'||lc.step==='setup'?'The ids are issued. Edit them if you need to, then upload the list.':ok?'Check every field. Submit updates as you edit.':'Fill the open fields. Submit stays hidden until they are valid.'} ${over?'Over $150,000 needs Chris M.':'Inside the $150,000 rule.'}</p><p class="err">${esc(errs[0]||'')}</p>${fields}${sowBlock(lc)}${codesBlock(lc)}${uploadBlock(lc)}<div class="row">${btn}${reject}</div></article>`}
 function cardDone(r){const f=r.fields||{},c=r.codes||{},chk=r.sow&&r.sow.selfCheck;
- return `<article class="card"><p class="ok">Covered for you</p><h2>${esc(f.campaign_name||'Campaign')}</h2><p>SOW sent. IDs created.${r.step==='run'||r.step==='report'?' It is live.':''}</p><div class="bar"><i style="width:${r.step==='run'||r.step==='report'?'100':'72'}%"></i></div><div class="ids"><div><b>${esc(c.ban_id||'—')}</b><span>BAN / cost center ${esc(c.cc_id||'')}</span></div><div><b>${esc(c.campaign_code||'—')}</b><span>Campaign code</span></div><div><b>${esc(c.sfdc_campaign_id||'—')}</b><span>SFDC campaign</span></div><div><b>${esc(c.event_id||'—')}</b><span>Event</span></div></div>${chk?`<p>${esc(chk.caught)}. ${esc(chk.fix)}.</p>`:''}<a class="back" href="${r.campaign&&r.campaign.id?'#c/'+esc(r.campaign.id):'#campaigns'}">See it in my campaigns</a></article>`}
-function cardCode(x){return `<article class="card"><h2>${esc(x.c.name)}</h2><p>${x.n} campaign${x.n===1?' is':'s are'} behind. This one is missing its campaign code. I drafted the code.</p><div class="row"><button class="approve" type="button" data-code="${esc(x.c.id)}">Approve</button></div></article>`}
-function cardRegs(x){const e=x.ev;return `<article class="card"><h2>${esc(e.name)}</h2><p>${x.n} event${x.n===1?' is':'s are'} under half full. This one has ${e.registrations||0} of ${e.capacity}. I drafted a reminder to the opted-in list.</p><div class="row"><button class="approve" type="button" data-regs="${esc(e.campaignId||'')}">Approve</button></div></article>`}
+ return `<article class="card"><p class="ok">Covered for you</p><h2>${esc(f.campaign_name||'Campaign')}</h2><p>The SOW request is queued in the demo mail catcher. The ids are on the request.${r.step==='run'||r.step==='report'?' It is live.':''}</p><div class="bar"><i style="width:${r.step==='run'||r.step==='report'?'100':'72'}%"></i></div><div class="ids"><div><b>${esc(c.ban_id||'—')}</b><span>BAN / cost center ${esc(c.cc_id||'')}</span></div><div><b>${esc(c.campaign_code||'—')}</b><span>Campaign code</span></div><div><b>${esc(c.sfdc_campaign_id||'—')}</b><span>SFDC campaign</span></div><div><b>${esc(c.event_id||'—')}</b><span>Event</span></div></div>${chk?`<p>${esc(chk.caught)}. ${esc(chk.fix)}.</p>`:''}<a class="back" href="${r.campaign&&r.campaign.id?'#c/'+esc(r.campaign.id):'#campaigns'}">See it in my campaigns</a></article>`}
 function home(){const cards=needsCards();
  let h=`<h1>Hey, ${esc((ME.name||'there').split(' ')[0])}.</h1><p class="did">Demo sign-in · ${esc(ME.role)} · ${esc((ME.regions||[]).join(', '))}</p><p class="did">${esc(didLine())}</p>${askBox()}<div class="sec" id="actions">`;
  if(DONE)h+=cardDone(DONE);
  if(!cards.length&&!DONE){const lines=coveredLines();h+=`<article class="card"><h2>You're all caught up.</h2><p>Here's what I handled.</p>${lines.length?`<ul class="bits">${lines.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:'<p class="meta">Nothing needed a decision.</p>'}</article>`}
- else h+=cards.map(c=>c.kind==='lc'?cardLc(c.lc):c.kind==='code'?cardCode(c):cardRegs(c)).join('');
+ else h+=cards.map(c=>cardLc(c.lc)).join('');
  if(showCovered){const lines=coveredLines();h+=`<article class="card"><h2>Here's what I handled.</h2>${lines.length?`<ul class="bits">${lines.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:'<p>Nothing has landed in the book yet.</p>'}</article>`}
  const threads=(S?.threads||[]).slice(0,8);
  h+=`<details class="hist"><summary>Earlier asks</summary>${threads.map(t=>`<button type="button" data-thread="${esc(t.id)}">${esc(t.title)}</button>`).join('')||'<p>None yet.</p>'}</details></div>`;
@@ -158,59 +168,76 @@ function cardView(id){const c=(D?.campaigns||[]).find(x=>x.id===id);if(!c)return
 function threadView(id){const t=TH[id];if(!t)return `<p class="empty">That ask is not here.</p><a class="back" href="#/">Home</a>`;
  const msgs=(t.messages||[]).slice(-12).map(m=>`<div class="bub ${m.who==='@mops'?'bot':'me'}">${esc(m.text||'')}</div>`).join('');
  return `<p><a class="back" href="#/">Home</a></p><h1>${esc(t.title)}</h1>${msgs||'<p class="empty">No messages yet.</p>'}`}
-function lcView(id){const lc=LC.find(x=>x.id===id)||(DONE&&DONE.id===id?DONE:null);if(!lc)return `<p class="empty">Opening…</p>`;if(DONE&&DONE.id===id)return cardDone(DONE);if(['intake','budget','sow'].includes(lc.step))return cardLc(lc);if(lc.codes)return cardDone(lc);return `<article class="card"><h2>${esc(lc.fields?.campaign_name||id)}</h2><p>${esc((lc.did||[])[0]||'In progress.')}</p></article>`}
+function lcView(id){const lc=LC.find(x=>x.id===id)||(DONE&&DONE.id===id?DONE:null);if(!lc||lc.error)return `<p class="empty">That request is not on your desk.</p><a class="back" href="#/">Home</a>`;if(lc.childIds&&lc.childIds.length){const kids=lc.childIds.map(cid=>{const k=LC.find(x=>x.id===cid);const city=k&&k.fields&&k.fields.city||cid;const amt=k&&k.fields?money(k.fields.budget,k.fields.currency):'';return `<a class="back" href="#${esc(cid)}">${esc(city)} ${esc(amt)}</a>`}).join(' ');return `<article class="card"><h2>${esc((lc.fields||{}).campaign_name||'Linked requests')}</h2><p>Each city is its own request.</p><p>${kids}</p></article>`}if(DONE&&DONE.id===id&&!['intake','budget','sow','codes','setup'].includes(lc.step))return cardDone(DONE);if(['intake','budget','sow','codes','setup'].includes(lc.step))return cardLc(lc);if(lc.codes)return cardDone(lc);return `<article class="card"><h2>${esc(lc.fields?.campaign_name||id)}</h2><p>${esc((lc.did||[])[0]||'In progress.')}</p></article>`}
 function render(){const r=route();$('navHome').classList.toggle('on',r.view==='home');$('navCamps').classList.toggle('on',r.view!=='home'&&r.view!=='thread');
  $('main').innerHTML=r.view==='home'?home():r.view==='campaigns'?campaigns():r.view==='card'?cardView(r.id):r.view==='thread'?threadView(r.id):lcView(r.id);
  bind()}
 function bind(){const form=$('askForm');if(form){form.onsubmit=ev=>{ev.preventDefault();ask($('ask').value)};[...document.querySelectorAll('.starts button')].forEach(b=>b.onclick=()=>ask(b.dataset.q))}
- document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveLc(b.dataset.approve));
+ document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveLc(b.dataset.approve,b.textContent==='Approve'?'approve':''));
+ document.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>approveLc(b.dataset.reject,'reject'));
  document.querySelectorAll('[data-sow]').forEach(el=>el.onchange=()=>uploadSow(el.dataset.sow,el.files[0]));
  document.querySelectorAll('[data-list]').forEach(el=>el.onchange=()=>uploadList(el.dataset.list,el.files[0]));
- document.querySelectorAll('[data-code]').forEach(b=>b.onclick=()=>approveFix(b.dataset.code,'@mops create a campaign code'));
- document.querySelectorAll('[data-regs]').forEach(b=>b.onclick=()=>approveFix(b.dataset.regs,'@mops segment opted-in contacts and email them about a reminder, send'));
+ document.querySelectorAll('[data-save-code]').forEach(b=>b.onclick=()=>saveIds(b.dataset.saveCode));
+ document.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>confirmUpload(b.dataset.confirm));
  document.querySelectorAll('[data-camp]').forEach(b=>b.onclick=()=>go('c/'+b.dataset.camp));
  document.querySelectorAll('[data-thread]').forEach(b=>b.onclick=()=>go('t/'+b.dataset.thread));
+ document.querySelectorAll('[data-lc]').forEach(root=>{root.querySelectorAll('[data-bit]').forEach(el=>{const fn=()=>paintAction(root.dataset.lc);el.addEventListener('input',fn);el.addEventListener('change',fn)});paintAction(root.dataset.lc)});
  const fr=$('fRegion'),fp=$('fProgram');if(fr)fr.onchange=()=>setFilt('region',fr.value);if(fp)fp.onchange=()=>setFilt('program',fp.value)}
 async function setFilt(k,v){FILT[k]=v;await loadPortfolio();render()}
 async function loadPortfolio(){const q=new URLSearchParams(FILT);try{PF=await(await fetch('/api/portfolio?'+q)).json()}catch(_){PF=PF}try{PFALL=await(await fetch('/api/portfolio?region=all&program=all&quarter=all')).json()}catch(_){PFALL=PFALL}}
-async function go(id){history.replaceState(null,'',id==='home'||id==='/'?'#/':'#'+id);if(String(id).startsWith('LC-')){try{const row=await(await fetch('/api/engine/lifecycle/'+encodeURIComponent(id))).json();const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=row;else LC.push(row)}catch(_){}}render();scrollTo(0,0)}
+async function go(id){const hash=id==='home'||id==='/'?'#/':'#'+id;if(location.hash!==hash)history.replaceState(null,'',hash);if(String(id).startsWith('LC-')){try{const row=await(await fetch('/api/engine/lifecycle/'+encodeURIComponent(id))).json();if(row&&row.childIds){const kids=await Promise.all(row.childIds.map(cid=>fetch('/api/engine/lifecycle/'+encodeURIComponent(cid)).then(r=>r.json()).catch(()=>null)));kids.filter(k=>k&&k.id).forEach(k=>{const i=LC.findIndex(x=>x.id===k.id);if(i>=0)LC[i]=k;else LC.push(k)})}const i=LC.findIndex(x=>x.id===id);if(row&&row.id){if(i>=0)LC[i]=row;else LC.push(row)}}catch(_){}}render();scrollTo(0,0)}
 async function load(){if(!delegated){delegated=true;try{await fetch('/api/delegate',{method:'POST'})}catch(_){}}
  try{const ses=await(await fetch('/api/session')).json();if(ses.user)ME=ses.user}catch(_){}
  S=await(await fetch('/api/state')).json();D=await(await fetch('/api/data')).json();
  try{BR=await(await fetch('/api/briefing')).json()}catch(_){}
  await loadPortfolio();
  const ts=await Promise.all((S.threads||[]).map(t=>fetch('/api/thread/'+t.id).then(r=>r.json()).catch(()=>null)));TH={};ts.filter(Boolean).forEach(t=>{if(t.id)TH[t.id]=t});
- const ids=[...new Set([MINE].filter(Boolean))];
- LC=(await Promise.all(ids.map(id=>fetch('/api/engine/lifecycle/'+id).then(r=>r.json()).catch(()=>null)))).filter(x=>x&&x.id&&x.id!=='LC-DEMO');
- const a=document.activeElement;if(busy)return;if(a&&(a.id==='ask'||a.dataset&&(a.dataset.bit||a.dataset.sow||a.dataset.list)))return;render()}
-function readBits(id){const root=document.querySelector(`[data-lc="${id}"]`);const o={};if(!root)return o;root.querySelectorAll('[data-bit]').forEach(el=>{if(String(el.value).trim())o[el.dataset.bit]=el.value.trim()});return o}
-async function postLc(id,action,patch){const res=await fetch('/api/engine/lifecycle/'+encodeURIComponent(id),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,patch:patch||{}})});const r=await res.json();if(!res.ok|| (r.error&&!r.step))throw new Error(r.error||'Could not do that');return r}
-async function approveLc(id){if(busy)return;const lc=LC.find(x=>x.id===id);if(!lc||lc.id!==id)return;const fields=readBits(id);
- busy=true;const btn=document.querySelector(`[data-approve="${id}"]`);if(btn){btn.disabled=true;btn.textContent='Working…'}
- try{let r=await postLc(id,'save-budget',{fields});
-  if(ME.role==='approver'&&r.budget&&r.budget.status==='pending_approval')r=await postLc(id,'approve-budget',{});
-  else if(!r.budget||r.budget.status==='draft')r=await postLc(id,'submit-budget',{});
-  if(r.budget&&r.budget.status==='pending_approval'){toast('Submitted to Chris M.');const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=r;busy=false;render();return}
-  if(r.budget&&r.budget.status==='approved'&&r.step==='budget')r=await postLc(id,'continue',{});
-  const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=r;else LC.unshift(r);
-  toast(r.step==='sow'?'Budget is in. The SOW request is queued in the demo mail catcher.':'Saved.');
+ try{const list=await(await fetch('/api/engine/lifecycle')).json();const ids=(list.items||[]).map(x=>x.id).filter(id=>id&&id!=='LC-DEMO').slice(0,60);if(MINE&&!ids.includes(MINE))ids.unshift(MINE);LC=(await Promise.all(ids.map(id=>fetch('/api/engine/lifecycle/'+encodeURIComponent(id)).then(r=>r.json()).catch(()=>null)))).filter(x=>x&&x.id&&x.id!=='LC-DEMO')}catch(_){LC=LC}
+ const a=document.activeElement;if(busy)return;if(a&&(a.id==='ask'||(a.closest&&a.closest('[data-lc]'))))return;render()}
+function readBits(id){const root=document.querySelector(`[data-lc="${id}"]`);const o={};if(!root)return o;root.querySelectorAll('[data-bit]').forEach(el=>{o[el.dataset.bit]=String(el.value||'').trim()});return o}
+function readAnswers(id){const root=document.querySelector(`[data-lc="${id}"]`);const o={};if(!root)return o;root.querySelectorAll('[data-ans]').forEach(el=>{if(String(el.value).trim())o[el.dataset.ans]=el.value.trim()});return o}
+function remember(r){if(!r||!r.id)return;const i=LC.findIndex(x=>x.id===r.id);if(i>=0)LC[i]=r;else LC.unshift(r)}
+function quarterOfClient(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return'';const [y,m]=date.split('-').map(Number);const fy=(m>=8?y+1:y)%100;const q=Math.floor(((m-8+12)%12)/3)+1;return 'FY'+String(fy).padStart(2,'0')+'Q'+q}
+function localErrors(root){const v={};root.querySelectorAll('[data-bit]').forEach(el=>{v[el.dataset.bit]=String(el.value||'').trim()});const errors=[];
+ for(const [k,label] of [['campaign_name','Campaign name'],['product','Product / architecture'],['audience','Goal or target accounts'],['country','Country'],['city','City'],['start_date','Start date'],['vendor','Agency'],['campaign_type','Campaign type'],['budget','Amount'],['currency','Currency'],['quarter','Quarter'],['program','Program'],['owner','Owner']])if(!v[k])errors.push(label+' is required.');
+ const expect=quarterOfClient(v.start_date);if(expect&&v.quarter&&v.quarter!==expect)errors.push('Quarter should be '+expect+' for a start date of '+v.start_date+'.');
+ if(v.start_date&&v.end_date&&v.end_date<v.start_date)errors.push('End date is before the start date.');
+ const amt=Number(String(v.budget||'').replace(/[, ]/g,'').replace(/[^\d.]/g,''));if(v.budget&&!(amt>0))errors.push('Amount has to be a number greater than zero.');
+ return errors}
+function paintAction(id){const root=document.querySelector(`[data-lc="${id}"]`);const lc=LC.find(x=>x.id===id);if(!root||!lc||(lc.step!=='budget'&&lc.step!=='intake'))return;const errors=localErrors(root);const err=root.querySelector('.err');if(err)err.textContent=errors[0]||'';const btn=root.querySelector('[data-approve]');const rej=root.querySelector('[data-reject]');const pending=lc.budget&&lc.budget.status==='pending_approval';const approved=lc.budget&&lc.budget.status==='approved';let label='';if(ME.role==='approver'&&pending)label='Approve';else if(pending)label='';else if(approved)label='Continue';else label='Submit';if(btn){btn.hidden=!label||!!errors.length;btn.disabled=!label||!!errors.length;if(label)btn.textContent=label}if(rej){rej.hidden=!!errors.length;rej.disabled=!!errors.length}}
+async function postLc(id,action,patch){const res=await fetch('/api/engine/lifecycle/'+encodeURIComponent(id),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,patch:patch||{}})});let r;try{r=await res.json()}catch{r={error:'Could not do that'}}if(!res.ok&&!r.error)r.error='Could not do that';return r}
+async function approveLc(id,decision){if(busy)return;const lc=LC.find(x=>x.id===id);if(!lc)return;busy=true;const btn=document.querySelector(decision==='reject'?`[data-reject="${id}"]`:`[data-approve="${id}"]`);if(btn){btn.disabled=true;btn.textContent='Working…'}
+ try{let r=lc;
+  if(lc.step==='intake'||lc.step==='budget'){r=await postLc(id,'save-budget',{fields:readBits(id)});remember(r);if(r.error){toast(r.error);busy=false;render();return}
+   if(decision==='reject'){r=await postLc(id,'reject-budget',{});remember(r);toast(r.error||'Rejected.');busy=false;render();return}
+   if(decision==='approve'&&r.budget&&r.budget.status==='pending_approval'){r=await postLc(id,'approve-budget',{});remember(r);toast(r.error||'Approved.');busy=false;render();return}
+   if(decision==='approve'){toast(r.budget&&r.budget.status==='approved'?'Already approved.':(r.error||'Submit it before it can be approved.'));busy=false;render();return}
+   if(!r.budget||r.budget.status==='draft'){r=await postLc(id,'submit-budget',{});remember(r);if(r.error){toast(r.error);busy=false;render();return}
+    if(r.budget&&r.budget.status==='pending_approval'){toast('Submitted to Chris M.');busy=false;render();return}
+    if(r.budget&&r.budget.status==='approved'&&r.step==='budget'){r=await postLc(id,'continue',{});remember(r);toast(r.error||'Approved by policy. The SOW request is queued.');busy=false;render();return}}
+   else if(r.budget&&r.budget.status==='approved'&&r.step==='budget'){r=await postLc(id,'continue',{});remember(r);toast(r.error||'The SOW request is queued in the demo mail catcher.');busy=false;render();return}}
+  else if(lc.step==='sow'){r=await postLc(id,'save-sow',{answers:readAnswers(id)});remember(r);if(r.error){toast(r.error);busy=false;render();return}
+   if(!(r.sow&&r.sow.signedBy)){r=await postLc(id,'sign-sow',{});remember(r);if(r.error){toast(r.error);busy=false;render();return}}
+   r=await postLc(id,'continue',{});remember(r);toast(r.error||(r.step==='codes'?'Signed. The campaign code is on the card.':'Saved.'));}
  }catch(err){toast(err.message||String(err))}
- busy=false;await load();render()}
+ busy=false;render()}
+const FILES={};
 function fileB64(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=rej;fr.readAsDataURL(file)})}
-async function uploadSow(id,file){if(!file)return;busy=true;try{const b64=await fileB64(file);const r=await postLc(id,'ingest-sow',{name:file.name,base64:b64});const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=r;toast('Read the agency SOW. Compare it with the approved budget before anyone signs.');}catch(err){toast(err.message||String(err))}busy=false;render()}
-async function uploadList(id,file){if(!file)return;busy=true;try{const b64=await fileB64(file);const r=await postLc(id,'preview-upload',{name:file.name,base64:b64});const i=LC.findIndex(x=>x.id===id);if(i>=0)LC[i]=r;const rep=r.setup&&r.setup.uploadPreview&&r.setup.uploadPreview.report;toast(rep?`${rep.ready} ready, ${rep.consentHeld||0} held for consent, ${rep.formula||0} formulas. Confirm before anything is filed.`:'Mapped. Confirm the columns.');}catch(err){toast(err.message||String(err))}busy=false;render()}
-async function approveFix(campaignId,text){if(busy||!campaignId)return;busy=true;try{await fetch('/api/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({threadId:'T-'+campaignId,who:'Srisha R.',text})});toast('Done. I took it from here.');showCovered=true}catch(err){toast(err.message||String(err))}busy=false;await load()}
+async function uploadSow(id,file){if(!file)return;busy=true;try{const b64=await fileB64(file);const r=await postLc(id,'ingest-sow',{name:file.name,base64:b64});remember(r);toast(r.error||'Read the agency SOW. Compare it with the approved budget before anyone signs.');}catch(err){toast(err.message||String(err))}busy=false;render()}
+async function uploadList(id,file){if(!file)return;busy=true;try{const b64=await fileB64(file);FILES[id]={name:file.name,b64};const r=await postLc(id,'preview-upload',{name:file.name,base64:b64});remember(r);const rep=r.jobs&&r.jobs.upload&&r.jobs.upload.report;toast(r.error||(rep?`${rep.input} in, ${rep.ready} ready, ${rep.invalid} quarantined, ${rep.consentHeld||0} held for consent. Confirm the columns.`:'Mapped. Confirm the columns.'));}catch(err){toast(err.message||String(err))}busy=false;render()}
+async function confirmUpload(id){const file=FILES[id];if(!file){toast('Choose the file again, then confirm the columns.');return}const root=document.querySelector(`[data-lc="${id}"]`);const overrides=[];if(root)root.querySelectorAll('[data-map-index]').forEach(el=>overrides.push({column:el.dataset.mapCol,index:+el.dataset.mapIndex,target:el.value||null}));busy=true;try{const r=await postLc(id,'confirm-upload',{name:file.name,base64:file.b64,overrides});remember(r);toast(r.error||'Filed. Download the SFDC-ready CSV and the error report.');}catch(err){toast(err.message||String(err))}busy=false;render()}
+async function saveIds(id){const root=document.querySelector(`[data-lc="${id}"]`);if(!root)return;const codeEl=root.querySelector('[data-code-input]');const ids={};root.querySelectorAll('[data-id]').forEach(el=>{ids[el.dataset.id]=el.value.trim()});busy=true;try{const r=await postLc(id,'save-code',{code:codeEl?codeEl.value.trim():'',ids});remember(r);toast(r.error||'Ids saved.');}catch(err){toast(err.message||String(err))}busy=false;render()}
 function looksLikeCampaign(q){return /(\$|€|£|₹)|(\b(sgd|aud|inr|eur|usd|gbp|jpy|lakh|crore)\b)|\b(roundtable|dinner|summit|event|webinar|campaign|abm)\b/.test(q)&&!/\b(which|what|why|how)\b|\bbehind\b|\bcover\b/.test(q)}
 async function ask(text){text=String(text||'').trim();if(!text||busy)return;const q=text.toLowerCase();answer='';showCovered=false;
  if(/behind/.test(q)){const book=PFALL||PF;const n=(book?.groups?Object.values(book.groups).flat():[]).filter(c=>c.pace==='behind').length;answer=n?`${n} campaign${n===1?' is':'s are'} behind. The fix is drafted on the card below.`:'Nothing is behind.';if(route().view!=='home')await go('home');else render();const el=$('actions');if(el)el.scrollIntoView({behavior:'smooth'});return}
  if(/cover|handled|did you|did @mops/.test(q)){showCovered=true;if(route().view!=='home')await go('home');else render();return}
- if(!looksLikeCampaign(q)){busy=true;try{const res=await(await fetch('/api/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({threadId:'T-K5',who:'Srisha R.',text:text.startsWith('@')?text:'@mops '+text})})).json();const last=(res.messages||[]).filter(m=>m.who==='@mops').at(-1);answer=last?.text||'Done.';}catch(err){answer=err.message}busy=false;if(route().view!=='home')await go('home');else render();return}
+ if(!looksLikeCampaign(q)){busy=true;try{const res=await(await fetch('/api/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({threadId:'T-K5',who:ME.name||'me',text:text.startsWith('@')?text:'@mops '+text})})).json();const last=(res.messages||[]).filter(m=>m.who==='@mops').at(-1);answer=last?.text||'Done.';}catch(err){answer=err.message}busy=false;if(route().view!=='home')await go('home');else render();return}
  busy=true;if($('send')){$('send').disabled=true;$('send').textContent='Working…'}
  try{const r=await(await fetch('/api/engine/lifecycle/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text})})).json();
-  if(r.error&&!r.id)throw new Error(r.error);MINE=r.id;const i=LC.findIndex(x=>x.id===r.id);if(i>=0)LC[i]=r;else LC.unshift(r);answer=r.missing&&r.missing.length?`I still need ${r.missing.map(m=>m.label).join(', ')}.`:(r.childIds&&r.childIds.length?`Drafted ${r.childIds.length} linked requests.`:'Drafted. Check the fields, then submit.');
+  if(r.error&&!r.id)throw new Error(r.error);MINE=r.id;remember(r);if(r.childIds&&r.childIds.length){const kids=await Promise.all(r.childIds.map(cid=>fetch('/api/engine/lifecycle/'+encodeURIComponent(cid)).then(x=>x.json()).catch(()=>null)));kids.filter(k=>k&&k.id).forEach(remember)}answer=r.missing&&r.missing.length?`I still need ${r.missing.map(m=>m.label).join(', ')}.`:(r.childIds&&r.childIds.length?`Drafted ${r.childIds.length} linked requests.`:'Drafted. Check the fields, then submit.');
  }catch(err){toast(err.message||String(err))}
  busy=false;if(route().view!=='home')await go('home');else render();const el=$('actions');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
-window.onhashchange=()=>render();
-load().then(()=>{if(route().view==='home'&&$('ask'))$('ask').focus()});
+window.onhashchange=()=>{const r=route();if(r.view==='lc')go(r.id);else render()};
+load().then(()=>{const r=route();if(r.view==='lc')return go(r.id);if($('ask'))$('ask').focus()});
 setInterval(()=>{if(!busy)load()},30000);
 </script></body></html>

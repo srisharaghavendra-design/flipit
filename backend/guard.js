@@ -61,7 +61,7 @@ function readBody(req) {
 }
 
 function page() {
-  const people = auth.USERS.map(u => `<button type="submit" name="user" value="${u.id}"><b>${u.name}</b><span>${u.role} · ${u.persona} · ${u.regions.join(', ')}</span></button>`).join('');
+  const people = auth.USERS.filter(u => u.role !== 'admin').map(u => `<button type="submit" name="user" value="${u.id}"><b>${u.name}</b><span>${u.role} · ${u.persona} · ${u.regions.join(', ')}</span></button>`).join('');
   const sso = auth.provider() === 'demo' ? '' : `<p>Company SSO is configured (${auth.provider()}). The picker below is only the local demo.</p>`;
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · Northwind</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef1f4;color:#12141a;font-family:Inter,system-ui,sans-serif}
@@ -105,7 +105,7 @@ async function login(req, res) {
 
 async function handle(req, res, pathname) {
   if (pathname === '/api/login/users' && req.method === 'GET') {
-    send(res, 200, JSON.stringify({ provider: auth.provider(), demo: true, users: auth.USERS.map(auth.publicUser) }), { 'content-type': 'application/json' });
+    send(res, 200, JSON.stringify({ provider: auth.provider(), demo: true, users: auth.USERS.filter(u => u.role !== 'admin').map(auth.publicUser) }), { 'content-type': 'application/json' });
     return true;
   }
   if (pathname === '/api/login' && req.method === 'POST') {

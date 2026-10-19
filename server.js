@@ -130,7 +130,7 @@ function regPage(e,msg){return`<!doctype html><html><head><meta name="viewport" 
 <input name="name" placeholder="Full name" required><input name="email" type="email" placeholder="Work email" required><input name="company" placeholder="Company"><input name="title" placeholder="Job title"><label><input type="checkbox" name="consent" style="width:auto"> Email me about Northwind events</label><button>Register</button></form></body></html>`;}
 // ---------- http ----------
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'};
-const body=req=>new Promise((resolve,reject)=>{let b='';let n=0;req.on('data',c=>{n+=c.length;if(n>8_000_000){reject(Object.assign(new Error('Request is too large'),{status:413}));try{req.destroy()}catch(e){}return}b+=c});req.on('end',()=>resolve(b));req.on('error',reject)});
+const body=req=>new Promise((resolve,reject)=>{let b='';let n=0;let tooBig=false;req.on('data',c=>{n+=c.length;if(n>8_000_000){tooBig=true;return}b+=c});req.on('end',()=>{if(tooBig)reject(Object.assign(new Error('Request is too large'),{status:413}));else resolve(b)});req.on('error',reject)});
 const J=(res,o,c=200)=>{res.writeHead(c,{'content-type':'application/json'});res.end(JSON.stringify(o))};
 const guard=require('./backend/guard.js');const{ready}=require('./backend/ready.js');
 // Messages that reach @mops on any surface (email, Webex, Engine room) also land in the app's campaign thread.
@@ -179,7 +179,7 @@ async function handleRequest(req,res){await ready();const HUB=require('./backend
  if((s=p.match(/^\/t\/(o|c)\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[2]);if(mm){mm.opened=true;if(s[1]==='c')mm.clicked=true;save();}res.writeHead(s[1]==='c'?302:200,s[1]==='c'?{location:'/r/'+(db.events[0]?.slug||'')}:{'content-type':'image/gif'});return res.end()}
  if((s=p.match(/^\/outbox\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[1]);res.writeHead(200,{'content-type':'text/html'});return res.end(`<div style="font-family:system-ui;max-width:620px;margin:30px auto"><p><b>To:</b> ${esc(mm.to)}<br><b>Subject:</b> ${esc(mm.subject)}</p><pre style="white-space:pre-wrap;font-family:inherit">${esc(mm.body)}</pre><a href="/t/c/${mm.id}">Reserve my seat</a><img src="/t/o/${mm.id}" width=1 height=1></div>`)}
  const root=path.join(__dirname,'ui');const f=path.join(root,p==='/'?'index.html':p);if(f.startsWith(root)&&fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});return res.end(fs.readFileSync(f))}
- res.writeHead(404);res.end('not found');}catch(e){console.error(e);if(!res.headersSent)J(res,{error:e.message},500)}}
+ res.writeHead(404);res.end('not found');}catch(e){if(e.status!==413)console.error(e);if(!res.headersSent)J(res,{error:e.status===413?'Request is too large':e.message},e.status||500)}}
 function listen(){const{listenServices}=require('./backend/lib.js');const port=process.env.PORT||process.env.MOPS_PORT||8787;
   return ready().then(()=>{const srv=http.createServer(handleRequest);srv.listen(port,'0.0.0.0',()=>console.log(`@mops on :${port} mode=${KEY?'llm':'rules'} sender=${sender.name}`));if(!process.env.VERCEL)listenServices()})}
 module.exports={handleRequest,listen,ready};

@@ -32,6 +32,11 @@ test('demo sign-in replaces the passcode, and loopback is not a bypass', async (
   assert.equal(home.res.status, 401);
   assert.match(home.res.body, /Demo sign-in/);
   assert.doesNotMatch(home.res.body, /passcode/i);
+  assert.doesNotMatch(home.res.body, /Northwind Admin/);
+  assert.doesNotMatch(home.res.body, /value="admin"/);
+  const users = await hit('/api/login/users');
+  assert.equal(users.res.status, 200);
+  assert.doesNotMatch(users.res.body, /"id":"admin"/);
   const api = await hit('/api/engine/loadtest', { method: 'POST', headers: { accept: 'application/json' } });
   assert.equal(api.res.status, 401);
   assert.match(api.res.body, /sign in required/);

@@ -61,9 +61,9 @@ async function tag(text){const q=text.toLowerCase(),t='T'+Date.now().toString(36
   if(/segment|who|find/.test(q))return call('engine','/segments/preview',{body:{text}},t);
   const m=q.match(/\$?(\d+)\s*k/);if(/campaign|budget/.test(q)&&m)return call('engine','/campaigns',{body:{name:text.replace(/@mops/i,'').trim().slice(0,60),channel:/event|roundtable/.test(q)?'Events':'Digital',region:'India',budget:+m[1]*1000}},t);
   return{hint:'Try: "@mops segment CISOs in Japan", "@mops sync now", "@mops refresh the warehouse", "@mops pipeline by channel", "@mops attribution", "@mops new campaign budget $90K"'}}
-async function proxy(req,res,name,rest){try{const raw=['POST','PATCH','PUT'].includes(req.method)?await body(req):'';const r=await invoke(name,req.method,rest||'/',{raw,headers:req.headers});
+async function proxy(req,res,name,rest){try{const headers={...req.headers};delete headers['x-mops-internal'];const raw=['POST','PATCH','PUT'].includes(req.method)?await body(req):'';const r=await invoke(name,req.method,rest||'/',{raw,headers});
   const h={...(r.headers||{})};if(!h['content-type']&&!h['Content-Type'])h['content-type']=r.raw&&r.raw.length&&r.raw[0]===123?'application/json':'text/plain';
-  res.writeHead(r.status,h);res.end(r.raw)}catch(e){res.writeHead(502,{'content-type':'application/json'});res.end(JSON.stringify({error:e.message}))}}
+  res.writeHead(r.status,h);res.end(r.raw)}catch(e){if(res.headersSent)return;res.writeHead(e.status||502,{'content-type':'application/json'});res.end(JSON.stringify({error:e.message||'bad gateway'}))}}
 function engineSnap(){let db;try{const Database=require('better-sqlite3');db=new Database(path.join(require('./lib').DATA,'engine.db'),{readonly:true,fileMustExist:true})}catch(e){return{counts:{},campaigns:[],budgets:[],events:[],signals:[],audit:[]}}
  const n=t=>{try{return db.prepare('SELECT count(*) n FROM '+t).get().n}catch(e){return 0}}
  const snap={counts:{accounts:n('accounts'),contacts:n('contacts'),campaigns:n('campaigns'),budgets:n('budget_requests'),consent:n('consent_ledger'),sends:n('sends'),events:n('events'),signals:n('signals'),audit:n('audit'),uploads:n('uploads'),syncPending:n("sync_jobs WHERE status='pending'"),syncDead:n("sync_jobs WHERE status='dead'")},
@@ -125,7 +125,7 @@ async function architecture(){const h=await health();const core=require('./core'
     node('d-budgets','Budgets','Requests and decisions',null,String(snap.counts.budgets),snap.budgets),
     node('d-sows','SOWs','Drafts with a source on every field',null,draft&&draft.sow?'1 open':'0',draft&&draft.sow?draft.sow.fields.slice(0,5):[]),
     node('d-consent','Consent','Ledger rows, per country',null,String(snap.counts.consent),[])]}]}}
-const body=req=>new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>r(b))});
+function body(req,limit=8_000_000){return new Promise((resolve,reject)=>{let b='';let n=0;let tooBig=false;req.on('data',c=>{n+=c.length;if(n>limit){tooBig=true;return}b+=c});req.on('end',()=>{if(tooBig){const e=new Error('Request is too large');e.status=413;reject(e);return}resolve(b)});req.on('error',reject)})}
 const J=(res,o,c=200)=>{res.writeHead(c,{'content-type':'application/json'});res.end(JSON.stringify(o))};
 async function handle(req,res,p,u){
   const sv=p.match(/^\/svc\/(engine|crm|mail|warehouse)(\/.*)?$/);
@@ -168,14 +168,14 @@ async function handle(req,res,p,u){
   mm=r.match(/^sow\/(SOW-\w+)\/(state|answer|sign)$/);if(mm){const b=req.method==='POST'?JSON.parse(await body(req)||'{}'):{};J(res,mm[2]==='state'?ZT.sowGet(mm[1]):mm[2]==='answer'?ZT.sowAnswer(mm[1],b.answers||{}):ZT.sowSign(mm[1],b.by));return true}
   if(r==='zero/data'){J(res,ZT.DATA);return true}
   const LC=require('./lifecycle');
-  if(r==='lifecycle/start'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');J(res,await LC.start({...b,user:req.mopsUser}));return true}
+  if(r==='lifecycle/start'&&req.method==='POST'){let raw;try{raw=await body(req,2_000_000)}catch(e){J(res,{error:'Request is too large'},e.status||413);return true}const b=JSON.parse(raw||'{}');J(res,await LC.start({...b,user:req.mopsUser}));return true}
   if(r==='lifecycle/reset'&&req.method==='POST'){J(res,LC.present(LC.resetDemo()));return true}
   if(r==='lifecycle'){J(res,{draft:LC.present(LC.ensure()),items:LC.list(req.mopsUser),steps:LC.STEPS});return true}
   mm=r.match(/^lifecycle\/(LC-[\w]+)\/sow\.(docx|pdf|html)$/);if(mm){const kind=mm[2]==='html'?'html':mm[2];const f=LC.file(mm[1],kind);if(!f){res.writeHead(404);return res.end('not ready'),true}
     const h={'content-type':f.type};if(kind!=='html'&&f.name)h['content-disposition']=`attachment; filename="${f.name}"`;res.writeHead(200,h);res.end(f.body);return true}
-  mm=r.match(/^lifecycle\/(LC-[\w]+)\/upload\.csv$/);if(mm){const f=LC.file(mm[1],'csv');if(!f){res.writeHead(404);return res.end(''),true}res.writeHead(200,{'content-type':'text/csv','content-disposition':`attachment; filename="${f.name}"`});res.end(f.body);return true}
-  mm=r.match(/^lifecycle\/(LC-[\w]+)\/upload-errors\.csv$/);if(mm){const row=LC.get(mm[1]);const csv=row&&row.setup&&row.setup.uploadPreview&&row.setup.uploadPreview.errorCsv;if(!csv){res.writeHead(404);return res.end(''),true}res.writeHead(200,{'content-type':'text/csv','content-disposition':'attachment; filename="upload-errors.csv"'});res.end(csv);return true}
-  mm=r.match(/^lifecycle\/(LC-[\w]+)$/);if(mm&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');try{const out=await LC.act(mm[1],b,req.mopsUser);if(out&&out.forbidden){J(res,{error:out.error},403);return true}J(res,out||{error:'not found'},out?200:404)}catch(e){J(res,{error:e.message},500)}return true}
+  mm=r.match(/^lifecycle\/(LC-[\w]+)\/upload\.csv$/);if(mm){const row=LC.read(mm[1],req.mopsUser);if(row&&row.forbidden){J(res,{error:row.error},403);return true}const csv=row&&row.setup&&row.setup.uploadCsv;if(!csv){res.writeHead(404);return res.end(''),true}res.writeHead(200,{'content-type':'text/csv','content-disposition':`attachment; filename="${mm[1]}-sfdc-upload.csv"`});res.end(csv);return true}
+  mm=r.match(/^lifecycle\/(LC-[\w]+)\/upload-errors\.csv$/);if(mm){const row=LC.read(mm[1],req.mopsUser);if(row&&row.forbidden){J(res,{error:row.error},403);return true}const csv=row&&row.setup&&row.setup.uploadPreview&&row.setup.uploadPreview.errorCsv;if(!csv){res.writeHead(404);return res.end(''),true}res.writeHead(200,{'content-type':'text/csv','content-disposition':'attachment; filename="upload-errors.csv"'});res.end(csv);return true}
+  mm=r.match(/^lifecycle\/(LC-[\w]+)$/);if(mm&&req.method==='POST'){let raw;try{raw=await body(req)}catch(e){J(res,{error:'Request is too large'},e.status||413);return true}const b=JSON.parse(raw||'{}');try{const out=await LC.act(mm[1],b,req.mopsUser);if(out&&out.forbidden){J(res,{error:out.error},403);return true}if(out&&out.fileRejected){J(res,out,400);return true}J(res,out||{error:'not found'},out?200:404)}catch(e){J(res,{error:e.message},500)}return true}
   if(mm){const out=LC.read(mm[1],req.mopsUser);if(out&&out.forbidden){J(res,{error:out.error},403);return true}J(res,out||{error:'not found'},out?200:404);return true}
   if(r==='intakes'){J(res,INT.list());return true}
   if(r==='repeat-entry'){J(res,require('./fields').repeatEntry());return true}

@@ -42,7 +42,9 @@ function readFile(name,buf){const lower=String(name||'').toLowerCase();
   if(buf[0]!==0x50||buf[1]!==0x4b)throw new Error('That file is not an .xlsx workbook.');
   return xlsxRows(buf)}
 const FORMULA=/^[=+\-@\t\r]/;
+const INJECT=/ignore previous|leak@|disregard (all |previous |your )|system prompt|you are now/i;
 function neutralize(v){const s=String(v??'');return FORMULA.test(s)?"'"+s:s}
+function risky(v){const s=String(v??'').trim();if(!s)return false;if(INJECT.test(s))return true;if(FORMULA.test(s)&&!/^\+\d[\d\s().-]{6,}$/.test(s))return true;return false}
 const STRICT=new Set(['Germany','France','United Kingdom','Netherlands','India','Singapore','Australia','Switzerland','United Arab Emirates']);
 function consentProblem(raw,country){const s=String(raw||'').trim().toLowerCase();const yes=/^(y|yes|true|1|opted[ _-]?in|granted|express)$/.test(s);if(STRICT.has(country)&&!yes)return`no consent on record for ${country} — quarantined (GDPR/DPDP)`;return''}
 function score(h){const n=norm(h);let best=[null,0];for(const[k,list]of Object.entries(SYN)){for(const s of list){const sc=n===s?1:(n.includes(s)&&s.length>3)?0.75:0;if(sc>best[1])best=[k,sc]}}return best}
@@ -66,9 +68,10 @@ async function map(name,buf,{campaignId,leadSource='Event',defaultCountry,overri
   const used=new Set();for(const m of mapping.sort((a,b)=>b.confidence-a.confidence)){if(!m.target)continue;if(used.has(m.target)){m.target=null;m.method='duplicate, ignored';m.confidence=0;continue}used.add(m.target)}mapping.sort((a,b)=>a.index-b.index);
   if(Array.isArray(overrides)){for(const o of overrides){const m=mapping.find(x=>x.column===o.column||x.index===o.index);if(!m)continue;const target=o.target||null;if(target){const other=mapping.find(x=>x!==m&&x.target===target);if(other){other.target=null;other.method='replaced when you confirmed the mapping';other.confidence=0}}m.target=target;m.confidence=target?1:0;m.method=target?'confirmed by the marketer':'ignored by the marketer'}}
   const col=t=>mapping.find(m=>m.target===t);const out=[],quarantine=[];
-  for(const r of body){const g=t=>{const m=col(t);return m?String(r[m.index]??'').trim():''};let fn=g('FirstName'),ln=g('LastName');
+  for(const r of body){const g=t=>{const m=col(t);return m?String(r[m.index]??'').trim():''};
+    if(r.some(c=>risky(c))){const formula=r.some(c=>FORMULA.test(String(c??'').trim())&&!/^\+\d[\d\s().-]{6,}$/.test(String(c??'').trim()));quarantine.push({row:r,reason:formula?'formula cell — not imported':'prompt-injection text — quarantined',email:g('Email')});continue}
+    let fn=g('FirstName'),ln=g('LastName');
     if(!fn&&!ln&&g('FullName')){let full=g('FullName');if(full.includes(',')){const[a,b]=full.split(',');full=b.trim()+' '+a.trim()}const p=full.split(/\s+/);fn=p.slice(0,-1).join(' ')||p[0];ln=p.length>1?p.at(-1):''}
-    if([fn,ln,g('Company'),g('Email')].some(v=>FORMULA.test(v))){quarantine.push({row:r,reason:'formula cell — not imported'});continue}
     const email=g('Email').toLowerCase();if(!isEmail(email)){quarantine.push({row:r,reason:'missing/invalid email'});continue}
     const phone=g('Phone').replace(/[^\d+]/g,'');const where=country(g('Country'))||phoneCountry(phone)||defaultCountry||'';
     const why=consentProblem(g('Consent'),where);if(why){quarantine.push({row:r,reason:why,email});continue}
