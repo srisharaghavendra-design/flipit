@@ -34,7 +34,7 @@ These match the project that serves flipit.fyi today. You should not have to cha
 |---|---|
 | Framework | Other. Leave it. Do not switch the project to a new framework |
 | Root directory | repository root, not `legacy/flipit` |
-| Node.js version | 20 or newer (`package.json` says `>=20`). The tests run on Node 20 |
+| Node.js version | 20 or newer. `package.json` must say `>=20`. This project rejects `"node": "20.x"` and fails the deployment before the build starts. The tests run on Node 20 |
 | Build | none. Vercel installs dependencies and publishes `api/index.js` |
 | Output | leave the output directory as this project already has it. `public/index.html` is only there so that folder is not empty; `vercel.json` sends every path to the function |
 | Production branch | the branch Vercel already deploys for flipit.fyi (normally `main`) |
