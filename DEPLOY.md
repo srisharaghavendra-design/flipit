@@ -32,13 +32,13 @@ These match the project that serves flipit.fyi today. You should not have to cha
 
 | Setting | Value |
 |---|---|
-| Framework | Other, or Node. Leave detection on. `server.js` calls `listen()` as the file loads, which is how Vercel adopts it as the one function |
+| Framework | Other. Leave it. Do not switch the project to a new framework |
 | Root directory | repository root, not `legacy/flipit` |
 | Node.js version | 20.x (from `package.json`) |
-| Build | none. Vercel installs dependencies and publishes `server.js` |
-| Output | do not set an output directory. `public/robots.txt` is the only static file; the app is served by the function, behind the passcode |
+| Build | none. Vercel installs dependencies and publishes `api/index.js` |
+| Output | leave the output directory as this project already has it. `public/index.html` is only there so that folder is not empty; `vercel.json` sends every path to the function |
 | Production branch | the branch Vercel already deploys for flipit.fyi (normally `main`) |
-| Function timeout | Hobby default. `vercel.json` turns on Fluid Compute, and that default is 300 seconds. This project rejects an explicit `maxDuration` before the build starts, so the file does not set one |
+| Function timeout | 60 seconds, set on `api/index.js` in `vercel.json`. That is the value this Hobby project already used for its functions |
 | Domain | `flipit.fyi` and `www.flipit.fyi` stay attached. Do not edit DNS |
 
 DNS today, which you leave alone:
@@ -54,8 +54,8 @@ The Engine room, campaign run, CRM sync, consent checks, registration forms, the
 Limits, because Hobby does not keep a server running:
 
 - State lasts while that instance is warm. A cold start loads the fictional Northwind data again. Two instances at once can each have their own copy. Do not treat it as a shared database.
-- The scale-test button uses **2,000 contacts and 200 messages** (cap 8,000 / 800), labelled on the button. It is not the million-row run. The card shows the measured rate after it finishes. On a development machine that same Hobby size finished in 37ms (catcher accepted 200 of 200; segment query p95 was 0.07ms). The 8,000 / 800 cap finished in 76ms. A full campaign run in the test suite took about 7 seconds. Vercel gives the function 1 CPU and 300 seconds, so both fit. Expect the live site to be slower than that machine.
-- A full campaign run is one request, up to 300 seconds, then the page shows the result.
+- The scale-test button uses **2,000 contacts and 200 messages** (cap 8,000 / 800), labelled on the button. It is not the million-row run. The card shows the measured rate after it finishes. On a development machine that same Hobby size finished in 37ms (catcher accepted 200 of 200; segment query p95 was 0.07ms). The 8,000 / 800 cap finished in 76ms. A full campaign run in the test suite took about 7 seconds, and the self-heal test took about 25 seconds. The function is allowed 60 seconds and 1 CPU, so both fit. Expect the live site to be slower than that machine.
+- A full campaign run is one request, up to 60 seconds, then the page shows the result.
 - "Covered for you" runs when you open that card or press Scan now. It does not tick in the background after you leave.
 - Rate limits are per instance, in memory: 4 scale-test clicks per 10 minutes from one address, plus a general cap once the passcode is in use.
 
