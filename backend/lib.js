@@ -2,7 +2,11 @@
 const http=require('http'),path=require('path'),fs=require('fs'),crypto=require('crypto');
 if(!process.env.MOPS_SECRET)process.env.MOPS_SECRET=crypto.randomBytes(32).toString('base64url');
 if(!process.env.MOPS_WEBEX_SECRET)process.env.MOPS_WEBEX_SECRET=crypto.randomBytes(32).toString('base64url');
-if(!process.env.MOPS_SESSION_SECRET)process.env.MOPS_SESSION_SECRET=crypto.randomBytes(32).toString('base64url');
+function sessionSecret(){if(process.env.MOPS_SESSION_SECRET)return process.env.MOPS_SESSION_SECRET;
+  const id=process.env.VERCEL_PROJECT_ID||'local-dev';
+  if(process.env.VERCEL)console.warn('MOPS_SESSION_SECRET is unset. Derived a stable secret from '+(process.env.VERCEL_PROJECT_ID?'VERCEL_PROJECT_ID':'the demo constant')+'. Set MOPS_SESSION_SECRET to a private value before a real rollout.');
+  return crypto.createHmac('sha256','northwind-mops-demo-session-v1').update(String(id)).digest('base64url')}
+if(!process.env.MOPS_SESSION_SECRET)process.env.MOPS_SESSION_SECRET=sessionSecret();
 if(process.env.VERCEL&&!process.env.MOPS_DATA_DIR)process.env.MOPS_DATA_DIR='/tmp/mops';
 if(process.env.VERCEL&&!process.env.MOPS_RUNS_DIR)process.env.MOPS_RUNS_DIR='/tmp/mops/runs';
 const PORTS={hub:+process.env.MOPS_PORT||+process.env.PORT||8787,engine:+process.env.ENGINE_PORT||8801,crm:+process.env.CRM_PORT||8802,mail:+process.env.MAIL_PORT||8803,smtp:+process.env.SMTP_PORT||2525,warehouse:+process.env.WH_PORT||8804};
@@ -73,5 +77,5 @@ async function call(svc,path,opts={},trace){const t0=Date.now();const method=opt
   if(r.status>=400&&!opts.ok){const e=new Error(`${svc}${path} → ${r.status} ${(j&&j.error)||''}`);e.status=r.status;throw e}return j}
 function listenServices(){if(process.env.VERCEL)return[];const servers=[];
   for(const name of['engine','crm','mail','warehouse']){if(!handlers[name])continue;const s=http.createServer(handlers[name]);s.listen(PORTS[name],'127.0.0.1');servers.push(s)}return servers}
-module.exports={PORTS,URLS,PUBLIC,DATA,now,emitter,parseCSV,service,err,openapi,call,invoke,handlers,listenServices,publicBase};
+module.exports={PORTS,URLS,PUBLIC,DATA,now,emitter,parseCSV,service,err,openapi,call,invoke,handlers,listenServices,publicBase,sessionSecret};
 if(process.env.MOPS_PARENT){const pp=+process.env.MOPS_PARENT;setInterval(()=>{try{process.kill(pp,0)}catch{process.exit(0)}},1000).unref()}

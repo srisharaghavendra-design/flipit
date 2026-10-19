@@ -5,6 +5,14 @@
       "maxDuration": 60
     }
   },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "x-vercel-skip-toolbar", "value": "1" }
+      ]
+    }
+  ],
   "routes": [
     { "src": "/api/index", "dest": "/api/index" },
     { "src": "/(.*)", "dest": "/api/index?__path=$1" }

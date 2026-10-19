@@ -14,4 +14,4 @@ function restoreUrl(req){
   return '/'+(hinted?String(hinted).replace(/^\//,''):'')+(q?'?'+q:'');
 }
 
-module.exports=async(req,res)=>{req.url=restoreUrl(req);return handleRequest(req,res)};
+module.exports=async(req,res)=>{try{req.url=restoreUrl(req);return await handleRequest(req,res)}catch(e){console.error(e);if(!res.headersSent){res.writeHead(500,{'content-type':'application/json'});res.end(JSON.stringify({error:'Something went wrong. Please retry.'}))}}};

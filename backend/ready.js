@@ -4,5 +4,5 @@ function ready(){if(pending)return pending;pending=(async()=>{
   require('./crm');require('./mail');require('./engine');require('./warehouse');require('./hub');
   await new Promise(r=>setImmediate(r));
   await require('./engine').boot();
-})();return pending}
+})().catch(e=>{pending=null;throw e});return pending}
 module.exports={ready};

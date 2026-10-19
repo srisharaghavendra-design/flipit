@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Data explorer · @mops</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--tx:#12141a;--mu:#5c6570;--line:#e4e8ee;--ac:#1d4ed8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 Inter,system-ui,sans-serif}
+vercel-live-feedback,vercel-toolbar{display:none!important;pointer-events:none!important}
+.wrap{max-width:1100px;margin:0 auto;padding:22px}
+header{display:flex;gap:16px;align-items:center;margin-bottom:18px}a{color:inherit}
+h1{font-size:32px;letter-spacing:-.03em;margin:0 0 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+button.t{text-align:left;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer}
+button.t b{display:block;font-size:22px;letter-spacing:-.03em}button.t.on{border-color:var(--ac)}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;font-size:12px;margin-top:12px}
+td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--mu)}
+.try{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+.try select,.try input{padding:8px;border:1px solid var(--line);border-radius:8px}
+pre{white-space:pre-wrap;font:12px/1.4 ui-monospace,monospace;background:#f6f7f9;padding:10px;border-radius:8px;max-height:280px;overflow:auto}
+.err{color:#b45309}
+</style></head><body><div class="wrap">
+<header><a href="/">@mops</a><a href="/engine">Engine room</a><b>Data</b></header>
+<h1>Data explorer</h1>
+<p>Row counts are read from the databases this demo is running. They move when a request is saved.</p>
+<div class="grid" id="tables"></div>
+<div id="rows"></div>
+<div class="try"><h2>API</h2><p>Try a read against this deployment.</p>
+<div id="eps"></div>
+<form id="try"><select id="method"><option>GET</option></select>
+<input id="path" size="48" value="/api/engine/health">
+<button>Try it</button></form>
+<pre id="out"></pre></div>
+</div>
+<script>
+const _fetch=window.fetch.bind(window);let mopsLog='';let mopsLogId='';try{mopsLog=localStorage.getItem('mopsLog')||'';mopsLogId=localStorage.getItem('mopsLogId')||''}catch(e){}
+function saveLog(v){if(!v)return;mopsLog=v;const cut=v.lastIndexOf('.');mopsLogId=cut>0?v.slice(cut+1):'';try{localStorage.setItem('mopsLog',v);if(mopsLogId)localStorage.setItem('mopsLogId',mopsLogId)}catch(e){}}
+window.fetch=function(input,opts,full){const headers=new Headers(opts&&opts.headers||{});if(full){if(mopsLog)headers.set('x-mops-log',mopsLog);else headers.set('x-mops-log','0')}else if(mopsLogId)headers.set('x-mops-log-id',mopsLogId);else if(mopsLog)headers.set('x-mops-log',mopsLog);else headers.set('x-mops-log','0');
+ return _fetch(input,Object.assign({},opts,{headers})).then(res=>{if(res.status===409&&res.headers.get('x-mops-log-stale')&&!full)return window.fetch(input,opts,true);const n=res.headers.get('x-mops-log');if(n)saveLog(n);const id=res.headers.get('x-mops-log-id');if(id){mopsLogId=id;try{localStorage.setItem('mopsLogId',id)}catch(e){}}return res})};
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let TABLES=[];
+function draw(id){const box=document.getElementById('tables');box.innerHTML=TABLES.map(t=>`<button class="t${t.id===id?' on':''}" data-id="${esc(t.id)}"><b>${esc(t.count)}</b>${esc(t.label)}<div>${esc(t.source)}</div></button>`).join('');
+ box.querySelectorAll('button').forEach(b=>b.onclick=()=>show(b.dataset.id));
+ const t=TABLES.find(x=>x.id===id)||TABLES[0];if(!t){document.getElementById('rows').innerHTML='<p>No tables yet.</p>';return}
+ const cols=t.columns||[];
+ document.getElementById('rows').innerHTML=`<h2>${esc(t.label)} · ${esc(t.count)}</h2>`+(t.rows&&t.rows.length?`<table><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr>${t.rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(typeof r[c]==='object'?JSON.stringify(r[c]):r[c])}</td>`).join('')}</tr>`).join('')}</table>`:'<p>No rows in this table yet.</p>')}
+async function show(id){draw(id)}
+async function load(){const r=await fetch('/api/engine/explorer');const j=await r.json();if(!r.ok){document.getElementById('tables').innerHTML='<p class="err">'+(j.error||'Could not read the tables. Please retry.')+'</p>';return}
+ TABLES=j.tables||[];draw(TABLES[0]&&TABLES[0].id);
+ document.getElementById('eps').innerHTML=(j.endpoints||[]).map(e=>`<button type="button" data-p="${esc(e[1])}">${esc(e[0])} ${esc(e[1])}</button> `).join('');
+ document.getElementById('eps').querySelectorAll('button').forEach(b=>b.onclick=()=>{document.getElementById('path').value=b.dataset.p})}
+document.getElementById('try').onsubmit=async ev=>{ev.preventDefault();const p=document.getElementById('path').value||'/health';if(!/^\/(api\/(engine\/|session|briefing|state|health)|health)/.test(p)){document.getElementById('out').textContent='That path is not on the try list.';return}
+ try{const r=await fetch(p);const t=await r.text();document.getElementById('out').textContent=r.status+' '+p+'\n'+t.slice(0,4000)}catch(e){document.getElementById('out').textContent='Could not call that. Please retry.'}};
+load();setInterval(load,4000);
+</script></body></html>

@@ -16,17 +16,16 @@ const USERS = [
 ];
 const BY_ID = Object.fromEntries(USERS.map(u => [u.id, u]));
 
-function secret() {
-  if (process.env.MOPS_SESSION_SECRET) return process.env.MOPS_SESSION_SECRET;
-  if (!secret.value) secret.value = crypto.randomBytes(32).toString('base64url');
-  return secret.value;
-}
-function sign(id) { return crypto.createHmac('sha256', secret()).update(id).digest('base64url'); }
+function secret() { return process.env.MOPS_SESSION_SECRET || ''; }
+function sign(id) { return crypto.createHmac('sha256', secret()).update(String(id)).digest('base64url'); }
 
-const db = new Database(path.join(DATA, 'auth.db'));
-db.exec(`CREATE TABLE IF NOT EXISTS sessions(
-  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
-)`);
+let db = null;
+try {
+  db = new Database(path.join(DATA, 'auth.db'));
+  db.exec(`CREATE TABLE IF NOT EXISTS sessions(
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
+  )`);
+} catch (e) { console.error('auth session store unavailable', e.message); }
 const TTL = 8 * 60 * 60 * 1000;
 
 function publicUser(u) { return u && { id: u.id, name: u.name, role: u.role, regions: u.regions, persona: u.persona }; }
@@ -60,22 +59,26 @@ function samlStart() {
 }
 
 function openSession(user) {
-  const id = crypto.randomBytes(32).toString('base64url');
-  const now = Date.now();
-  db.prepare('INSERT INTO sessions(id,user_id,created_at,expires_at) VALUES(?,?,?,?)').run(id, user.id, now, now + TTL);
-  db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now);
-  return id + '.' + sign(id);
+  const payload = Buffer.from(JSON.stringify({
+    id: user.id, role: user.role, regions: user.regions, exp: Date.now() + TTL
+  })).toString('base64url');
+  return payload + '.' + sign(payload);
 }
 function readSession(token) {
-  const [id, mac] = String(token || '').split('.');
-  if (!id || !mac) return null;
-  const a = Buffer.from(sign(id));
-  const b = Buffer.from(mac);
+  const raw = String(token || '');
+  const cut = raw.lastIndexOf('.');
+  if (cut <= 0) return null;
+  const payload = raw.slice(0, cut);
+  const mac = raw.slice(cut + 1);
+  const a = Buffer.from(sign(payload));
+  const b = Buffer.from(String(mac));
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-  const row = db.prepare('SELECT * FROM sessions WHERE id=?').get(id);
-  if (!row || row.expires_at < Date.now()) return null;
-  if (row.user_id.startsWith('oidc:')) return null;
-  return BY_ID[row.user_id] || null;
+  let data;
+  try { data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')); } catch (e) { return null; }
+  if (!data || !data.id || !(data.exp > Date.now())) return null;
+  const user = BY_ID[data.id];
+  if (!user || data.role !== user.role) return null;
+  return user;
 }
 function cookies(req) {
   const out = {};
@@ -112,13 +115,21 @@ function canApprove(user, row) {
 const core = require('./core');
 core.db.exec(`CREATE TABLE IF NOT EXISTS decision_audit(
   id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, user_id TEXT, role TEXT, region TEXT,
-  action TEXT NOT NULL, object TEXT, before TEXT, after TEXT
+  action TEXT NOT NULL, object TEXT, before TEXT, after TEXT, prev_hash TEXT, hash TEXT
 )`);
+try { core.db.exec('ALTER TABLE decision_audit ADD COLUMN prev_hash TEXT'); } catch (e) {}
+try { core.db.exec('ALTER TABLE decision_audit ADD COLUMN hash TEXT'); } catch (e) {}
 try { core.db.exec(`CREATE TRIGGER IF NOT EXISTS decision_audit_no_update BEFORE UPDATE ON decision_audit BEGIN SELECT RAISE(ABORT,'audit is append-only'); END`); } catch (e) {}
 try { core.db.exec(`CREATE TRIGGER IF NOT EXISTS decision_audit_no_delete BEFORE DELETE ON decision_audit BEGIN SELECT RAISE(ABORT,'audit is append-only'); END`); } catch (e) {}
 function audit(entry) {
-  core.db.prepare('INSERT INTO decision_audit(at,user_id,role,region,action,object,before,after) VALUES(?,?,?,?,?,?,?,?)')
-    .run(new Date().toISOString(), entry.userId || '', entry.role || '', entry.region || '', entry.action, entry.object || '', JSON.stringify(entry.before || null), JSON.stringify(entry.after || null));
+  const prev = core.db.prepare('SELECT hash FROM decision_audit WHERE hash IS NOT NULL ORDER BY id DESC LIMIT 1').get();
+  const prevHash = prev && prev.hash || 'genesis';
+  const at = new Date().toISOString();
+  const body = JSON.stringify({ at, userId: entry.userId || '', role: entry.role || '', region: entry.region || '', action: entry.action, object: entry.object || '', before: entry.before || null, after: entry.after || null, prevHash });
+  const hash = crypto.createHash('sha256').update(body).digest('hex');
+  const info = core.db.prepare('INSERT INTO decision_audit(at,user_id,role,region,action,object,before,after,prev_hash,hash) VALUES(?,?,?,?,?,?,?,?,?,?)')
+    .run(at, entry.userId || '', entry.role || '', entry.region || '', entry.action, entry.object || '', JSON.stringify(entry.before || null), JSON.stringify(entry.after || null), prevHash, hash);
+  return core.db.prepare('SELECT * FROM decision_audit WHERE id=?').get(info.lastInsertRowid);
 }
 function auditRows(limit) { return core.db.prepare('SELECT * FROM decision_audit ORDER BY id DESC LIMIT ?').all(limit || 50); }
 

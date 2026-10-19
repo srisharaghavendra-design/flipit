@@ -12,10 +12,14 @@ const H='http://127.0.0.1:'+ENV.MOPS_PORT;
 let stack,browser;
 const codes=[];
 
+let carried='';
 async function signIn(who){
   const context=await browser.newContext();
+  if(carried) await context.addInitScript(v=>{if(!localStorage.getItem('mopsLog'))localStorage.setItem('mopsLog',v)},carried);
   const page=await context.newPage();
   page.setDefaultTimeout(60000);
+  const orig=context.close.bind(context);
+  context.close=async()=>{try{carried=await page.evaluate(()=>localStorage.getItem('mopsLog')||'')}catch(e){}return orig()};
   await page.goto(H+'/');
   await page.locator(`button[value="${who}"]`).click();
   await page.waitForSelector('h1');

@@ -160,6 +160,8 @@ test('field report: money, dates, cities, approval, BAN, SOW, and uploads',async
   assert.equal(maria.body.fields.budget,180000);assert.equal(maria.body.fields.currency,'USD');
   assert.equal(maria.body.fields.venue,'River North Club');assert.notEqual(maria.body.fields.city,'River North Club');
   assert.equal(maria.body.step,'budget');assert.ok(maria.body.budget.usd>150000);
+  const blocked=await j(H+'/api/engine/lifecycle/start',{body:{text:'Singapore summit for CISOs, 12 Nov 2026, zero trust, SGD 120000'}});
+  assert.match(blocked.body.error,/APJ/);assert.equal(blocked.body.id,undefined);
   assert.ok(maria.body.jobs.budget.items.length>=12);assert.ok(maria.body.jobs.budget.items.some(i=>i.key==='currency'));
   const sub=await j(H+'/api/engine/lifecycle/'+maria.body.id,{body:{action:'submit-budget'}});assert.equal(sub.body.budget.status,'pending_approval');
   const spoof=await j(H+'/api/engine/lifecycle/'+maria.body.id,{body:{action:'approve-budget',patch:{approver:'Not Chris'}}});

@@ -7,6 +7,7 @@ const DATA_DIR=process.env.MOPS_DATA_DIR||__dirname;fs.mkdirSync(DATA_DIR,{recur
 // Literal paths so the Vercel file tracer ships the UI, seed, and fixtures with this server.
 fs.statSync(path.join(__dirname,'ui/index.html'));
 fs.statSync(path.join(__dirname,'ui/engine.html'));
+fs.statSync(path.join(__dirname,'ui/data.html'));
 fs.statSync(path.join(__dirname,'ui/chart.min.js'));
 fs.statSync(path.join(__dirname,'data.seed.json'));
 fs.statSync(path.join(__dirname,'baselines.json'));
@@ -135,8 +136,44 @@ const J=(res,o,c=200)=>{res.writeHead(c,{'content-type':'application/json'});res
 const guard=require('./backend/guard.js');const{ready}=require('./backend/ready.js');
 // Messages that reach @mops on any surface (email, Webex, Engine room) also land in the app's campaign thread.
 require('./backend/agent.js').attach(({surface,sender,text,reply})=>{const t=T('T-K1');if(!t)return;const at=new Date().toISOString();t.messages.push({who:sender,via:{email:'Outlook',webex:'Webex',app:'App'}[surface]||surface,text,at},{who:'@mops',mode:'rules',text:reply,artifacts:[],at});save();});
-async function handleRequest(req,res){await ready();const HUB=require('./backend/hub.js');const u=new URL(req.url,'http://x');const p=u.pathname;try{
+let gate=Promise.resolve(),depth=0;
+function lock(fn){const run=gate.then(fn,fn);gate=run.then(()=>{},()=>{});return run}
+function mock(method,url,headers,raw){const waiters=[];let ended=false;const req={method,url,headers,socket:{remoteAddress:'127.0.0.1'},
+  on(ev,fn){if(ev!=='data'&&ev!=='end'&&ev!=='error')return;if(ended){if(ev==='data'&&raw)fn(raw);if(ev==='end')fn();return}waiters.push([ev,fn])},
+  flush(){if(ended)return;ended=true;for(const[ev,fn]of waiters){if(ev==='data'&&raw)fn(raw);if(ev==='end')fn()}}};
+  return req}
+async function carry(req,res){let raw;try{raw=await body(req)}catch(e){return J(res,{error:'Request is too large. Please retry.'},e.status||413)}
+  let pack;try{pack=JSON.parse(raw||'{}')}catch(e){return J(res,{error:'Could not read that request. Please retry.'},400)}
+  const headers={cookie:req.headers.cookie||'','content-type':pack.contentType||'application/json',accept:'application/json','x-mops-internal':req.headers['x-mops-internal']||''};
+  if(pack.log!=null&&pack.log!=='')headers['x-mops-log']=String(pack.log);
+  const inner=mock(pack.method||'GET',pack.path||'/',headers,pack.body||'');
+  const chunks=[];let status=200,rh={};const innerRes={writableEnded:false,get headersSent(){return this._s},
+    writeHead(c,h){status=c;rh=h||{};this._s=true},setHeader(k,v){rh[k]=v},
+    write(c){chunks.push(Buffer.from(c));return true},
+    end(c){if(c!=null)chunks.push(Buffer.isBuffer(c)?c:Buffer.from(String(c)));this.writableEnded=true;this._s=true}};
+  const pending=handleRequest(inner,innerRes);inner.flush();await pending;
+  const buf=Buffer.concat(chunks);const ct=String(rh['content-type']||rh['Content-Type']||'');const binary=/pdf|octet|officedocument|word|sheet|zip/.test(ct);
+  let log='';try{log=require('./backend/journal').exportLog()}catch(e){}
+  return J(res,{status,headers:rh,body:binary?buf.toString('base64'):buf.toString('utf8'),binary,log})}
+function attachLog(req,res){const journal=require('./backend/journal');
+  const token=req.headers['x-mops-log'];const id=req.headers['x-mops-log-id'];
+  const have=id&&id===journal.currentSig();
+  if(!have){if(token!=null&&token!==''){try{journal.apply(Array.isArray(token)?String(token[0]):String(token))}catch(e){console.error('journal',e.message)}}
+    else if(id){res.writeHead(409,{'content-type':'application/json','x-mops-log-stale':'1','cache-control':'no-store'});res.end('{"error":"Send the saved log."}');return 'stale'}}
+  const origWrite=res.writeHead.bind(res),origEnd=res.end.bind(res);
+  res.writeHead=function(code,h){const headers=h&&typeof h==='object'&&!Array.isArray(h)?Object.assign({},h):{};
+    try{const log=journal.exportLog();journal.remember(log);headers['x-mops-log-id']=journal.sigOf(log);if(log.length<7000)headers['x-mops-log']=log;else{headers['x-mops-log-overflow']='1';req._overflowLog=log}}catch(e){}
+    return origWrite(code,headers)};
+  res.end=function(chunk,enc,cb){if(req._overflowLog&&chunk!=null){const text=Buffer.isBuffer(chunk)?chunk.toString('utf8'):String(chunk);
+    if(text.startsWith('{')){try{const obj=JSON.parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj)){obj.mopsLog=req._overflowLog;chunk=JSON.stringify(obj)}}catch(e){}}}
+    return origEnd(chunk,enc,cb)}}
+async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;try{u=new URL(req.url,'http://x')}catch(e){u=new URL('/','http://x')}const p=u.pathname;
+ if(p==='/login'||p==='/login/'){res.writeHead(303,{location:'/','cache-control':'no-store'});return res.end()}
+ if(attachLog(req,res)==='stale')return;
+ try{await ready()}catch(e){console.error(e);if(!res.headersSent)J(res,{error:'The demo is still starting. Please retry.'},503);return}
+ try{
  if(await guard.handle(req,res,p))return;
+ if(p==='/api/carry'&&req.method==='POST')return carry(req,res);
  if(p==='/health'||p==='/healthz')return J(res,{ok:true,service:'mops',company:'Northwind Networks'});
  if(await HUB.handle(req,res,p,u))return;
  if(p==='/api/state')return J(res,{company:db.company,mode:KEY?'llm':'rules',model:KEY?MODEL:null,sender:sender.name,stack:STACK,threads:db.threads.map(t=>({id:t.id,title:t.title,type:t.type,n:t.messages.length})),
@@ -179,7 +216,11 @@ async function handleRequest(req,res){await ready();const HUB=require('./backend
  if((s=p.match(/^\/t\/(o|c)\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[2]);if(mm){mm.opened=true;if(s[1]==='c')mm.clicked=true;save();}res.writeHead(s[1]==='c'?302:200,s[1]==='c'?{location:'/r/'+(db.events[0]?.slug||'')}:{'content-type':'image/gif'});return res.end()}
  if((s=p.match(/^\/outbox\/(M\d+)$/))){const mm=db.outbox.find(x=>x.id===s[1]);res.writeHead(200,{'content-type':'text/html'});return res.end(`<div style="font-family:system-ui;max-width:620px;margin:30px auto"><p><b>To:</b> ${esc(mm.to)}<br><b>Subject:</b> ${esc(mm.subject)}</p><pre style="white-space:pre-wrap;font-family:inherit">${esc(mm.body)}</pre><a href="/t/c/${mm.id}">Reserve my seat</a><img src="/t/o/${mm.id}" width=1 height=1></div>`)}
  const root=path.join(__dirname,'ui');const f=path.join(root,p==='/'?'index.html':p);if(f.startsWith(root)&&fs.existsSync(f)&&fs.statSync(f).isFile()){res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});return res.end(fs.readFileSync(f))}
- res.writeHead(404);res.end('not found');}catch(e){if(e.status!==413)console.error(e);if(!res.headersSent)J(res,{error:e.status===413?'Request is too large':e.message},e.status||500)}}
+ res.writeHead(404);res.end('not found');}catch(e){if(e.status!==413)console.error(e);if(!res.headersSent)J(res,{error:e.status===413?'Request is too large':(e.message||'Something went wrong. Please retry.')},e.status||500)}}
+async function handleRequest(req,res){let path='/';try{path=new URL(req.url,'http://x').pathname}catch(e){}
+ if(path==='/login'||path==='/login/'){res.writeHead(303,{location:'/','cache-control':'no-store'});return res.end()}
+ if(depth>0)return handleInner(req,res);
+ return lock(async()=>{depth++;try{return await handleInner(req,res)}finally{depth--}})}
 function listen(){const{listenServices}=require('./backend/lib.js');const port=process.env.PORT||process.env.MOPS_PORT||8787;
   return ready().then(()=>{const srv=http.createServer(handleRequest);srv.listen(port,'0.0.0.0',()=>console.log(`@mops on :${port} mode=${KEY?'llm':'rules'} sender=${sender.name}`));if(!process.env.VERCEL)listenServices()})}
 module.exports={handleRequest,listen,ready};
