@@ -40,17 +40,24 @@ header {
 }
 .logo { color: var(--ink); text-decoration: none; font-weight: 680; letter-spacing: -.03em; font-size: 18px; display: inline-flex; align-items: center; gap: 8px; }
 .logo i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); display: block; }
+.saved-wrap { display: inline-flex; align-items: baseline; gap: 8px; }
 #saved { margin: 0; color: var(--muted); font-size: 14px; }
 #saved b { color: var(--ink); font-weight: 640; }
+#bump { color: var(--accent); font-weight: 700; font-size: 14px; }
+#bump.bump { animation: rise .45s ease; }
+#bump[hidden] { display: none !important; }
 .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
 #schedule { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 #schedule button { border: 0; background: transparent; border-radius: 999px; padding: 6px 12px; color: var(--muted); }
 #schedule button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 640; }
-#report, #reset, .primary, .ghost {
-  border-radius: 999px; padding: 8px 14px; border: 1px solid transparent;
+#send, #report, .primary {
+  background: var(--accent); color: #fff; border: 1px solid var(--accent);
+  border-radius: 999px; padding: 10px 18px; font-weight: 620;
 }
-#report, .primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 620; }
-#reset, .ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+#reset, .ghost {
+  background: #fff; color: var(--ink); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 14px;
+}
 #who { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; max-width: 100%; }
 main { width: min(920px, 100%); margin: 0 auto; padding: 12px 24px 80px; }
 .lede { color: var(--muted); font-size: 17px; margin-bottom: 22px; }
@@ -64,26 +71,47 @@ main { width: min(920px, 100%); margin: 0 auto; padding: 12px 24px 80px; }
 }
 body.home #ask { min-height: 116px; font-size: 22px; }
 .composer-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
-#channel { border: 0; background: var(--bg); border-radius: 999px; padding: 8px 12px; }
+#channel-wrap { position: relative; }
+#channel-toggle {
+  border: 0; background: transparent; color: var(--muted); padding: 6px 2px; font-size: 14px;
+}
+#channel-menu {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 6;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 6px; min-width: 140px;
+}
+#channel-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; border-radius: 10px; padding: 8px 10px; }
+#channel-menu button:hover, #channel-menu button[aria-checked="true"] { background: var(--accent-soft); color: var(--accent); }
+#channel-menu[hidden], #chips[hidden], #answer[hidden], #drawer[hidden], #toast[hidden], #needs[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 #chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-#chips[hidden], #answer[hidden], #drawer[hidden], #shade[hidden] { display: none !important; }
 .chip {
   border: 1px solid var(--line); background: #fff; border-radius: 999px;
   padding: 8px 14px; color: var(--ink);
 }
 .chip:hover { border-color: #cfcabe; }
 #answer { margin: 0 0 18px; }
-#answer article {
+#answer article, .your-turn {
   background: var(--card); border-radius: 22px; border: 1px solid var(--line);
   padding: 18px 20px; box-shadow: var(--shadow);
   animation: rise .4s ease;
 }
-.from { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 650; margin-bottom: 8px; }
-.reply { font-size: 17px; }
-.behind {
-  margin-top: 10px; padding: 0; border: 0; background: none; color: var(--muted);
-  font-size: 13px; text-decoration: underline; text-underline-offset: 3px;
+.your-turn { margin-bottom: 18px; }
+.your-turn h2, .headline { font-size: 28px; line-height: 1.15; letter-spacing: -.03em; font-weight: 700; margin: 6px 0 12px; }
+.answer-top, .card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.answer-tools { display: inline-flex; gap: 8px; align-items: center; }
+.from { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+.behind, .copy {
+  width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; color: var(--muted); display: inline-grid; place-items: center; padding: 0;
 }
+.reply p { margin: 0 0 8px; font-size: 16px; }
+.reply p:last-child { margin-bottom: 0; }
+summary { cursor: pointer; color: var(--muted); font-weight: 620; }
+details { margin-top: 12px; }
+.need-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.file-btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 16px; }
 #downloads { display: flex; flex-wrap: wrap; gap: 10px; margin: -6px 0 18px; }
 #downloads:empty { display: none; }
 #downloads a { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; text-decoration: none; font-weight: 600; }
@@ -93,58 +121,66 @@ body.home #ask { min-height: 116px; font-size: 22px; }
   display: block; background: var(--card); border: 1px solid var(--line); border-radius: 22px;
   padding: 18px 20px; box-shadow: var(--shadow); color: inherit; text-decoration: none;
 }
-.card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
-.meta { color: var(--muted); margin-top: 4px; }
+.card.large { padding: 22px 22px 18px; }
+.card.large h2 { font-size: 22px; }
+.meta, .progress, .quiet { color: var(--muted); }
+.meta { margin-top: 4px; }
+.progress { margin-top: 8px; font-size: 14px; }
+.next { margin-top: 4px; font-weight: 640; }
+.bar { height: 8px; background: #eceae6; border-radius: 999px; overflow: hidden; margin-top: 14px; }
+.bar span { display: block; height: 100%; background: var(--accent); }
 .status { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 650; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
 .status.wait { background: var(--wait-soft); color: var(--wait); }
 .status.plain { background: #eceae6; color: var(--you); }
-.need-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.strip { display: flex; flex-wrap: wrap; gap: 8px 10px; list-style: none; padding: 0; margin: 14px 0 0; }
-.strip li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); min-width: 0; }
-.strip .name { color: var(--ink); }
-.who { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 7px; }
-.who.you { background: #eceae4; color: var(--you); }
-.who.mops { background: var(--accent-soft); color: var(--accent); }
-.mark {
-  width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #d9d4cb;
-  display: inline-grid; place-items: center; color: transparent; font-size: 10px; flex: none;
-}
-li.done { color: var(--ink); }
-li.done .mark { background: var(--accent); border-color: var(--accent); color: #fff; }
-li.done.you .mark { background: var(--you); border-color: var(--you); }
-li.just .mark { animation: pop .45s ease; }
-.lanes { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 16px; }
+.all-camps { margin-top: 8px; }
+.all-camps summary { padding: 8px 2px; }
+.kicker { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+.lanes { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 16px; }
 .lane { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 18px 18px 8px; box-shadow: var(--shadow); min-width: 0; }
 .lane.you { background: #faf9f7; }
 .lane h2 { display: flex; align-items: center; gap: 8px; }
+.who { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 7px; }
+.who.you { background: #eceae4; color: var(--you); }
+.who.mops { background: var(--accent-soft); color: var(--accent); }
 .steps { list-style: none; padding: 0; margin: 0; }
-.steps li { padding: 12px 0; border-top: 1px solid var(--line); min-width: 0; }
-.steps li.just p { animation: rise .45s ease; }
-.steps p { margin: 0; }
-.quiet { color: var(--muted); }
+.steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.tick {
+  width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 1.5px solid #d9d4cb;
+  display: grid; place-items: center; color: transparent; font-size: 11px;
+}
+li.done .tick { background: var(--accent); border-color: var(--accent); color: #fff; }
+li.done.you .tick { background: var(--you); border-color: var(--you); }
+li.just .tick { animation: pop .45s ease; }
 .sow { display: grid; gap: 8px; margin-top: 10px; }
 .sow label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
-.sow input { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; width: 100%; font-size: 16px; }
-#sow-note { font-size: 14px; }
-.stats { display: flex; flex-wrap: wrap; gap: 12px; }
-.stats article { flex: 1 1 140px; min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
-.stats span { display: block; color: var(--muted); font-size: 13px; }
-.stats b { display: block; font-size: 22px; letter-spacing: -.03em; font-weight: 640; overflow-wrap: anywhere; }
+.sow input { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; width: 100%; font-size: 16px; color: var(--ink); opacity: 1; }
+#sow-note { font-size: 14px; color: var(--ink); }
+.stats, .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; }
+.stats article, .tiles article { min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
+.tiles { margin: 4px 0 12px; }
+.stats span, .tiles span { display: block; color: var(--muted); font-size: 13px; }
+.stats b, .tiles b { display: block; font-size: 28px; line-height: 1.1; letter-spacing: -.03em; font-weight: 680; white-space: nowrap; }
 .why { display: grid; gap: 10px; }
 .why article { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
 .source { color: var(--muted); font-size: 13px; margin-top: 6px; }
 .back { color: var(--muted); text-decoration: none; font-size: 14px; }
 #err { color: #8d2d2d; min-height: 1.2em; }
-#shade { position: fixed; inset: 0; background: rgba(28, 27, 25, .2); z-index: 19; }
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #fff; border-radius: 999px; padding: 10px 16px;
+  font-weight: 650; z-index: 30; box-shadow: var(--shadow);
+}
 #drawer {
-  position: fixed; top: 0; right: 0; height: 100%; width: min(440px, 100%);
+  position: fixed; top: 0; right: 0; height: 100%; width: min(420px, 100%);
   background: #fff; z-index: 20; padding: 22px 22px 40px; overflow: auto;
   border-left: 1px solid var(--line); box-shadow: -16px 0 40px rgba(28, 27, 25, .08);
+  transform: translateX(100%); transition: transform .28s ease;
 }
+#drawer.show { transform: translateX(0); }
 #drawer h2 { margin-top: 12px; }
-#drawer h3 { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+#drawer .human { margin: 16px 0 8px; padding-left: 22px; }
+#drawer .human li { margin: 0 0 10px; }
 #drawer pre { white-space: pre-wrap; word-break: break-word; background: var(--bg); border-radius: 14px; padding: 12px; font-size: 12px; line-height: 1.45; max-width: 100%; }
-.kicker { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
@@ -157,6 +193,8 @@ li.just .mark { animation: pop .45s ease; }
   main { padding: 8px 16px 64px; }
   .lanes { grid-template-columns: 1fr; }
   body.home #ask { font-size: 18px; min-height: 96px; }
+  .headline, .your-turn h2 { font-size: 24px; }
+  .stats b, .tiles b { font-size: 24px; }
 }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
@@ -164,7 +202,10 @@ li.just .mark { animation: pop .45s ease; }
 <body class="home">
 <header>
   <a class="logo" href="#/"><i></i>__BRAND__</a>
-  <p id="saved">Saved today: …</p>
+  <div class="saved-wrap">
+    <p id="saved">Saved today: 0m vs old tools</p>
+    <span id="bump" hidden></span>
+  </div>
   <div class="tools">
     <div id="schedule" role="group" aria-label="Report schedule">
       <button type="button" data-period="weekly" aria-pressed="true">Weekly</button>
@@ -177,15 +218,23 @@ li.just .mark { animation: pop .45s ease; }
 </header>
 <main>
   <form id="composer">
-    <label class="visually-hidden" for="ask" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Ask</label>
+    <label class="sr-only" for="ask">Ask</label>
     <textarea id="ask" placeholder="Tag @mops…"></textarea>
     <div class="composer-row">
-      <select id="channel" aria-label="Channel">
-        <option>Email</option>
-        <option>Webex</option>
-        <option selected>App</option>
-      </select>
-      <button id="send" type="submit">Ask</button>
+      <div id="channel-wrap">
+        <button id="channel-toggle" type="button" aria-expanded="false" aria-controls="channel-menu">Asked from: App</button>
+        <div id="channel-menu" hidden>
+          <button type="button" data-channel="App" aria-checked="true">App</button>
+          <button type="button" data-channel="Webex" aria-checked="false">Webex</button>
+          <button type="button" data-channel="Email" aria-checked="false">Email</button>
+        </div>
+        <select id="channel" class="sr-only" aria-label="Channel" tabindex="-1">
+          <option>Email</option>
+          <option>Webex</option>
+          <option selected>App</option>
+        </select>
+      </div>
+      <button id="send" class="primary" type="submit">Ask</button>
     </div>
     <div id="chips">
       <button type="button" class="chip" data-ask="@mops who can I email in Illinois">Who can I email in Illinois</button>
@@ -199,8 +248,8 @@ li.just .mark { animation: pop .45s ease; }
   <div id="view"></div>
   <p id="err"></p>
 </main>
-<div id="shade" hidden></div>
-<aside id="drawer" hidden>
+<div id="toast" role="status" hidden></div>
+<aside id="drawer" hidden aria-label="Behind the scenes">
   <button id="drawer-close" class="ghost" type="button">Close</button>
   <h2>Behind the scenes</h2>
   <div id="trace"></div>
@@ -219,9 +268,17 @@ const STEPS = [
   ['upload', 'Upload', 'you'],
   ['report', 'Report', 'mops']
 ];
+const MINUTES = { data: 20, engage: 35, crm: 25, plan: 40, insights: 30, brain: 45 };
+const SAVED_KEY = 'mops-saved-min';
+const REJECT_KEY = 'mops-reject-chi';
+const EYE = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>';
+const COPY = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.2" y="5.2" width="8" height="8" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.5 5.2V3.6A1.4 1.4 0 0 0 9.1 2.2H3.6A1.4 1.4 0 0 0 2.2 3.6v5.5A1.4 1.4 0 0 0 3.6 10.5H5.2" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
 
 const state = { user: null, users: [], metrics: {}, campaigns: [], packets: [], sends: [], uploads: [], why: [], dash: null, mqls: 0, last: null };
 let busy = false;
+let hold = false;
+let undoTimer = null;
+let toastTimer = null;
 let seenDone = null;
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -232,13 +289,29 @@ function hours(min) {
   if (h) return h + 'h';
   return m + 'm';
 }
-function savedLabel(metrics) {
-  const mods = Object.values(metrics || {}).filter(b => b && typeof b.minutes === 'number');
-  if (!mods.length) return 'Saved today: …';
-  const all = mods.reduce((s, b) => s + b.minutes, 0);
-  const ran = mods.filter(b => b.runs);
-  const minutes = ran.length ? ran.reduce((s, b) => s + b.minutes, 0) : all;
-  return 'Saved today: ' + hours(minutes) + ' vs old tools';
+function savedMinutes() { return Math.max(0, Math.round(Number(localStorage.getItem(SAVED_KEY)) || 0)); }
+function paintSaved() {
+  document.querySelector('#saved').textContent = 'Saved today: ' + hours(savedMinutes()) + ' vs old tools';
+}
+function addSaved(min) {
+  const n = Math.max(0, Math.round(Number(min) || 0));
+  if (!n) return;
+  localStorage.setItem(SAVED_KEY, String(savedMinutes() + n));
+  paintSaved();
+  const bump = document.querySelector('#bump');
+  bump.hidden = false;
+  bump.textContent = '+' + n + ' min';
+  bump.classList.remove('bump');
+  void bump.offsetWidth;
+  bump.classList.add('bump');
+}
+function rejected() { return localStorage.getItem(REJECT_KEY) === '1'; }
+function toast(text) {
+  const node = document.querySelector('#toast');
+  node.hidden = false;
+  node.textContent = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { node.hidden = true; }, 2600);
 }
 function dayLabel(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
@@ -247,11 +320,22 @@ function dayLabel(iso) {
   return Number(m[3]) + ' ' + months[Number(m[2]) - 1];
 }
 function channel() { return document.querySelector('#channel').value || 'App'; }
+function setChannel(value) {
+  const next = value || 'App';
+  document.querySelector('#channel').value = next;
+  localStorage.setItem('mops-channel', next);
+  document.querySelector('#channel-toggle').textContent = 'Asked from: ' + next;
+  document.querySelectorAll('#channel-menu button').forEach(btn => btn.setAttribute('aria-checked', btn.dataset.channel === next ? 'true' : 'false'));
+  document.querySelector('#channel-menu').hidden = true;
+  document.querySelector('#channel-toggle').setAttribute('aria-expanded', 'false');
+}
 function chiPacket() { return (state.packets || []).find(p => p.campaignId === 'CAMP-CHI') || null; }
 function chiSend() { return (state.sends || []).find(s => s.campaign_id === 'CAMP-CHI' && s.recipients > 0) || null; }
 function uploaded() { return (state.uploads || []).some(u => u.accepted > 0); }
 function reportDone() { return !!(state.metrics.insights && state.metrics.insights.runs); }
 function onChicago() { return (location.hash || '#/').indexOf('#/chicago') === 0; }
+function isSendAsk(text) { return /send the chicago invite/i.test(text || ''); }
+function approver() { return !!(state.user && state.user.role === 'approver'); }
 
 async function api(url, opt) {
   const r = await fetch(url, Object.assign({ headers: { 'content-type': 'application/json' } }, opt));
@@ -295,7 +379,7 @@ function flightSteps() {
 }
 function snapshotDone() {
   const ids = flightSteps().filter(s => s.done).map(s => s.id);
-  visibleCampaigns().forEach(c => {
+  splitCamps().top.concat(splitCamps().rest).forEach(c => {
     const steps = c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c);
     steps.forEach(s => { if (s.done) ids.push(s.id); });
   });
@@ -308,55 +392,88 @@ function justNow(steps) {
   snapshotDone().forEach(id => seenDone.add(id));
   return just;
 }
-function strip(steps, just) {
-  return '<ol class="strip">' + steps.map(s => {
-    const cls = (s.who === 'you' ? 'you' : 'mops') + (s.done ? ' done' : '') + (just.has(s.id) ? ' just' : '');
-    return '<li class="' + cls + '"><span class="who ' + (s.who === 'you' ? 'you' : 'mops') + '">' + (s.who === 'you' ? 'You' : '@mops') + '</span><span class="name">' + esc(s.label) + '</span><span class="mark" aria-hidden="true">' + (s.done ? '✓' : '') + '</span></li>';
-  }).join('') + '</ol>';
-}
-function visibleCampaigns() {
+function ranked() {
   const regions = new Set((state.user && state.user.regions) || []);
   const rows = (state.campaigns || []).filter(c => c.id === 'CAMP-CHI' || regions.has(c.region));
   rows.sort((a, b) => a.id === 'CAMP-CHI' ? -1 : b.id === 'CAMP-CHI' ? 1 : String(a.name).localeCompare(String(b.name)));
-  const chi = rows.filter(c => c.id === 'CAMP-CHI');
-  const rest = rows.filter(c => c.id !== 'CAMP-CHI');
-  return chi.concat(rest).slice(0, 12);
+  return rows;
 }
-function needsCards() {
+function splitCamps() {
+  const rows = ranked();
+  const live = rows.filter(c => c.id === 'CAMP-CHI' || String(c.status || '').toLowerCase() === 'live');
+  const top = live.slice(0, 3);
+  const ids = new Set(top.map(c => c.id));
+  return { top, rest: rows.filter(c => !ids.has(c.id)) };
+}
+function stepNext(steps) {
+  const open = steps.find(s => !s.done);
+  if (!open) return 'Next: @mops · Done';
+  if (open.key === 'sow') return 'Next: You · Fill 3 SOW details';
+  if (open.key === 'report') return 'Next: @mops · Sending report Fri';
+  if (open.key === 'invite') return 'Next: @mops · Send the invite';
+  if (open.key === 'upload') return 'Next: You · Upload the attendee file';
+  if (open.key === 'code') return 'Next: @mops · Mint the code';
+  return 'Next: You · File the budget';
+}
+function chicagoNext() {
   const packet = chiPacket();
-  const cards = [];
-  if (packet && packet.status === 'pending' && state.user && state.user.role === 'approver') {
-    cards.push({ text: 'Chicago security roundtable is ' + money(packet.amountUsd) + ' and waiting on you.', acts: [{ act: 'approve', label: 'Approve' }] });
+  const pending = packet && packet.status === 'pending' && !rejected();
+  const sowOpen = packet && packet.open && packet.open.length;
+  if (!packet) {
+    if (!chiSend()) return 'Next: @mops · Send the invite';
+    if (!uploaded()) return 'Next: You · Upload the attendee file';
+    return 'Next: You · File the budget';
   }
-  if (packet && packet.open && packet.open.length) {
-    cards.push({ text: 'Three details only you know for the Chicago roundtable.', acts: [{ act: 'fill', label: 'Fill 3 details' }] });
-  }
-  if (!uploaded()) cards.push({ text: 'Upload the Chicago attendee file.', acts: [{ act: 'upload', label: 'Upload file', id: 'upload' }] });
-  return cards.slice(0, 3);
+  if (sowOpen) return 'Next: You · Fill 3 SOW details';
+  if (pending && approver()) return 'Next: You · Approve $180,000';
+  if (pending) return 'Next: Chris · Approve $180,000';
+  if (!chiSend()) return 'Next: @mops · Send the invite';
+  if (!uploaded()) return 'Next: You · Upload the attendee file';
+  if (!reportDone()) return 'Next: @mops · Sending report Fri';
+  return 'Next: @mops · Done';
 }
 function cardStatus(c) {
   if (c.id === 'CAMP-CHI') {
     const packet = chiPacket();
-    if (packet && packet.status === 'pending') return '<span class="status wait">Waiting on Chris</span>';
+    if (packet && packet.status === 'pending' && !rejected()) return '<span class="status wait">Waiting on Chris</span>';
     if (packet && packet.status === 'approved') return '<span class="status">Approved</span>';
+    if (rejected()) return '<span class="status plain">Rejected</span>';
   }
   return '<span class="status plain">' + esc(c.status || 'Live') + '</span>';
 }
-
-function homeHtml(just) {
+function campCard(c, large) {
+  const steps = c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c);
+  const doneN = steps.filter(s => s.done).length;
+  const width = Math.round((doneN / 6) * 100);
+  const next = c.id === 'CAMP-CHI' ? chicagoNext() : stepNext(steps);
+  const inner = '<div class="card-top"><h2>' + esc(c.name) + '</h2>' + cardStatus(c) + '</div>'
+    + '<p class="meta">' + esc([c.city, dayLabel(c.start_date)].filter(Boolean).join(' · ')) + '</p>'
+    + '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="' + doneN + '" aria-label="' + doneN + ' of 6 steps done"><span style="width:' + width + '%"></span></div>'
+    + '<p class="progress">' + doneN + ' of 6 steps done</p>'
+    + '<p class="next">' + esc(next) + '</p>';
+  if (!large) return '<article class="card slim">' + inner + '</article>';
+  return c.id === 'CAMP-CHI' ? '<a class="card large" href="#/chicago">' + inner + '</a>' : '<article class="card large">' + inner + '</article>';
+}
+function needsHtml() {
+  const packet = chiPacket();
+  const pending = packet && packet.status === 'pending' && !rejected();
+  if (!pending) return '';
+  if (approver()) {
+    return '<article class="card"><p class="kicker">Needs you</p><h2 class="headline">Approve ' + money(packet.amountUsd) + ' for Chicago roundtable</h2><div class="need-actions"><button class="primary" type="button" data-act="approve">Approve</button><button class="ghost" type="button" data-act="reject">Reject</button></div></article>';
+  }
+  return '<article class="card"><p class="kicker">Needs you</p><h2 class="headline">Waiting on Chris · nudge</h2><div class="need-actions"><button id="nudge" class="primary" type="button" data-act="nudge">Nudge</button></div></article>';
+}
+function homeHtml() {
   const first = ((state.user && state.user.name) || 'Maria').split(' ')[0];
-  const needs = needsCards();
-  const needHtml = needs.length
-    ? needs.map(card => '<article class="card"><p>' + esc(card.text) + '</p><div class="need-actions">' + card.acts.map(a => '<button class="primary" type="button" data-act="' + a.act + '"' + (a.id && !onChicago() ? ' id="' + a.id + '"' : '') + '>' + esc(a.label) + '</button>').join('') + '</div></article>').join('')
-    : '<p class="quiet">Nothing is waiting on you.</p>';
-  const camps = visibleCampaigns().map(c => {
-    const steps = c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c);
-    const inner = '<div class="card-top"><h2>' + esc(c.name) + '</h2>' + cardStatus(c) + '</div><p class="meta">' + esc([c.city, dayLabel(c.start_date)].filter(Boolean).join(' · ')) + '</p>' + strip(steps, just);
-    return c.id === 'CAMP-CHI' ? '<a class="card" href="#/chicago">' + inner + '</a>' : '<article class="card">' + inner + '</article>';
-  }).join('');
-  return '<h1>Hey ' + esc(first) + '</h1><p class="lede">One ask. @mops drafts, sends, and files. You only step in when it needs you.</p>'
-    + '<section class="section" id="needs"><h2>Needs you</h2><div class="stack">' + needHtml + '</div></section>'
-    + '<section class="section"><h2>My campaigns</h2><div class="stack" id="campaigns">' + camps + '</div></section>';
+  const parts = splitCamps();
+  const needs = needsHtml();
+  const top = parts.top.map(c => campCard(c, true)).join('');
+  const rest = parts.rest.length
+    ? '<details class="all-camps"><summary>All campaigns</summary><div class="stack">' + parts.rest.map(c => campCard(c, false)).join('') + '</div></details>'
+    : '';
+  return '<h1>Hey ' + esc(first) + '</h1><p class="lede">One ask. You step in only when it needs you.</p>'
+    + '<section class="section" id="needs"' + (needs ? '' : ' hidden') + '>' + needs + '</section>'
+    + '<section class="section"><h2>My campaigns</h2><div class="stack" id="campaigns">' + top + '</div>' + rest + '</section>';
 }
 
 function pct(part, whole) { return whole ? Math.round((part / whole) * 100) : 0; }
@@ -366,15 +483,56 @@ function sourceLabel(row) {
   if (special) return via ? special + ' · ' + via : special;
   return via;
 }
+function plain(text) {
+  let s = String(text || '');
+  s = s.replace(/\(AE\)/g, ', Account owner').replace(/\(SDR\)/g, ', Follow-up rep');
+  s = s.replace(/\bAEs\b/g, 'Account owners').replace(/\bAE\b/g, 'Account owner');
+  s = s.replace(/\bSDRs\b/g, 'Follow-up reps').replace(/\bSDR\b/g, 'Follow-up rep');
+  s = s.replace(/\bMQLs\b/g, 'Sales-ready leads').replace(/\bMQL\b/g, 'Sales-ready lead');
+  s = s.replace(/\bBAN\s+BAN-[A-Z0-9-]+\.?/g, '');
+  s = s.replace(/\bCode\s+FY\d{2}[A-Z0-9-]+\.?/g, '');
+  s = s.replace(/\bBAN-[A-Z0-9-]+/g, '');
+  s = s.replace(/\bFY\d{2}[A-Z0-9-]+/g, '');
+  s = s.replace(/\bCAMP-[A-Z0-9-]+/g, '');
+  s = s.replace(/\bEM-[A-Z0-9-]+/g, '');
+  s = s.replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').trim();
+  return s;
+}
+function codesOf(text) {
+  const raw = String(text || '');
+  const ban = (raw.match(/\bBAN-[A-Z0-9-]+/) || [])[0] || '';
+  const labeled = raw.match(/\bCode\s+(FY\d{2}[A-Z0-9-]+)/);
+  const code = labeled ? labeled[1] : ((raw.match(/(?:^|[^A-Z0-9-])(FY\d{2}[A-Z0-9-]+)/) || [])[1] || '');
+  return [ban, code].filter(Boolean).join(' ');
+}
+function clipSentences(text) {
+  const parts = String(text || '').split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  const out = [];
+  parts.forEach(part => {
+    const w = part.split(/\s+/).filter(Boolean);
+    if (w.length <= 20) { out.push(w.join(' ')); return; }
+    for (let i = 0; i < w.length; i += 18) out.push(w.slice(i, i + 18).join(' '));
+  });
+  return out;
+}
 function whyHtml() {
   const rows = (state.why || []).filter(r => r.why && !NOISE.test(r.why));
-  const venue = rows.find(r => /Moved the Chicago security roundtable to 19 Mar/.test(r.why));
-  const top = rows.slice(0, 8);
-  if (venue && top.indexOf(venue) < 0) top.push(venue);
-  if (!top.length) return '<p class="quiet">Nothing has changed yet.</p>';
-  return top.map(r => {
+  const seen = new Set();
+  const top = [];
+  rows.forEach(r => {
+    const key = String(r.why).replace(/\s+/g, ' ').trim();
+    if (seen.has(key)) return;
+    seen.add(key);
+    top.push(r);
+  });
+  const venue = top.find(r => /Moved the Chicago security roundtable to 19 Mar/.test(r.why));
+  const shown = top.slice(0, 8);
+  if (venue && shown.indexOf(venue) < 0) shown.push(venue);
+  if (!shown.length) return '<p class="quiet">Nothing has changed yet.</p>';
+  return shown.map(r => {
     const src = sourceLabel(r);
-    return '<article><p>' + esc(r.why) + '</p>' + (src ? '<p class="source">' + esc(src) + '</p>' : '') + '</article>';
+    const paras = clipSentences(plain(r.why)).map(p => '<p>' + esc(p) + '</p>').join('');
+    return '<article>' + paras + (src ? '<p class="source">' + esc(src) + '</p>' : '') + '</article>';
   }).join('');
 }
 function sowBlock() {
@@ -392,14 +550,32 @@ function sowBlock() {
     + '<label>Venue contact<input id="venue_contact" value="' + esc(fields.venue_contact || '') + '"></label>'
     + '<button id="save" class="primary" type="button">Save</button></div>';
 }
-function approveBlock() {
+function yourTurn() {
   const packet = chiPacket();
-  if (!packet) return '<p class="quiet">Approve comes after the budget is filed.</p>';
-  if (packet.status === 'approved') return '<p>Approved. ' + esc(packet.ban || '') + ' · ' + esc(packet.campaignCode || '') + '</p>';
-  if (state.user && state.user.role === 'approver') return '<button class="primary" type="button" data-act="approve">Approve</button>';
-  return '<span class="status wait">Waiting on Chris</span>';
+  const pending = packet && packet.status === 'pending' && !rejected();
+  if (!uploaded()) {
+    return '<section class="your-turn" id="your-turn"><p class="kicker">Your turn</p><h2>Upload the attendee file</h2>'
+      + '<div class="need-actions"><label class="primary file-btn">Upload attendee file<input id="file" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"></label>'
+      + '<button id="upload" class="ghost" type="button" data-act="upload">Use sample file</button></div></section>';
+  }
+  if (pending && approver()) {
+    return '<section class="your-turn" id="your-turn"><p class="kicker">Needs you</p><h2>Approve ' + money(packet.amountUsd) + ' for Chicago roundtable</h2>'
+      + '<div class="need-actions"><button class="primary" type="button" data-act="approve">Approve</button><button class="ghost" type="button" data-act="reject">Reject</button></div></section>';
+  }
+  if (pending) {
+    return '<section class="your-turn" id="your-turn"><p class="kicker">Your turn</p><h2>Waiting on Chris · nudge</h2>'
+      + '<div class="need-actions"><button id="nudge" class="primary" type="button" data-act="nudge">Nudge</button></div></section>';
+  }
+  if (packet && packet.open && packet.open.length) {
+    return '<section class="your-turn" id="your-turn"><p class="kicker">Your turn</p><h2>Fill 3 details</h2>'
+      + '<div class="need-actions"><button class="primary" type="button" data-act="fill">Fill 3 details</button></div></section>';
+  }
+  return '';
 }
-function behind(trace) { return ' <button type="button" class="behind" data-trace="' + trace + '">Behind the scenes</button>'; }
+function stepItem(done, just, you, body) {
+  const cls = (done ? 'done' : '') + (you ? ' you' : '') + (just ? ' just' : '');
+  return '<li class="' + cls + '"><span class="tick" aria-hidden="true">' + (done ? '✓' : '') + '</span><div>' + body + '</div></li>';
+}
 function campaignHtml(just) {
   const packet = chiPacket();
   const send = chiSend();
@@ -407,37 +583,43 @@ function campaignHtml(just) {
   const sent = send ? send.recipients : 0;
   const opens = send ? send.opens : 0;
   const clicks = send ? send.clicks : 0;
-  const openLine = send ? (opens + ' of ' + sent + ' opened (' + pct(opens, sent) + '%)') : 'Not yet';
-  const clickLine = send ? (clicks + ' of ' + sent + ' clicked (' + pct(clicks, sent) + '%)') : 'Not yet';
   const left = money((chi.budget || 0) - (chi.actual || 0));
-  const spent = packet && packet.status === 'approved' ? '<article><span>Spent so far</span><b>Spent so far ' + money(chi.actual || 0) + '</b></article>' : '';
+  const spent = packet && packet.status === 'approved'
+    ? '<article><b>' + money(chi.actual || 0) + '</b><span>Spent so far</span></article>'
+    : '';
   const mops = [
-    { id: 'chi:venue', text: 'Moved the roundtable to River North Club on 19 Mar.', trace: 'venue', done: true },
-    { id: 'chi:draft', text: packet ? ('Drafted the ' + money(packet.amountUsd) + ' budget and the agreement.') : 'The budget and the agreement wait for your ask.', trace: 'draft', done: !!packet },
-    { id: 'chi:code', text: packet && packet.campaignCode ? ('Minted the code. ' + packet.campaignCode) : 'The code is minted when Chris approves.', trace: 'code', done: !!(packet && packet.campaignCode) },
-    { id: 'chi:invite', text: send ? ('Sent the invite to ' + sent + ' people.') : 'The invite waits for your ask.', trace: 'invite', done: !!send },
-    { id: 'chi:report', text: reportDone() ? 'Wrote the weekly report.' : 'The weekly report is ready when you ask.', trace: 'report', done: reportDone() }
+    { id: 'chi:venue', text: 'Moved the roundtable to 19 Mar.', done: true },
+    { id: 'chi:draft', text: packet ? ('Drafted the ' + money(packet.amountUsd) + ' budget.') : 'The budget waits for your ask.', done: !!packet },
+    { id: 'chi:code', text: packet && packet.campaignCode ? 'The code is ready.' : 'The code waits for Chris.', done: !!(packet && packet.campaignCode) },
+    { id: 'chi:invite', text: send ? ('Sent the invite to ' + sent + ' people.') : 'The invite waits for your ask.', done: !!send },
+    { id: 'chi:report', text: reportDone() ? 'Wrote the weekly report.' : 'The weekly report waits for your ask.', done: reportDone() }
   ];
   const youUpload = uploaded()
     ? '<p>The attendee file is in.</p>'
-    : '<p>Upload the attendee file.</p><button id="upload" class="primary" type="button" data-act="upload">Upload file</button>';
-  return '<p><a class="back" href="#/">All campaigns</a></p><h1>Chicago security roundtable</h1><p class="lede">Your part is three small things. @mops carries the rest.</p>'
+    : '<p>Upload the attendee file.</p>';
+  const youSow = '<p>Three details on the agreement.</p>' + sowBlock();
+  const youBudget = packet && packet.status === 'approved'
+    ? '<p>Budget approved.</p>'
+    : '<p>Approve the budget.</p>';
+  return '<p><a class="back" href="#/">All campaigns</a></p>'
+    + yourTurn()
+    + '<h1>Chicago security roundtable</h1>'
     + '<section class="section" id="flight"><div class="lanes">'
     + '<div class="lane you"><h2><span class="who you">You</span></h2><ol class="steps">'
-    + '<li class="' + (uploaded() ? 'done' : '') + (just.has('chi:upload') ? ' just' : '') + '">' + youUpload + '</li>'
-    + '<li class="' + (packet && packet.open && packet.open.length === 0 ? 'done' : '') + (just.has('chi:sow') ? ' just' : '') + '"><p>Three details on the agreement.</p>' + sowBlock() + '</li>'
-    + '<li class="' + (packet && packet.status === 'approved' ? 'done' : '') + (just.has('chi:budget') ? ' just' : '') + '"><p>Approve the budget.</p>' + approveBlock() + '</li>'
+    + stepItem(uploaded(), just.has('chi:upload'), true, youUpload)
+    + stepItem(!!(packet && packet.open && packet.open.length === 0), just.has('chi:sow'), true, youSow)
+    + stepItem(!!(packet && packet.status === 'approved'), just.has('chi:budget'), true, youBudget)
     + '</ol></div>'
     + '<div class="lane mops"><h2><span class="who mops">@mops</span></h2><ol class="steps">'
-    + mops.map(s => '<li class="' + (s.done ? 'done' : '') + (just.has(s.id) ? ' just' : '') + '"><p>' + esc(s.text) + behind(s.trace) + '</p></li>').join('')
+    + mops.map(s => stepItem(s.done, just.has(s.id), false, '<p>' + esc(s.text) + '</p>')).join('')
     + '</ol></div></div></section>'
     + '<section class="section"><h2>Live numbers</h2><div id="numbers" class="stats">'
-    + '<article><span>Sent</span><b>' + sent.toLocaleString('en-US') + '</b></article>'
-    + '<article><span>Opened</span><b>' + esc(openLine) + '</b></article>'
-    + '<article><span>Clicked</span><b>' + esc(clickLine) + '</b></article>'
-    + '<article><span>MQLs</span><b id="mqls">' + Number(state.mqls || 0).toLocaleString('en-US') + '</b></article>'
-    + '<article><span>Pipeline</span><b>Pipeline ' + money(chi.pipeline || 0) + '</b></article>'
-    + '<article><span>Budget left</span><b>Budget left ' + left + '</b></article>'
+    + '<article><b>' + sent.toLocaleString('en-US') + '</b><span>Sent</span></article>'
+    + '<article><b>' + (send ? pct(opens, sent) + '%' : '—') + '</b><span>' + (send ? opens + ' of ' + sent + ' opened' : 'Opened') + '</span></article>'
+    + '<article><b>' + (send ? pct(clicks, sent) + '%' : '—') + '</b><span>' + (send ? clicks + ' of ' + sent + ' clicked' : 'Clicked') + '</span></article>'
+    + '<article><b id="mqls">' + Number(state.mqls || 0).toLocaleString('en-US') + '</b><span>Sales-ready leads</span></article>'
+    + '<article><b>' + money(chi.pipeline || 0) + '</b><span>Pipeline</span></article>'
+    + '<article><b>' + left + '</b><span>Budget left</span></article>'
     + spent
     + '</div>' + (send ? '<p style="margin-top:12px"><button id="simulate" class="ghost" type="button" data-act="simulate">See opens and clicks</button></p>' : '') + '</section>'
     + '<section class="section"><h2>What changed and why</h2><div id="why" class="why">' + whyHtml() + '</div></section>';
@@ -448,10 +630,10 @@ function render() {
   document.body.classList.toggle('home', !camp);
   document.body.classList.toggle('camp', camp);
   document.querySelector('#chips').hidden = camp;
-  const steps = camp ? flightSteps().concat(chicagoProgress()) : visibleCampaigns().flatMap(c => c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c));
+  const steps = camp ? flightSteps().concat(chicagoProgress()) : splitCamps().top.concat(splitCamps().rest).flatMap(c => c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c));
   const just = justNow(steps);
-  document.querySelector('#view').innerHTML = camp ? campaignHtml(just) : homeHtml(just);
-  document.querySelector('#saved').textContent = savedLabel(state.metrics);
+  document.querySelector('#view').innerHTML = camp ? campaignHtml(just) : homeHtml();
+  paintSaved();
   if (sessionStorage.getItem('mops-focus') === 'sow' && camp) {
     sessionStorage.removeItem('mops-focus');
     const el = document.querySelector('#our_pm');
@@ -459,20 +641,83 @@ function render() {
   }
 }
 
-function paintAnswer(body) {
+function tileHtml(tiles) {
+  const rows = (tiles || []).slice(0, 3);
+  if (!rows.length) return '';
+  return '<div class="tiles">' + rows.map(t => '<article><b>' + esc(t.n) + '</b><span>' + esc(t.l) + '</span></article>').join('') + '</div>';
+}
+function present(body, extra) {
+  const reply = String((body && body.reply) || '');
+  const codes = codesOf(reply);
+  const sent = reply.match(/Sent the Chicago invite to (\d+)/);
+  const already = reply.match(/Already sent the Chicago invite to (\d+)/);
+  const opted = reply.match(/(\d+) opted-in contacts/);
+  const waiting = /Waiting on Chris/.test(reply) && /\$[\d,]+/.test(reply);
+  const approved = /approved/i.test(reply) && codes;
+  const venue = /venue changed|moved to 19 Mar/i.test(reply);
+  const report = /(?:Weekly|Monthly) report/i.test(reply);
+  let headline = 'Done';
+  let tiles = [];
+  let primary = '';
+  if (extra && extra.kind === 'upload') {
+    headline = extra.accepted + ' people added';
+    tiles = [{ n: String(extra.accepted), l: 'Added' }, { n: String(extra.held), l: 'Held' }];
+  } else if (approved) {
+    headline = 'Budget approved · code ready';
+    const amt = reply.match(/\$[\d,]+/);
+    if (amt) tiles = [{ n: amt[0], l: 'Approved' }];
+  } else if (sent) {
+    headline = 'Invite sent to ' + sent[1] + ' CIOs';
+    const held = reply.match(/Held (\d+)/);
+    tiles = [{ n: sent[1], l: 'Sent' }];
+    if (held) tiles.push({ n: held[1], l: 'Held' });
+  } else if (already) {
+    headline = 'Invite already sent';
+    tiles = [{ n: already[1], l: 'Sent' }];
+  } else if (opted) {
+    headline = opted[1] + ' people you can email';
+    tiles = [{ n: opted[1], l: 'Opted in' }];
+  } else if (waiting) {
+    headline = 'Waiting on Chris';
+    const amt = reply.match(/\$[\d,]+/);
+    if (amt) tiles = [{ n: amt[0], l: 'Budget' }];
+    primary = '<button class="primary" type="button" data-act="fill">Fill 3 details</button>';
+  } else if (venue) {
+    headline = 'Venue moved to 19 Mar';
+  } else if (report) {
+    headline = 'Report is ready';
+  } else {
+    headline = clipSentences(plain(reply))[0] || 'Done';
+  }
+  const paras = clipSentences(plain(reply)).map(p => '<p>' + esc(p) + '</p>').join('');
+  const copy = codes ? '<button type="button" class="copy" data-copy="' + esc(codes) + '" aria-label="Copy code">' + COPY + '</button>' : '';
+  return '<article><div class="answer-top"><span class="from">Asked from: ' + esc((body && body.channel) || channel()) + '</span><span class="answer-tools">' + copy + '<button type="button" class="behind" data-trace="last" aria-label="Behind the scenes">' + EYE + '</button></span></div><h2 class="headline">' + esc(headline) + '</h2>' + tileHtml(tiles) + (primary ? '<div class="need-actions">' + primary + '</div>' : '') + '<details><summary>More</summary><div class="reply">' + paras + '</div></details></article>';
+}
+function paintAnswer(body, extra) {
   const node = document.querySelector('#answer');
   node.hidden = false;
-  node.innerHTML = '<article><span class="from">' + esc(body.channel || channel()) + '</span><p class="reply">' + esc(body.reply || '') + '</p><button type="button" class="behind" data-trace="last">Behind the scenes</button></article>';
+  node.innerHTML = present(body, extra);
 }
 function paintDownloads(list) {
   document.querySelector('#downloads').innerHTML = (list || []).map(d => '<a href="' + esc(d.href) + '">' + esc(d.label) + '</a>').join('');
 }
-function uploadSentence(result) {
+function roleName(role) {
+  if (role === 'AE') return 'Account owner';
+  if (role === 'SDR') return 'Follow-up rep';
+  return role || '';
+}
+function uploadReply(result) {
   const held = result.held || [];
-  const heldBits = held.map(row => (row.name || 'Someone') + ' (' + (row.reason || 'held') + ')').join('; ');
-  const owners = (result.owners || []).map(o => o.label).filter(Boolean).join('. ');
-  const retry = result.retried ? ' Salesforce was busy, retried automatically.' : '';
-  return result.accepted + ' campaign members. ' + owners + '. Held ' + held.length + (heldBits ? ': ' + heldBits : '') + '.' + retry;
+  const bits = [result.accepted + ' campaign members.'];
+  (result.owners || []).forEach(o => {
+    const accounts = o.accounts + ' Chicago account' + (o.accounts === 1 ? '' : 's');
+    const members = o.members + ' campaign member' + (o.members === 1 ? '' : 's');
+    bits.push(o.name + ', ' + roleName(o.role) + ': ' + accounts + ', ' + members + '.');
+  });
+  bits.push('Held ' + held.length + '.');
+  held.forEach(row => bits.push((row.name || 'Someone') + ' was held (' + (row.reason || 'held') + ').'));
+  if (result.retried) bits.push('Salesforce was busy, retried automatically.');
+  return bits.join(' ');
 }
 
 function serviceName(apiPath) {
@@ -484,6 +729,33 @@ function serviceName(apiPath) {
   if (p.indexOf('/brain') >= 0) return 'Brain';
   if (p.indexOf('/data') >= 0) return 'Data';
   return BRAND;
+}
+function humanStep(call, written) {
+  const apiPath = String(call.api || '');
+  const upload = written && (written.upload || written);
+  let text = 'Ran a step';
+  if (/data\/emailable/.test(apiPath)) text = 'Checked consent in the data core';
+  else if (/data\/log/.test(apiPath)) text = 'Read the change log';
+  else if (/data\/campaigns/.test(apiPath)) text = 'Opened the campaign record';
+  else if (/data\//.test(apiPath)) text = 'Read the data core';
+  else if (/engage\/segments/.test(apiPath)) text = 'Built the audience';
+  else if (/engage\/templates/.test(apiPath)) text = 'Wrote the email';
+  else if (/simulate/.test(apiPath)) text = 'Counted opens and clicks';
+  else if (/engage\/sends/.test(apiPath)) text = 'Sent the invite';
+  else if (/engage\/scores/.test(apiPath)) text = 'Scored sales-ready leads';
+  else if (/crm\/uploads/.test(apiPath)) {
+    const n = upload && (upload.accepted || upload.accepted === 0) ? upload.accepted : (written && written.accepted);
+    text = n ? ('Created ' + n + ' contacts in Salesforce') : 'Created contacts in Salesforce';
+  }
+  else if (/crm\/queue/.test(apiPath)) text = 'Checked Salesforce and retried';
+  else if (/crm\//.test(apiPath)) text = 'Updated Salesforce';
+  else if (/spend\/approve/.test(apiPath)) text = 'Approved the budget';
+  else if (/spend\/budgets/.test(apiPath)) text = 'Filed the budget';
+  else if (/spend\/sow/.test(apiPath)) text = 'Saved the agreement';
+  else if (/spend\//.test(apiPath)) text = 'Updated the plan';
+  else if (/insights\//.test(apiPath)) text = 'Built the report';
+  else if (/brain\//.test(apiPath)) text = 'Checked the policy';
+  return { text, ms: call.ms || 0 };
 }
 function trimValue(value, depth) {
   if (depth > 4) return '…';
@@ -506,47 +778,26 @@ function trimValue(value, depth) {
 function drawerHtml(trace) {
   const calls = trace.calls || [];
   const services = [...new Set(calls.map(c => serviceName(c.api)))];
-  const audit = trace.audit || (trace.result && trace.result.why) || '';
+  const steps = calls.map(c => {
+    const step = humanStep(c, trace.written);
+    return '<li>' + esc(step.text) + ' <span class="quiet">' + step.ms + ' ms</span></li>';
+  }).join('');
+  const raw = { calls: calls, payload: trimValue(trace.payload, 0), written: trimValue(trace.written, 0) };
   return '<p class="kicker">' + esc(services.join(' · ') || BRAND) + '</p>'
-    + '<h3>Payload</h3><pre>' + esc(JSON.stringify(trimValue(trace.payload, 0), null, 2)) + '</pre>'
-    + (calls.length ? '<h3>Calls</h3><pre>' + esc(calls.map(c => c.api + ' · ' + (c.ms || 0) + 'ms').join('\n')) + '</pre>' : '')
-    + '<h3>What was written</h3><pre>' + esc(JSON.stringify(trimValue(trace.written, 0), null, 2)) + '</pre>'
-    + (audit ? '<h3>Audit</h3><p>' + esc(audit) + '</p>' : '');
+    + '<ol class="human">' + (steps || '<li>No steps recorded <span class="quiet">0 ms</span></li>') + '</ol>'
+    + '<details><summary>Raw payload</summary><pre>' + esc(JSON.stringify(raw, null, 2)) + '</pre></details>';
 }
 async function traceFor(kind) {
   if (kind === 'last' && state.last) {
     const body = state.last.body || {};
     return { calls: body.calls || [], payload: { text: state.last.text, channel: state.last.channel }, written: body.result, audit: body.reply || '' };
   }
-  if (kind === 'venue') {
-    const log = await api('/api/platform/data/log?q=venue&limit=5');
-    const row = (log.rows || []).find(r => /venue/i.test(r.why || '')) || (log.rows || [])[0] || {};
-    return { calls: [{ api: 'GET /api/platform/data/log', ms: log.ms || 0 }], payload: { q: 'venue' }, written: log.rows, audit: row.why || '' };
-  }
-  if (kind === 'draft' || kind === 'code') {
-    const packets = await api('/api/platform/spend/packets');
-    return { calls: [{ api: 'GET /api/platform/spend/packets', ms: packets.ms || 0 }], payload: { campaign: 'Chicago security roundtable' }, written: packets.packets, audit: kind === 'code' ? 'The code is minted when Chris approves.' : 'Filed the Chicago budget.' };
-  }
-  if (kind === 'invite') {
-    const sends = await api('/api/platform/engage/sends');
-    return { calls: [{ api: 'GET /api/platform/engage/sends', ms: sends.ms || 0 }], payload: { campaign: 'Chicago security roundtable' }, written: sends.sends, audit: 'Sent the Chicago invite.' };
-  }
-  if (kind === 'report') {
-    const dash = await api('/api/platform/insights/dashboard');
-    return { calls: [{ api: 'GET /api/platform/insights/dashboard', ms: dash.ms || 0 }], payload: { region: 'Americas' }, written: dash.chicago, audit: 'Weekly numbers for the Chicago roundtable.' };
-  }
-  if (kind === 'upload') {
-    const [uploads, queue] = await Promise.all([api('/api/platform/crm/uploads'), api('/api/platform/crm/queue')]);
-    const audit = ((queue.retried || [])[0] || {}).last_error || 'Uploaded the Chicago attendee file.';
-    return { calls: [{ api: 'POST /api/platform/crm/uploads', ms: 0 }, { api: 'GET /api/platform/crm/queue', ms: queue.ms || 0 }], payload: {}, written: { uploads: uploads.uploads, queue: queue.jobs }, audit };
-  }
   return { calls: [], payload: {}, written: {}, audit: '' };
 }
 async function openDrawer(kind) {
   const drawer = document.querySelector('#drawer');
-  const shade = document.querySelector('#shade');
   drawer.hidden = false;
-  shade.hidden = false;
+  requestAnimationFrame(() => drawer.classList.add('show'));
   document.querySelector('#trace').innerHTML = '<p class="quiet">Looking…</p>';
   try {
     const trace = await traceFor(kind);
@@ -556,8 +807,9 @@ async function openDrawer(kind) {
   }
 }
 function closeDrawer() {
-  document.querySelector('#drawer').hidden = true;
-  document.querySelector('#shade').hidden = true;
+  const drawer = document.querySelector('#drawer');
+  drawer.classList.remove('show');
+  drawer.hidden = true;
 }
 
 async function load() {
@@ -612,23 +864,82 @@ async function runAsk(text) {
     paintAnswer(body);
     paintDownloads(body.downloads);
     document.querySelector('#ask').value = '';
+    addSaved(MINUTES[body.module] || 0);
     await load();
     render();
+    if (body.downloads && body.downloads.length) toast('Report is ready');
   } catch (e) { showErr(e); }
   finally { busy = false; send.disabled = false; }
 }
-async function doUpload() {
+async function openSendPreview(text) {
+  if (busy || hold) return;
+  document.querySelector('#err').textContent = '';
+  const node = document.querySelector('#answer');
+  node.hidden = false;
+  node.innerHTML = '<article id="preview"><p class="quiet">Checking who can receive this.</p></article>';
+  try {
+    const preview = await api('/api/platform/engage/segments/preview', { method: 'POST', body: JSON.stringify({
+      rules: { all: [
+        { field: 'contact.title', op: 'eq', value: 'CIO' },
+        { field: 'contact.state', op: 'eq', value: 'Illinois' },
+        { field: 'contact.country', op: 'eq', value: 'United States' },
+        { field: 'activity.open', op: 'within_days', value: 30 },
+        { field: 'consent.status', op: 'eq', value: 'opted_in' }
+      ] },
+      limit: 1
+    }) });
+    const n = preview.count || 0;
+    node.innerHTML = '<article id="preview"><h2 class="headline">Send to ' + n + ' CIOs?</h2><p>Preview email</p><p class="quiet">You are invited to the Chicago security roundtable.</p><div class="need-actions"><button id="confirm-send" class="primary" type="button">Send</button><button id="cancel-send" class="ghost" type="button">Cancel</button></div></article>';
+    document.querySelector('#confirm-send').addEventListener('click', () => armSend(text, n));
+    document.querySelector('#cancel-send').addEventListener('click', () => { node.hidden = true; node.innerHTML = ''; });
+  } catch (e) { showErr(e); }
+}
+function armSend(text, n) {
+  hold = true;
+  const node = document.querySelector('#answer');
+  node.hidden = false;
+  node.innerHTML = '<article><span class="from">Asked from: ' + esc(channel()) + '</span><h2 class="headline">Invite sent to ' + n + ' CIOs</h2><p class="quiet">You can undo this for 10 seconds.</p><div class="need-actions"><button id="undo" class="ghost" type="button">Undo</button></div></article>';
+  undoTimer = setTimeout(() => { undoTimer = null; hold = false; runAsk(text); }, 10000);
+  document.querySelector('#undo').addEventListener('click', () => {
+    clearTimeout(undoTimer);
+    undoTimer = null;
+    hold = false;
+    node.hidden = true;
+    node.innerHTML = '';
+    toast('Send cancelled');
+  });
+}
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result || '');
+      const i = raw.indexOf(',');
+      resolve(i >= 0 ? raw.slice(i + 1) : raw);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Could not read the file'));
+    reader.readAsDataURL(file);
+  });
+}
+async function doUpload(file) {
   if (busy) return;
   busy = true;
   document.querySelector('#err').textContent = '';
   try {
-    const result = await api('/api/platform/crm/uploads', { method: 'POST', body: JSON.stringify({ channel: channel(), text: 'Upload the Chicago attendee file' }) });
+    const payload = { channel: channel(), text: 'Upload the Chicago attendee file' };
+    if (file) {
+      payload.filename = file.name;
+      payload.file = await readFile(file);
+    }
+    const result = await api('/api/platform/crm/uploads', { method: 'POST', body: JSON.stringify(payload) });
     const queue = await api('/api/platform/crm/queue');
     if (!result.retried && queue.retried && queue.retried.length) result.retried = queue.retried.length;
-    const reply = uploadSentence(result);
-    const body = { channel: channel(), reply, calls: [{ api: 'POST /api/platform/crm/uploads', ms: result.ms || 0 }, { api: 'GET /api/platform/crm/queue', ms: queue.ms || 0 }], result: { upload: result, queue } };
+    const reply = uploadReply(result);
+    const body = { channel: channel(), reply, module: 'crm', calls: [{ api: 'POST /api/platform/crm/uploads', ms: result.ms || 0 }, { api: 'GET /api/platform/crm/queue', ms: queue.ms || 0 }], result: { upload: result, queue } };
     state.last = { text: 'Upload the Chicago attendee file', channel: channel(), body };
-    paintAnswer(body);
+    paintAnswer(body, { kind: 'upload', accepted: result.accepted, held: (result.held || []).length });
+    addSaved(MINUTES.crm);
+    toast('Uploaded');
     await load();
     render();
   } catch (e) { showErr(e); }
@@ -644,6 +955,8 @@ async function doApprove() {
     const body = { channel: channel(), reply, calls: [{ api: 'POST /api/platform/spend/approve', ms: result.ms || 0 }], result };
     state.last = { text: '@mops approve Chicago', channel: channel(), body };
     paintAnswer(body);
+    addSaved(10);
+    toast('Approved');
     await load();
     render();
   } catch (e) { showErr(e); }
@@ -658,6 +971,7 @@ async function doSimulate() {
   try {
     const result = await api('/api/platform/engage/sends/' + encodeURIComponent(send.id) + '/simulate', { method: 'POST', body: JSON.stringify({ opens: true, clicks: true }) });
     state.last = { text: 'See opens and clicks', channel: channel(), body: { channel: channel(), reply: 'Opens and clicks are in.', calls: [{ api: 'POST /api/platform/engage/sends/' + send.id + '/simulate', ms: result.ms || 0 }], result } };
+    addSaved(5);
     await load();
     render();
   } catch (e) { showErr(e); }
@@ -674,24 +988,43 @@ async function saveSow() {
       venue_contact: document.querySelector('#venue_contact').value
     };
     await api('/api/platform/spend/sow', { method: 'POST', body: JSON.stringify({ campaignId: 'CAMP-CHI', answers, channel: channel() }) });
+    addSaved(5);
     await load();
     render();
+    toast('Saved');
   } catch (e) { showErr(e); }
   finally { busy = false; }
 }
+function askText(text) {
+  if (!text) { document.querySelector('#err').textContent = 'Type a question, or pick a suggestion.'; return; }
+  if (busy || hold) return;
+  document.querySelector('#ask').value = text;
+  if (isSendAsk(text)) return openSendPreview(text);
+  return runAsk(text);
+}
 
+setChannel(storedChannel || 'App');
 document.querySelector('#composer').addEventListener('submit', ev => {
   ev.preventDefault();
-  const text = document.querySelector('#ask').value.trim();
-  if (!text) { document.querySelector('#err').textContent = 'Type a question, or pick a suggestion.'; return; }
-  runAsk(text);
+  askText(document.querySelector('#ask').value.trim());
 });
-document.querySelector('#channel').addEventListener('change', () => localStorage.setItem('mops-channel', channel()));
+document.querySelector('#channel').addEventListener('change', () => setChannel(channel()));
+document.querySelector('#channel-toggle').addEventListener('click', () => {
+  const menu = document.querySelector('#channel-menu');
+  const open = menu.hidden;
+  menu.hidden = !open;
+  document.querySelector('#channel-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+document.querySelector('#channel-menu').addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-channel]');
+  if (btn) setChannel(btn.dataset.channel);
+});
 document.querySelector('#schedule').addEventListener('click', ev => {
   const btn = ev.target.closest('[data-period]');
   if (btn) setSchedule(btn.dataset.period);
 });
 document.querySelector('#report').addEventListener('click', () => {
+  if (busy || hold) return;
   const monthly = document.querySelector('#schedule [data-period="monthly"]').getAttribute('aria-pressed') === 'true';
   runAsk(monthly ? '@mops monthly report for the portfolio' : '@mops weekly report for Americas');
 });
@@ -699,6 +1032,8 @@ document.querySelector('#reset').addEventListener('click', async () => {
   if (!confirm('Start the demo over? This clears what @mops did today.')) return;
   try {
     await api('/api/platform/reset', { method: 'POST', body: '{}' });
+    localStorage.removeItem(SAVED_KEY);
+    localStorage.removeItem(REJECT_KEY);
     location.reload();
   } catch (e) { showErr(e); }
 });
@@ -709,11 +1044,22 @@ document.querySelector('#who').addEventListener('change', async () => {
   } catch (e) { showErr(e); }
 });
 document.querySelector('#drawer-close').addEventListener('click', closeDrawer);
-document.querySelector('#shade').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeDrawer(); });
 document.addEventListener('click', ev => {
+  const wrap = document.querySelector('#channel-wrap');
+  if (wrap && !wrap.contains(ev.target)) {
+    document.querySelector('#channel-menu').hidden = true;
+    document.querySelector('#channel-toggle').setAttribute('aria-expanded', 'false');
+  }
   const chip = ev.target.closest('[data-ask]');
-  if (chip) { ev.preventDefault(); document.querySelector('#ask').value = chip.dataset.ask; runAsk(chip.dataset.ask); return; }
+  if (chip) { ev.preventDefault(); askText(chip.dataset.ask); return; }
+  const copyBtn = ev.target.closest('[data-copy]');
+  if (copyBtn) {
+    const value = copyBtn.getAttribute('data-copy') || '';
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(value).catch(() => {});
+    toast('Copied');
+    return;
+  }
   const behindBtn = ev.target.closest('.behind');
   if (behindBtn) { openDrawer(behindBtn.dataset.trace || 'last'); return; }
   const act = ev.target.closest('[data-act]');
@@ -724,16 +1070,27 @@ document.addEventListener('click', ev => {
   if (act.dataset.act === 'upload') return doUpload();
   if (act.dataset.act === 'approve') return doApprove();
   if (act.dataset.act === 'simulate') return doSimulate();
+  if (act.dataset.act === 'nudge') return toast('Chris will see this on his next visit.');
+  if (act.dataset.act === 'reject') {
+    localStorage.setItem(REJECT_KEY, '1');
+    toast('Rejected');
+    render();
+    return;
+  }
   if (act.dataset.act === 'fill') {
     sessionStorage.setItem('mops-focus', 'sow');
     if (!onChicago()) location.hash = '#/chicago';
     else { sessionStorage.removeItem('mops-focus'); const el = document.querySelector('#our_pm'); if (el) el.focus(); }
   }
 });
+document.addEventListener('change', ev => {
+  if (ev.target && ev.target.id === 'file' && ev.target.files && ev.target.files[0]) doUpload(ev.target.files[0]);
+});
 window.addEventListener('hashchange', () => { if (state.user) render(); });
 
 const savedPeriod = localStorage.getItem('mops-schedule') || 'weekly';
 setSchedule(savedPeriod);
+paintSaved();
 
 (async function boot() {
   try {

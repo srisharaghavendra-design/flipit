@@ -140,7 +140,8 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/api/platform/crm/uploads') return json(res, 200, { uploads: await crm.listUploads(u.searchParams.get('campaign') || 'CAMP-CHI') }, started);
     if (method === 'POST' && p === '/api/platform/crm/uploads') {
       const body = await parseBody(req);
-      return json(res, 200, await crm.upload({ filename: body.filename, campaignId: body.campaignId || 'CAMP-CHI', actor: actor(req), channel: body.channel || 'App', sourceMessage: body.text || '', idempotencyKey: body.idempotencyKey }), started);
+      const buffer = body.file ? Buffer.from(String(body.file), 'base64') : undefined;
+      return json(res, 200, await crm.upload({ filename: body.filename, buffer: buffer && buffer.length ? buffer : undefined, campaignId: body.campaignId || 'CAMP-CHI', actor: actor(req), channel: body.channel || 'App', sourceMessage: body.text || '', idempotencyKey: body.idempotencyKey }), started);
     }
     if (method === 'POST' && p === '/api/platform/crm/sync') {
       const body = await parseBody(req);
