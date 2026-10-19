@@ -64,6 +64,67 @@ async function tag(text){const q=text.toLowerCase(),t='T'+Date.now().toString(36
 async function proxy(req,res,name,rest){try{const raw=['POST','PATCH','PUT'].includes(req.method)?await body(req):'';const r=await invoke(name,req.method,rest||'/',{raw,headers:req.headers});
   const h={...(r.headers||{})};if(!h['content-type']&&!h['Content-Type'])h['content-type']=r.raw&&r.raw.length&&r.raw[0]===123?'application/json':'text/plain';
   res.writeHead(r.status,h);res.end(r.raw)}catch(e){res.writeHead(502,{'content-type':'application/json'});res.end(JSON.stringify({error:e.message}))}}
+function engineSnap(){let db;try{const Database=require('better-sqlite3');db=new Database(path.join(require('./lib').DATA,'engine.db'),{readonly:true,fileMustExist:true})}catch(e){return{counts:{},campaigns:[],budgets:[],events:[],signals:[],audit:[]}}
+ const n=t=>{try{return db.prepare('SELECT count(*) n FROM '+t).get().n}catch(e){return 0}}
+ const snap={counts:{accounts:n('accounts'),contacts:n('contacts'),campaigns:n('campaigns'),budgets:n('budget_requests'),consent:n('consent_ledger'),sends:n('sends'),events:n('events'),signals:n('signals'),audit:n('audit'),uploads:n('uploads'),syncPending:n("sync_jobs WHERE status='pending'"),syncDead:n("sync_jobs WHERE status='dead'")},
+  campaigns:db.prepare('SELECT id,code,name,status,budget FROM campaigns ORDER BY created_at DESC LIMIT 4').all(),
+  budgets:db.prepare('SELECT id,amount,status,approver,rule FROM budget_requests ORDER BY requested_at DESC LIMIT 4').all(),
+  events:db.prepare('SELECT id,name,city,date FROM events ORDER BY created_at DESC LIMIT 4').all(),
+  signals:db.prepare('SELECT source,kind,keyword,score FROM signals ORDER BY id DESC LIMIT 4').all(),
+  audit:db.prepare('SELECT at,actor,action,object FROM audit ORDER BY id DESC LIMIT 5').all()};
+ db.close();return snap}
+async function architecture(){const h=await health();const core=require('./core');const st=core.stats();const snap=engineSnap();const rep=require('./fields').repeatEntry();
+ const lc=require('./lifecycle');let draft=null;try{draft=lc.get('LC-DEMO')}catch(e){draft=null}
+ const conv=core.db.prepare('SELECT surface, count(*) n FROM conversations GROUP BY surface').all();const by=Object.fromEntries(conv.map(r=>[r.surface,r.n]));
+ const recent=core.db.prepare('SELECT offset,svc,kind,msg,at FROM log ORDER BY offset DESC LIMIT 6').all();
+ const W=require('./workers');const inc=W.incidents&&W.incidents[0];
+ let load=null;try{const f=path.join(RUNS,'loadtest-latest.json');if(fs.existsSync(f)){const j=JSON.parse(fs.readFileSync(f));const send=j.phases&&j.phases.send||{},seg=j.phases&&j.phases.segment||{};load={contacts:j.contacts,sends:j.sends,messagesPerSec:send.messagesPerSec||null,segmentP95:seg.p95Ms!=null?seg.p95Ms:null,label:j.label||''}}}catch(e){}
+ const e=h.engine||{},c=h.crm||{},m=h.mail||{},w=h.warehouse||{};
+ const node=(id,name,role,tag,badge,records)=>({id,name,role,tag,badge,records:records||[]});
+ const handoffs=['Marketer types the Airtable (budget form)','Airtable notifies Chris M.','Chris M. replies to the marketer','Marketer emails the agency for an SOW','Agency returns the SOW','Marketer retypes the approved amount into Command Center (BAN/CC ID)','Command Center sends the BAN ID back','Marketer creates the campaign in SFDC and the event platform','Marketer exports a file and rebuilds the report'];
+ const brainMode=process.env.MOPS_API_KEY?'llm':'rules';
+ return{brainMode,model:process.env.MOPS_MODEL||null,inbox:process.env.MOPS_INBOX||'mops@mops.local',
+  compare:{today:{tools:rep.today.toolsTouched,handoffs:handoffs.length,retyped:rep.today.fieldEntries},mops:{conversations:1,approvals:1}},handoffs,
+  scale:{events:st.events,ratePerSec:st.ratePerSec,deadLetters:st.deadLetters,consumers:st.consumers,load,heal:inc?{id:inc.id,resolved:!!inc.resolved,ms:inc.ms||null,steps:(inc.steps||[]).length}:null,services:{engine:!!e.ok,crm:!!c.ok,mail:!!m.ok,warehouse:!!w.ok,engineMs:e.ms,crmMs:c.ms,mailMs:m.ms,warehouseMs:w.ms}},
+  principles:[
+   {name:'Fewest steps',text:'Delete before you add. One conversation and one approval replace the tools, the handoffs, and the retyped fields.'},
+   {name:'Acts first',text:'@mops notices the gap, shows the source of every field it filled, runs Budget, SOW, Codes, Compliance and Data together, learns after an approval, and checks its own work.'},
+   {name:'One control plane',text:'Every campaign, one agent, policies set once. This map is the topology: what is replaced, what stays connected, and the live event bus.'}],
+  layers:[
+   {id:'channels',name:'Channels',hint:'All of them tag @mops',nodes:[
+    node('app','App','The marketer’s screen',null,`${by.app||0} tags` ,[]),
+    node('email','Email',(process.env.MOPS_INBOX||'mops@mops.local')+' · reply in thread',null,`${by.email||0} tags`,[]),
+    node('webex','Webex space','Signed webhook, same agent',null,`${by.webex||0} tags`,[]),
+    node('slack','Slack-style chat','Same tag path as the app. No separate Slack app in this demo.',null,'same agent',[])]},
+   {id:'brain',name:'@mops brain',hint:'One reasoning layer',nodes:[
+    node('llm','Reasoning',brainMode==='llm'?'Model '+ (process.env.MOPS_MODEL||'connected'):'Rule mode now. An OpenAI or Azure key plugs into the same tools later.',null,brainMode,[]),
+    node('planner','Planner','One intent parser for every channel',null,draft?draft.step:'idle',[]),
+    node('memory','Memory','Campaign, agency, venue and cost history',null,`${(draft&&draft.learned||[]).length} saved`,(draft&&draft.learned||[]).slice(0,6)),
+    node('policy','Policy engine','$150K → Chris M. Consent per country. Code and BAN naming.',null,'3 policies',draft&&draft.policies||[]),
+    node('audit','Guardrails','Audit log on every budget decision. The public demo is gated.',null,`${snap.counts.audit} audit rows`,snap.audit)]},
+   {id:'agents',name:'Agent layer',hint:'Named agents, live status',nodes:(draft&&draft.agents||[]).map(a=>node(a.id,a.name,a.status,null,a.state,[]))},
+   {id:'bus',name:'Event bus + workers',hint:'Append-only log',nodes:[
+    node('log','Append-only log','SQLite offsets. Every service publishes here.',null,`${st.events} events`,recent),
+    node('retry','Retries','Sync jobs retry, then land in a failure queue',null,`${snap.counts.syncPending} pending · ${snap.counts.syncDead} dead`,[]),
+    node('heal','Self-heal','A worker waits out a CRM outage and replays the queue',null,inc?(inc.resolved?'healed '+inc.id:'healing'):'idle',inc?(inc.steps||[]).slice(-4):[]),
+    node('idem','Idempotency','Consumers commit an offset. A second undo is refused.',null,`${st.consumers.length} consumers`,st.consumers.map(x=>({name:x.name,lag:x.lag,processed:x.processed})))]},
+   {id:'systems',name:'Systems of record',hint:'Replaced or connected',nodes:[
+    node('airtable','Airtable (budget form)','Budget intake. Replaced by @mops intake.','replaced',draft&&draft.form?`${draft.form.filled}/${draft.form.total} filled`:'',(draft&&draft.form&&draft.form.items||[]).filter(x=>x.value).slice(0,6)),
+    node('command','Command Center (BAN/CC ID)','Budget approvals and the BAN / CC ID. Replaced by the Codes agent and the approval policy.','replaced',draft&&draft.codes?draft.codes.ban_id:'not issued yet',draft&&draft.codes?[{ban:draft.codes.ban_id,cc:draft.codes.cc_id,code:draft.codes.campaign_code}]:snap.budgets),
+    node('eloqua','Eloqua','Email, forms, nurture. Replaced by the @mops engine.','replaced',`${snap.counts.sends} sends`,[]),
+    node('sfdc','SFDC','CRM, campaigns, leads, owners. Connected. @mops writes to it.','connected',`${(c.counts&&c.counts.Campaign)||0} campaigns`,snap.campaigns),
+    node('snow','Snowflake','Warehouse. Replaced by the @mops warehouse (SQLite in this demo).','replaced',w.counts?`${w.counts.raw_rows||0} rows`:'',[]),
+    node('powerbi','Power BI / Tableau','Reporting. Replaced by @mops reports.','replaced',w.counts?`${w.counts.marts_tables||0} marts`:'',[]),
+    node('cvent','Cvent / event platform','Registration. Connected. @mops creates the event and the form and keeps the event id.','connected',`${snap.counts.events} events`,snap.events),
+    node('six','6sense & Adobe','Intent and web signals. Connected. @mops reads them.','connected',`${snap.counts.signals} signals`,snap.signals),
+    node('agency','Agency','SOW in and out. Connected.','connected',draft&&draft.sowRequest?draft.sowRequest.status:'no request yet',draft&&draft.sowRequest?[draft.sowRequest]:[])]},
+   {id:'data',name:'Data',hint:'Live counts',nodes:[
+    node('d-contacts','Contacts','People the engine can email',null,String(snap.counts.contacts),[]),
+    node('d-accounts','Accounts','Companies on those contacts',null,String(snap.counts.accounts),[]),
+    node('d-campaigns','Campaigns','Codes, status, budget',null,String(snap.counts.campaigns),snap.campaigns),
+    node('d-budgets','Budgets','Requests and decisions',null,String(snap.counts.budgets),snap.budgets),
+    node('d-sows','SOWs','Drafts with a source on every field',null,draft&&draft.sow?'1 open':'0',draft&&draft.sow?draft.sow.fields.slice(0,5):[]),
+    node('d-consent','Consent','Ledger rows, per country',null,String(snap.counts.consent),[])]}]}}
 const body=req=>new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>r(b))});
 const J=(res,o,c=200)=>{res.writeHead(c,{'content-type':'application/json'});res.end(JSON.stringify(o))};
 async function handle(req,res,p,u){
@@ -74,6 +135,7 @@ async function handle(req,res,p,u){
   if(r==='stream'){res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-cache',connection:'keep-alive'});res.write(`retry: 1500\n\n`);for(const e of ring.slice(-(+u.searchParams.get('backlog')||80)))res.write(`data: ${JSON.stringify(e)}\n\n`);clients.add(res);const ka=setInterval(()=>res.write(': ka\n\n'),15000);req.on('close',()=>{clients.delete(res);clearInterval(ka)});return true}
   if(r==='log'){J(res,ring.slice(-300));return true}
   if(r==='health'){J(res,await health());return true}
+  if(r==='architecture'){J(res,await architecture());return true}
   if(r==='run'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');if(current&&!current.done){J(res,{error:'run in progress',run:current},409);return true}
     const pr=runCampaign(b);if(b.wait||process.env.VERCEL){J(res,await pr)}else{pr.catch(()=>{});J(res,{started:true})}return true}
   if(r==='run/current'){J(res,current||{});return true}

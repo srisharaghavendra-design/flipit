@@ -98,6 +98,8 @@ test('lifecycle: new campaign from a parked draft through launch',async()=>{
   const list=await j(H+'/api/engine/lifecycle');
   assert.equal(list.body.draft.id,'LC-DEMO');assert.equal(list.body.draft.step,'budget');
   assert.ok(list.body.draft.budget.lines.length>=5);assert.equal(list.body.draft.budget.total,168000);assert.match(list.body.draft.budget.route,/150/);
+  assert.equal(list.body.draft.form.filled,22);assert.equal(list.body.draft.form.total,26);assert.equal(list.body.draft.form.open.length,4);assert.equal(list.body.draft.compare.today.retyped,57);
+  const brief=await j(H+'/api/briefing');assert.equal(brief.body.filled,22);assert.equal(brief.body.open.length,4);assert.ok(brief.body.gap>0);assert.equal(brief.body.geo,'EMEA');
   const miss=await j(H+'/api/engine/lifecycle/start',{body:{text:'@mops a dinner in Pune'}});
   assert.ok(miss.body.missing.length>0);
   const full=await j(H+'/api/engine/lifecycle/start',{body:{text:'@mops new campaign Berlin Zero Trust Dinner, 19 Nov 2026, Berlin, zero trust, dinner for CIOs, budget $80K'}});
@@ -108,7 +110,10 @@ test('lifecycle: new campaign from a parked draft through launch',async()=>{
   const sow=await act('continue');assert.equal(sow.body.step,'sow');assert.ok(sow.body.sow.fields.every(f=>f.source));
   const answers={};for(const q of sow.body.sow.questions)answers[q.key]=q.key==='venue'?'Main Tower, Frankfurt':q.key==='agency_confirm'?'Rhine & Co Events':'NW-'+q.key;
   const saved=await act('save-sow',{answers});assert.equal(saved.body.sow.status,'ready for review');
-  const codes=await act('continue');assert.equal(codes.body.step,'codes',codes.body.error);assert.ok(codes.body.codes.campaign_code);assert.ok(codes.body.codes.sfdc_campaign_id);assert.ok(codes.body.codes.event_id);assert.ok(codes.body.codes.fieldsReused>0);assert.equal(codes.body.codes.retyped,0);
+  assert.ok(sow.body.sow.selfCheck&&/EUR/.test(sow.body.sow.selfCheck.fix),'currency self-check');
+  assert.equal(sow.body.sowRequest&&sow.body.sowRequest.status,'sent');
+  const codes=await act('continue');assert.equal(codes.body.step,'codes',codes.body.error);assert.ok(codes.body.codes.campaign_code);assert.ok(codes.body.codes.sfdc_campaign_id);assert.ok(codes.body.codes.event_id);assert.ok(codes.body.codes.ban_id);assert.ok(codes.body.codes.cc_id);assert.ok(codes.body.codes.fieldsReused>0);assert.equal(codes.body.codes.retyped,0);
+  assert.ok((ap.body.learned||[]).some(m=>/agency/.test(m.k)));
   const docx=await fetch(H+'/api/engine/lifecycle/'+id+'/sow.docx');const dbuf=Buffer.from(await docx.arrayBuffer());assert.equal(dbuf.subarray(0,2).toString(),'PK');
   const pdf=await fetch(H+'/api/engine/lifecycle/'+id+'/sow.pdf');const pbuf=Buffer.from(await pdf.arrayBuffer());assert.equal(pbuf.subarray(0,5).toString(),'%PDF-');
   const setup=await act('continue');assert.equal(setup.body.step,'setup');assert.ok(setup.body.setup.registrationUrl);assert.ok(setup.body.setup.email.subject);assert.equal(typeof setup.body.setup.consent.optedIn,'number');
@@ -117,4 +122,7 @@ test('lifecycle: new campaign from a parked draft through launch',async()=>{
   const launchStep=await act('continue');assert.equal(launchStep.body.step,'launch');
   const live=await act('launch');assert.equal(live.body.step,'run');assert.ok(live.body.campaign.id);
   const after=await j(H+'/api/portfolio');assert.ok(JSON.stringify(after.body).includes('Frankfurt Zero Trust Executive Dinner'));
+  const arch=(await j(H+'/api/engine/architecture')).body;assert.deepEqual(arch.layers.map(l=>l.id),['channels','brain','agents','bus','systems','data']);
+  const systems=arch.layers.find(l=>l.id==='systems').nodes;assert.equal(systems.find(n=>n.id==='airtable').tag,'replaced');assert.equal(systems.find(n=>n.id==='sfdc').tag,'connected');assert.equal(systems.find(n=>n.id==='command').tag,'replaced');
+  assert.ok(arch.layers.find(l=>l.id==='data').nodes.find(n=>n.id==='d-contacts').badge!=='0');assert.equal(arch.compare.today.retyped,57);assert.equal(arch.handoffs.length,9);assert.ok(!/cisco/i.test(JSON.stringify(arch)));
 });

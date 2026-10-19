@@ -42,14 +42,40 @@ table.eff td,table.eff th{padding:5px 6px;font-size:12px;border-bottom:1px solid
 table.mp{width:100%;border-collapse:collapse;font-size:12px}table.mp td,table.mp th{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left}table.mp th{color:var(--mu2);font-weight:600}.cf{font-variant-numeric:tabular-nums}.lo{color:var(--warn)}.src{font-size:10px;padding:1px 6px;border-radius:6px;background:#ffffff12;color:var(--mu)}.src.SRISHA{background:#4fe3c122;color:var(--ac2)}.src.ASSUMPTION{background:#ffb15c22;color:var(--warn)}
 .row5{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;margin-top:16px}@media(max-width:1100px){.row5{grid-template-columns:1fr}.arts{grid-template-columns:1fr 1fr}}
 @media(max-width:1100px){.grid,.bottom{grid-template-columns:1fr}.svcs{grid-template-columns:repeat(2,1fr)}}
+.arch{margin:0 0 18px}.archbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px}.archbar h1{font-size:32px;letter-spacing:-.04em;margin:0;font-weight:750;line-height:1}
+.tog{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:#0006}.tog button{background:none;border:0;color:var(--mu);padding:9px 16px;font:700 14px inherit;cursor:pointer}.tog button.on{background:var(--tx);color:var(--bg)}
+.cap{min-height:72px;font-size:26px;font-weight:680;letter-spacing:-.03em;line-height:1.2;margin:8px 0 14px}
+.cmpline{font-size:20px;font-weight:750;letter-spacing:-.03em;margin:0 0 8px}.cmpline .old{color:var(--warn)}.cmpline .nw{color:var(--ok)}
+.layer{display:grid;grid-template-columns:160px 1fr;gap:14px;align-items:stretch;margin:8px 0;padding:8px 0;border-top:1px solid var(--line)}
+.layer .ln{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx);font-weight:800;padding-top:8px}.layer .ln small{display:block;text-transform:none;letter-spacing:0;font-weight:500;color:var(--mu);margin-top:4px;font-size:12px}
+.nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.nodeb{text-align:left;background:#101118ee;border:1px solid #ffffff24;border-radius:16px;padding:12px 12px 10px;color:inherit;cursor:pointer;min-height:92px;transition:.25s;font:inherit}
+.nodeb:hover,.nodeb.on{border-color:var(--ac)}.nodeb.lit{border-color:var(--ac2);box-shadow:0 0 0 1px #4fe3c1,0 0 28px #4fe3c166;background:#4fe3c118}
+.nodeb .nm{font-weight:750;font-size:16px;letter-spacing:-.02em;line-height:1.2}.nodeb .role{color:var(--mu);font-size:12.5px;margin-top:4px;line-height:1.35}.nodeb .bd{margin-top:8px;font-size:12px;font-weight:750;color:var(--ac2)}
+.tagR,.tagC{display:inline-block;font-size:10px;letter-spacing:.06em;font-weight:800;padding:2px 6px;border-radius:99px;margin-left:6px;vertical-align:1px}.tagR{background:#ffb15c22;color:var(--warn)}.tagC{background:#4fe3c122;color:var(--ac2)}
+.tangle{display:flex;flex-direction:column;max-width:820px;margin:8px auto}
+.hopb{text-align:left;background:#101118ee;border:1px solid #ffb15c55;border-radius:16px;padding:12px 14px;color:inherit;cursor:pointer;font:inherit}.hopb b{font-size:18px}.hopb span{display:block;color:var(--mu);font-size:13px}
+.arrow{color:var(--warn);font-size:13px;font-weight:750;padding:7px 4px 7px 18px}
+.insp{margin-top:12px;border:1px solid var(--line);border-radius:16px;padding:14px 16px;background:#00000055;min-height:64px}.insp h3{margin:0 0 4px;font-size:20px;letter-spacing:-.02em}.insp pre{white-space:pre-wrap;font:12.5px/1.45 ui-monospace,monospace;color:var(--mu);max-height:240px;overflow:auto;margin:8px 0 0}
+.scale{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}.scale div{background:#ffffff0a;border:1px solid var(--line);border-radius:14px;padding:12px 14px}.scale b{display:block;font-size:26px;letter-spacing:-.03em}.scale span{color:var(--mu);font-size:12.5px}
+.principles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}.principles article{border-top:3px solid var(--ac);padding-top:8px}.principles b{display:block;font-size:16px;margin-bottom:4px}.principles p{margin:0;color:var(--mu);font-size:14px;line-height:1.4}
+@media(max-width:900px){.layer{grid-template-columns:1fr}.scale,.principles{grid-template-columns:1fr}.cap{font-size:20px}.archbar h1{font-size:26px}}
 </style></head><body><div class="wrap">
 <header><div><div class="logo"><b>@mops</b> · Engine room</div><div class="sub">This is the backend that replaces Eloqua, the Salesforce upload, and Power BI.</div></div><div class="sp"></div>
 <nav class="mode" aria-label="Surface"><a href="/">Front end</a><a href="/engine" class="on">Engine room</a></nav>
-<span class="pill" id="conn"><span class="dot"></span><span>live</span></span><button class="btn" id="reset">Reset data</button><button class="btn go" id="run">▶ Run full campaign</button></header>
-<div class="grid">
- <div class="card"><h2>Data flow <span class="sub" style="text-transform:none;letter-spacing:0">· lights up as each service does work</span></h2>
- <svg id="flow" viewBox="0 0 860 470"></svg></div>
- <div class="card"><h2>Campaign run · budget → report <span class="sp"></span><span id="clock" class="sub" style="font-variant-numeric:tabular-nums"></span></h2><div class="steps" id="steps"><div class="sub" style="padding:10px">Press <b>Run full campaign</b>: @mops creates the campaign, routes the $180K budget for approval, syncs to CRM, builds the segment, checks consent, sends through SMTP, tracks engagement, takes registrations, ingests intent signals, syncs with retries, pulls sales changes, loads the warehouse and answers with the report. Each step is timed against baselines.json.</div></div>
+<span class="pill" id="conn"><span class="dot"></span><span>live</span></span><button class="btn" id="reset">Reset data</button><button class="btn" id="walk">Run a campaign through it</button><button class="btn go" id="run">▶ Run full campaign</button></header>
+<section class="arch" id="arch">
+ <div class="archbar"><div><div class="logo"><b>@mops</b> control plane</div><h1>How a campaign moves</h1></div><div class="sp"></div>
+  <div class="tog" role="group" aria-label="Today or with @mops"><button type="button" id="modeToday">Today</button><button type="button" id="modeMops" class="on">With @mops</button></div></div>
+ <p class="cmpline" id="cmpline"></p>
+ <p class="cap" id="cap">One control plane. Click any box for its role and the live records behind it.</p>
+ <div id="plane"></div>
+ <div class="insp" id="insp"><h3>Live record</h3><div class="sub">Click a box.</div></div>
+ <div class="scale" id="scale"></div>
+ <div class="principles" id="principles"></div>
+</section>
+<div class="grid" style="grid-template-columns:1fr">
+ <div class="card"><h2>Campaign run · budget → report <span class="sp"></span><span id="clock" class="sub" style="font-variant-numeric:tabular-nums"></span></h2><div class="steps" id="steps"><div class="sub" style="padding:10px">Press <b>Run a campaign through it</b> to walk Channel → Brain → Agents → Bus → Systems. <b>Run full campaign</b> does the same path for real: budget, approval, CRM, consent, email, registrations, signals, retries, warehouse, report.</div></div>
  <div class="sum" id="sum"></div></div>
 </div>
 <div class="svcs" id="svcs"></div>
@@ -84,21 +110,44 @@ table.mp{width:100%;border-collapse:collapse;font-size:12px}table.mp td,table.mp
 </div></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const N={tags:[20,30,'Tags','Outlook · Webex · Slack'],hub:[220,30,'@mops hub','agents + orchestrator'],signals:[20,200,'Signals','6sense · Adobe (CSV/webhook)'],form:[20,330,'Event page','replaces Cvent forms'],
- engine:[300,185,'Engine','replaces Eloqua + ops'],mail:[600,30,'SMTP','mail sink :2525'],people:[640,145,'Recipients','opens · clicks · unsub'],crm:[600,300,'CRM','fake SFDC API + DB'],wh:[300,385,'Warehouse','DuckDB · Snowflake-style'],insight:[600,405,'Insight','replaces Power BI']};
-const W=180,H=58;const E=[['tags','hub'],['hub','engine'],['signals','engine'],['form','engine'],['engine','mail'],['mail','people'],['people','engine'],['engine','crm'],['crm','engine'],['engine','wh'],['crm','wh'],['wh','insight'],['hub','wh']];
-const ctr=k=>[N[k][0]+W/2,N[k][1]+H/2];function path(a,b){const[x1,y1]=ctr(a),[x2,y2]=ctr(b);const off=(a==='crm'&&b==='engine')||(a==='people')?14:0;const mx=(x1+x2)/2,my=(y1+y2)/2;return`M${x1} ${y1} Q${mx+off} ${my-off} ${x2} ${y2}`}
-const svg=$('#flow');svg.innerHTML=`<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#9d8cff"/><stop offset="1" stop-color="#4fe3c1"/></linearGradient></defs>`+E.map(([a,b])=>`<path class="edge" id="e-${a}-${b}" d="${path(a,b)}"/>`).join('')+Object.entries(N).map(([k,[x,y,t,s]])=>`<g class="node" id="n-${k}" transform="translate(${x},${y})"><rect width="${W}" height="${H}" rx="14"/><text x="14" y="22">${t}</text><text class="k" x="14" y="39">${s}</text><text class="c" id="c-${k}" x="${W-12}" y="22" text-anchor="end"></text></g>`).join('');
-function pulse(a,b,color){const p=$(`#e-${a}-${b}`);if(!p)return;p.classList.add('live');setTimeout(()=>p.classList.remove('live'),900);const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('class','pk');c.setAttribute('r',4);c.setAttribute('fill',color||'url(#g)');c.style.color=color||'#9d8cff';svg.appendChild(c);const L=p.getTotalLength(),t0=performance.now();
- (function f(t){const k=Math.min(1,(t-t0)/750),pt=p.getPointAtLength(L*k);c.setAttribute('cx',pt.x);c.setAttribute('cy',pt.y);k<1?requestAnimationFrame(f):c.remove()})(t0);hot(b)}
-function hot(k,err){const n=$('#n-'+k);if(!n)return;n.classList.add(err?'err':'hot');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('hot','err'),err?1600:900)}
-function route(e){const m=e.msg||'',C={ok:'#5ee0a0',bad:'#ff6b81',warn:'#ffb15c',ac:'#9d8cff',t:'#4fe3c1'};
- if(e.svc==='cover'){pulse('hub','engine','#5ee0a0');return}if(e.svc==='autopilot'){pulse('engine','crm','#ffb15c');return}if(e.svc==='load'){pulse('engine','mail','#ff6b81');return}if(e.svc==='mail'&&e.kind==='inbound'){pulse('tags','hub','#ffd19c');return}
- if(e.svc==='hub'){if(e.kind==='tag'){pulse('tags','hub',C.ac);setTimeout(()=>pulse('hub','engine'),300)}if(e.kind==='answer')pulse('wh','insight',C.t);return}
- if(e.svc==='engine'){if(e.kind==='track')pulse('people','engine',C.t);else if(e.kind==='signal')pulse('signals','engine',C.warn);else if(e.kind==='event')pulse('form','engine',C.t);else if(e.kind==='smtp')pulse('engine','mail',C.warn);
-  else if(e.kind==='sync')m.startsWith('←')?pulse('crm','engine','#7cc4ff'):pulse('engine','crm','#7cc4ff');else if(e.kind==='retry'){pulse('engine','crm',C.warn)}else if(e.kind==='error')hot('crm',1);else if(e.kind==='conflict'){pulse('crm','engine',C.warn)}else hot('engine')}
- if(e.svc==='mail'){pulse('mail','people',C.warn)}if(e.svc==='crm'){if(e.kind==='error')hot('crm',1);else if(e.kind==='sales')hot('crm');else hot('crm')}
- if(e.svc==='warehouse'){if(e.kind==='elt'){pulse('engine','wh',C.t);pulse('crm','wh',C.t)}else if(e.kind==='query')pulse('wh','insight',C.t);else if(e.kind==='error')hot('wh',1)}}
+let ARCH=null,VIEW='mops',SEL=null;
+function light(id){const n=document.querySelector(`[data-node="${id}"]`);if(!n)return;n.classList.add('lit');clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove('lit'),1400)}
+function route(e){const m=e.msg||'';
+ if(e.svc==='mail'&&e.kind==='inbound')return light('email');
+ if(e.svc==='hub'&&e.kind==='tag'){const s=(e.data&&e.data.surface)||'';light(s==='email'?'email':s==='webex'?'webex':'app');light('planner');return}
+ if(e.svc==='hub'&&e.kind==='answer')return light('powerbi');
+ if(e.svc==='autopilot')return light('heal');
+ if(e.svc==='engine'){if(e.kind==='smtp')light('eloqua');else if(e.kind==='sync'||e.kind==='retry')light('sfdc');else if(e.kind==='signal')light('six');else if(e.kind==='event')light('cvent');else if(e.kind==='approval'||e.kind==='campaign')light('ag-budget');else light('log');return}
+ if(e.svc==='mail')return light('eloqua');
+ if(e.svc==='crm')return light(e.kind==='error'?'retry':'sfdc');
+ if(e.svc==='warehouse'){if(e.kind==='query')light('powerbi');else light('snow')}
+ if(/fail|error/i.test(m))light('retry')}
+function nodeBtn(n){const tag=n.tag==='replaced'?'<span class="tagR">REPLACED</span>':n.tag==='connected'?'<span class="tagC">CONNECTED</span>':'';
+ return `<button type="button" class="nodeb${SEL===n.id?' on':''}" data-node="${esc(n.id)}"><div class="nm">${esc(n.name)}${tag}</div><div class="role">${esc(n.role||'')}</div><div class="bd">${esc(n.badge||'')}</div></button>`}
+function drawPlane(){const p=$('#plane');if(!ARCH){p.innerHTML='<div class="sub">Loading the live architecture…</div>';return}
+ const c=ARCH.compare||{today:{},mops:{}};
+ $('#cmpline').innerHTML=`<span class="old">Today: ${c.today.tools||0} tools, ${c.today.handoffs||0} handoffs, ${c.today.retyped||0} field entries</span> → <span class="nw">@mops: ${c.mops.conversations||1} conversation, ${c.mops.approvals||1} approval</span>`;
+ if(VIEW==='today'){const hops=ARCH.handoffs||[];p.innerHTML=`<div class="tangle">`+hops.map((h,i)=>`<button type="button" class="hopb" data-hop="${i}"><b>${i+1}. ${esc(h)}</b><span>Someone retypes or waits. ${c.today.retyped||0} field entries across ${c.today.tools||0} tools.</span></button>${i<hops.length-1?'<div class="arrow">↓ hand-carried</div>':''}`).join('')+`</div>`;
+  p.querySelectorAll('[data-hop]').forEach(b=>b.onclick=()=>{$('#cap').textContent=ARCH.handoffs[+b.dataset.hop];$('#insp').innerHTML=`<h3>Today</h3><div class="role">${esc(ARCH.handoffs[+b.dataset.hop])}</div><pre>${esc(JSON.stringify(ARCH.compare,null,2))}</pre>`});
+ }else{p.innerHTML=(ARCH.layers||[]).map(l=>`<div class="layer"><div class="ln">${esc(l.name)}<small>${esc(l.hint||'')}</small></div><div class="nodes">${(l.nodes||[]).map(nodeBtn).join('')}</div></div>`).join('');
+  p.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>inspect(b.dataset.node))}
+ const s=ARCH.scale||{};const ld=s.load;
+ $('#scale').innerHTML=[[s.events,'events in the log',`${s.ratePerSec||0}/s · ${s.deadLetters||0} dead letters`],[s.consumers?s.consumers.length:0,'workers',(s.consumers||[]).map(x=>x.name).slice(0,3).join(' · ')||'—'],[ld?Math.round(ld.messagesPerSec||0):'—',ld?'msg/s caught':'scale test',ld?`${(ld.contacts||0).toLocaleString()} contacts · segment p95 ${ld.segmentP95??'–'} ms`:'Not run yet. The button below measures it.'],[s.heal?s.heal.id:'idle','self-heal',s.heal?(s.heal.resolved?`healed in ${Math.round((s.heal.ms||0)/1000)}s`:`${s.heal.steps} steps`):'Inject a CRM outage below']].map(([b,t,d])=>`<div><b>${esc(b)}</b><span>${esc(t)}<br>${esc(d)}</span></div>`).join('');
+ $('#principles').innerHTML=(ARCH.principles||[]).map(x=>`<article><b>${esc(x.name)}</b><p>${esc(x.text)}</p></article>`).join('')}
+function inspect(id){SEL=id;const n=(ARCH.layers||[]).flatMap(l=>l.nodes||[]).find(x=>x.id===id);drawPlane();if(!n)return;
+ const tag=n.tag==='replaced'?'Replaced by @mops.':n.tag==='connected'?'Stays connected. @mops reads or writes it.':'';
+ $('#cap').textContent=n.name+' — '+(n.role||'');
+ $('#insp').innerHTML=`<h3>${esc(n.name)} ${n.tag?`<span class="${n.tag==='replaced'?'tagR':'tagC'}">${n.tag.toUpperCase()}</span>`:''}</h3><div>${esc(n.role||'')}</div><div class="bd" style="color:var(--ac2);font-weight:700;margin-top:6px">${esc(tag)} ${esc(n.badge||'')}</div><pre>${esc(JSON.stringify(n.records&&n.records.length?n.records:{badge:n.badge,note:'No rows yet. This box updates from the live database.'},null,2))}</pre>`}
+async function loadArch(){try{ARCH=await fetch('/api/engine/architecture').then(r=>r.json())}catch(e){ARCH=null}if(!document.querySelector('.nodeb.lit'))drawPlane()}
+$('#modeToday').onclick=()=>{VIEW='today';$('#modeToday').classList.add('on');$('#modeMops').classList.remove('on');$('#cap').textContent='Today the marketer carries the same facts from tool to tool. Each arrow is a wait or a retype.';drawPlane()};
+$('#modeMops').onclick=()=>{VIEW='mops';$('#modeMops').classList.add('on');$('#modeToday').classList.remove('on');$('#cap').textContent='With @mops the request falls through one control plane. The boxes are the real services.';drawPlane()};
+const HOPS=[['app','planner'],['llm','policy','memory'],['ag-budget','ag-sow','ag-codes','ag-compliance'],['log','retry','idem'],['airtable','command','sfdc','eloqua'],['snow','powerbi','cvent','six','agency'],['d-contacts','d-campaigns','d-consent']];
+const CAPS=['Srisha tags @mops in the app. Email, Webex, and the Slack-style chat hit the same agent.','The brain plans it. Over $150K goes to Chris M. Consent and code names are already policy.','Budget, SOW, Codes and Compliance work from the one record. The BAN / CC ID is issued here, not in Command Center.','The request is appended to the log. Workers retry, and a committed offset keeps a replay from double-applying.','Airtable and Command Center are not opened. Eloqua is not opened. SFDC gets the campaign.','The warehouse, the report, the event, the signals and the agency SOW update from that same log.','Contacts, campaigns and consent stay in one data layer. Counts are from the live databases.'];
+$('#walk').onclick=async()=>{if(VIEW!=='mops')$('#modeMops').click();$('#walk').disabled=true;const cap=$('#cap');
+ fetch('/api/engine/tag',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:'@mops new Zero Trust roundtable in Bengaluru, budget $180K'})}).catch(()=>{});
+ for(let i=0;i<HOPS.length;i++){cap.textContent=CAPS[i];HOPS[i].forEach(light);await new Promise(r=>setTimeout(r,1100))}
+ $('#walk').disabled=false;loadArch()};
+loadArch();setInterval(loadArch,5000);
 let nev=0;const log=$('#log');function addEv(e){nev++;$('#evn').textContent=nev+' events';const d=document.createElement('div');d.className='ev '+e.kind;const t=new Date(e.at).toLocaleTimeString([],{hour12:false});
  d.innerHTML=`<span class="t">${t}</span><span class="s s-${e.svc}">${e.svc}</span><span class="m">${esc(e.msg)}${e.trace?` <span style="color:var(--mu2)">· ${esc(e.trace)}</span>`:''}</span>`;const stick=log.scrollTop+log.clientHeight>log.scrollHeight-40;log.appendChild(d);if(log.children.length>600)log.firstChild.remove();if(stick)log.scrollTop=log.scrollHeight}
 let es;function connect(){es=new EventSource('/api/engine/stream?backlog=120');es.onopen=()=>{$('#conn').innerHTML='<span class="dot"></span><span>live</span>'};es.onerror=()=>{$('#conn').innerHTML='<span class="dot bad"></span><span>reconnecting</span>'};
@@ -121,7 +170,7 @@ async function pollRun(){const r=await fetch('/api/engine/run/current').then(r=>
  const st=$('#steps');st.scrollTop=st.scrollHeight;$('#run').disabled=!r.done;$('#run').textContent=r.done?'▶ Run full campaign':'Running…';
  if(r.done){t0=null;$('#clock').textContent=r.wallMs?(r.wallMs/1000).toFixed(1)+'s total':'';const s=$('#sum');s.style.display='block';s.innerHTML=r.ok?`<div class="sub">End to end, budget → report</div><div class="big">${(r.totalMs/1000).toFixed(1)}s machine time · ${r.humanMinutes} min human</div><div class="sub">${(r.wallMs/1000).toFixed(1)}s on the clock, incl. a short display pause between steps</div><div>Baseline for the same work: <b>${r.baselineMinutes} min</b> (${(r.baselineMinutes/60).toFixed(1)} h) across ${new Set(r.steps.map(s=>s.task)).size} tasks → <b>≈${r.speedup}x</b></div><div class="note">⚠ ${esc(r.baselineNote)}</div>`:`<b style="color:var(--bad)">Run failed:</b> ${esc(r.error)}`}else $('#sum').style.display='none'}
 setInterval(()=>{if(t0)$('#clock').textContent=((Date.now()-t0)/1000).toFixed(1)+'s'},100);pollRun();
-$('#run').onclick=async()=>{$('#run').disabled=true;$('#sum').style.display='none';$('#steps').innerHTML='';t0=Date.now();await fetch('/api/engine/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({wait:true,pace:0}));pollRun()};
+$('#run').onclick=async()=>{$('#run').disabled=true;$('#sum').style.display='none';$('#steps').innerHTML='';t0=Date.now();await fetch('/api/engine/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({wait:true,pace:0})});pollRun()};
 $('#reset').onclick=async()=>{$('#reset').textContent='Resetting…';await fetch('/api/engine/reset',{method:'POST'});log.innerHTML='';nev=0;$('#steps').innerHTML='';$('#sum').style.display='none';$('#reset').textContent='Reset data';health()};
 function table(rows){if(!rows||!rows.length)return'<div class="sub">No rows</div>';const k=Object.keys(rows[0]);return`<table class="r"><tr>${k.map(x=>`<th>${esc(x)}</th>`).join('')}</tr>${rows.slice(0,12).map(r=>`<tr>${k.map(x=>`<td>${esc(typeof r[x]==='object'?JSON.stringify(r[x]):r[x])}</td>`).join('')}</tr>`).join('')}</table>`}
 async function sendTag(text){if(!text)return;$('#ans').innerHTML='<span class="sub">working…</span>';const r=await fetch('/api/engine/tag',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text})}).then(r=>r.json());delete r.__ms;

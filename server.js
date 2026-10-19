@@ -150,6 +150,11 @@ async function handleRequest(req,res){await ready();const HUB=require('./backend
  if(p==='/api/efficiency')return J(res,efficiency());
  if(p==='/api/ledger')return J(res,ledger());
  if(p==='/api/outbox')return J(res,db.outbox.slice(-200).reverse());
+ if(p==='/api/briefing'){const LC=require('./backend/lifecycle');const draft=LC.present(LC.ensure());const f=draft.fields||{},form=draft.form||{filled:0,total:0,open:[],items:[]};
+  const rows=db.campaigns.filter(c=>c.status!=='Draft'&&(c.geo||'')===f.geo&&(c.program||c.channel)===(f.program||f.channel));
+  const goal=rows.reduce((s,c)=>s+(+c.goal||0),0),pipeline=rows.reduce((s,c)=>s+(+c.pipeline||0),0),gap=Math.max(0,goal-pipeline);
+  const sources=[...new Set((form.items||[]).filter(i=>i.value&&i.source).map(i=>i.source))].slice(0,6);
+  return J(res,{id:draft.id,name:f.campaign_name,geo:f.geo,program:f.program,gap,goal,pipeline,campaigns:rows.length,budget:draft.budget&&draft.budget.total,route:draft.budget&&draft.budget.route,status:draft.budget&&draft.budget.status,filled:form.filled,total:form.total,open:form.open,sources,agents:draft.agents,compare:draft.compare,policies:draft.policies,learned:draft.learned||[],selfCheck:draft.sow&&draft.sow.selfCheck||null,accounts:db.accounts.length})}
  if(p==='/api/portfolio'){const geo=u.searchParams.get('region')||'all',program=u.searchParams.get('program')||'all',quarter=u.searchParams.get('quarter')||'all';
   const order=['ABM','Digital','Events','Partner','Lead gen'];let cs=db.campaigns.filter(c=>c.status!=='Draft');
   if(geo&&geo!=='all')cs=cs.filter(c=>(c.geo||'')===geo);if(program&&program!=='all')cs=cs.filter(c=>(c.program||c.channel)===program);if(quarter&&quarter!=='all')cs=cs.filter(c=>(c.quarter||'FY27Q2')===quarter);
