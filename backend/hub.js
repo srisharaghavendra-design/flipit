@@ -137,7 +137,7 @@ async function handle(req,res,p,u){
   if(!p.startsWith('/api/engine/'))return false;const r=p.slice(12);
   if(r==='bus'&&req.method==='POST'){bus(JSON.parse(await body(req)));J(res,{ok:1});return true}
   if(r==='stream'){res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-cache',connection:'keep-alive'});res.write(`retry: 1500\n\n`);for(const e of ring.slice(-(+u.searchParams.get('backlog')||80)))res.write(`data: ${JSON.stringify(e)}\n\n`);clients.add(res);const ka=setInterval(()=>res.write(': ka\n\n'),15000);req.on('close',()=>{clients.delete(res);clearInterval(ka)});return true}
-  if(r==='log'){J(res,ring.slice(-300));return true}
+  if(r==='log'){if(!req.mopsUser||req.mopsUser.role!=='admin'){J(res,{error:'Admin only.'},403);return true}J(res,ring.slice(-300));return true}
   if(r==='health'){J(res,await health());return true}
   if(r==='architecture'){J(res,await architecture());return true}
   if(r==='run'&&req.method==='POST'){const b=JSON.parse(await body(req)||'{}');if(current&&!current.done){J(res,{error:'run in progress',run:current},409);return true}
@@ -170,7 +170,7 @@ async function handle(req,res,p,u){
   const LC=require('./lifecycle');
   if(r==='lifecycle/start'&&req.method==='POST'){let raw;try{raw=await body(req,2_000_000)}catch(e){J(res,{error:'Request is too large'},e.status||413);return true}const b=JSON.parse(raw||'{}');J(res,await LC.start({...b,user:req.mopsUser}));return true}
   if(r==='lifecycle/reset'&&req.method==='POST'){J(res,LC.present(LC.resetDemo()));return true}
-  if(r==='lifecycle'){J(res,{draft:LC.present(LC.ensure()),items:LC.list(req.mopsUser),steps:LC.STEPS});return true}
+  if(r==='lifecycle'){const out={draft:LC.present(LC.ensure()),items:LC.list(req.mopsUser),steps:LC.STEPS};if(u.searchParams.get('full')==='1')out.rows=LC.listRows(req.mopsUser);J(res,out);return true}
   mm=r.match(/^lifecycle\/(LC-[\w]+)\/sow\.(docx|pdf|html)$/);if(mm){const kind=mm[2]==='html'?'html':mm[2];const f=LC.file(mm[1],kind);if(!f){res.writeHead(404);return res.end('not ready'),true}
     const h={'content-type':f.type};if(kind!=='html'&&f.name)h['content-disposition']=`attachment; filename="${f.name}"`;res.writeHead(200,h);res.end(f.body);return true}
   mm=r.match(/^lifecycle\/(LC-[\w]+)\/upload\.csv$/);if(mm){const row=LC.read(mm[1],req.mopsUser);if(row&&row.forbidden){J(res,{error:row.error},403);return true}const csv=row&&row.setup&&row.setup.uploadCsv;if(!csv){res.writeHead(404);return res.end(''),true}res.writeHead(200,{'content-type':'text/csv','content-disposition':`attachment; filename="${mm[1]}-sfdc-upload.csv"`});res.end(csv);return true}

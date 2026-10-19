@@ -87,17 +87,38 @@ function unzipEntry(buf,want){let off=0;while(off+30<buf.length){if(buf.readUInt
   if(comp>8_000_000)throw new Error('That file is too large to read.');
   const data=buf.slice(start,start+comp);if(name===want){if(method===0)return data;if(method===8)return zlib.inflateRawSync(data,{maxOutputLength:2_000_000});throw new Error('Could not read the document body.')}
   off=start+comp}return null}
-function pdfText(buf){const s=buf.toString('latin1');const out=[];const re=/\(((?:\\\)|[^)])*)\)\s*Tj/g;let m;while((m=re.exec(s)))out.push(m[1].replace(/\\([()\\])/g,'$1'));return out.join('\n')}
-function extractSow(name,buf){const base=path.basename(String(name||'sow.txt')).replace(/[^\w.\- ()]/g,'').slice(0,80)||'sow.txt';
+function literalPdfText(buf){const s=buf.toString('latin1');const out=[];const piece=t=>t.replace(/\\([()\\])/g,'$1');
+ const tj=/\(((?:\\\)|[^)])*)\)\s*Tj/g;let m;while((m=tj.exec(s)))out.push(piece(m[1]));
+ const TJ=/\[([\s\S]*?)\]\s*TJ/g;while((m=TJ.exec(s))){const parts=[];const str=/\(((?:\\\)|[^)])*)\)/g;let p;while((p=str.exec(m[1])))parts.push(piece(p[1]));if(parts.length)out.push(parts.join(''))}
+ return out.join('\n')}
+function linesFromItems(items){const list=items||[];const positioned=list.some(it=>it.transform&&(Math.abs(it.transform[4])>1||Math.abs(it.transform[5])>1));
+ if(!positioned)return list.map(it=>String(it.str||'').trim()).filter(Boolean).join('\n');
+ const rows=[];for(const it of list){const y=it.transform?it.transform[5]:0;let row=rows.find(r=>Math.abs(r.y-y)<=2);if(!row){row={y,parts:[]};rows.push(row)}if(it.hasEOL)row.parts.push((it.str||'')+'\n');else row.parts.push(it.str||'')}
+ rows.sort((a,b)=>b.y-a.y);return rows.map(r=>r.parts.join(' ').replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').trim()).filter(Boolean).join('\n')}
+let pdfjsLoad;
+function loadPdfjs(){if(!pdfjsLoad)pdfjsLoad=import('pdfjs-dist/legacy/build/pdf.mjs');return pdfjsLoad}
+function standardFontDataUrl(){const dir=path.join(path.dirname(require.resolve('pdfjs-dist/package.json')),'standard_fonts');return dir.endsWith(path.sep)?dir:dir+path.sep}
+async function pdfJsText(buf){const pdfjs=await loadPdfjs();
+ const doc=await pdfjs.getDocument({data:new Uint8Array(buf),isEvalSupported:false,disableFontFace:true,useSystemFonts:false,standardFontDataUrl:standardFontDataUrl()}).promise;
+ try{const parts=[];for(let i=1;i<=doc.numPages;i++){const page=await doc.getPage(i);const content=await page.getTextContent();parts.push(linesFromItems(content.items))}return parts.filter(Boolean).join('\n')}
+ finally{try{await doc.destroy()}catch(e){}}}
+function readableText(text){return(String(text||'').match(/[A-Za-z]/g)||[]).length>=12}
+function taxSentence(text){const lines=String(text||'').split(/\n+/);const hit=lines.find(l=>/\b(GST|VAT|consumption tax|sales tax)\b/i.test(l));
+ if(hit)return hit.trim().slice(0,240);
+ const m=String(text||'').match(/(?:^|\n)\s*((?:No\s+)?[^\n]{0,40}\b(?:GST|VAT|consumption tax|sales tax)\b[^\n]{0,80})/i);
+ return m?m[1].trim().slice(0,240):''}
+async function extractSow(name,buf){const base=path.basename(String(name||'sow.txt')).replace(/[^\w.\- ()]/g,'').slice(0,80)||'sow.txt';
   if(!buf||!buf.length)throw new Error('The file was empty.');if(buf.length>1_200_000)throw new Error('Keep the SOW under 1.2 MB.');
   let text='';const lower=base.toLowerCase();
   if(lower.endsWith('.docx')){const xml=unzipEntry(buf,'word/document.xml');if(!xml)throw new Error('That DOCX has no document body.');text=xml.toString('utf8').replace(/<w:p[ >]/g,'\n').replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')}
-  else if(lower.endsWith('.pdf'))text=pdfText(buf);
+  else if(lower.endsWith('.pdf')){let via='';try{via=await pdfJsText(buf)}catch(e){via=''}const raw=literalPdfText(buf);text=readableText(via)?via:(readableText(raw)?raw:(via||raw))}
   else if(/\.(txt|csv|md)$/.test(lower))text=buf.toString('utf8');
   else throw new Error('Upload a PDF, DOCX, or text file.');
   text=text.replace(/\s+\n/g,'\n').slice(0,20000);
+  if(!readableText(text))return{file:base,source:'could not read '+base,text:'',unreadable:true,currency:'',venue:'',city:'',agency:'',ourPm:'',agencyPm:'',amount:'',tax:'',taxRate:'',gstin:'',signing:'',start:'',end:'',milestone:''};
   const grab=(...labels)=>{for(const label of labels){const m=text.match(new RegExp('(?:^|\\n)\\s*'+label+'\\s*[:\\-]\\s*([^\\n]+)', 'i'));if(m)return m[1].trim().slice(0,240)}return''};
-  const taxLine=(text.match(/\b(GST|VAT|consumption tax)\b[^.\n]{0,40}/i)||[])[0]||'';
+  let taxLine=taxSentence(text);
+  if(/^(?:GST|VAT)\b/i.test(taxLine)&&/\bNo\s+(?:GST|VAT)\b/i.test(text)){const kept=(text.match(/[^\n]*\bNo\s+(?:GST|VAT)\b[^\n]*/i)||[])[0];if(kept)taxLine=kept.trim().slice(0,240)}
   const rate=taxLine.match(/(\d+(?:\.\d+)?)\s*%/);
   const gstin=(text.match(/\bGSTIN\b\s*[:\-]?\s*([0-9A-Z]{15})/i)||[])[1]||'';
   let amount=grab('professional fees','not-to-exceed','amount','budget','fee');
@@ -105,16 +126,24 @@ function extractSow(name,buf){const base=path.basename(String(name||'sow.txt')).
   if(!amount&&bare)amount=bare[0].trim();
   let currency=(grab('currency')||'').replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,3);
   if(!currency&&bare)currency=bare[1].toUpperCase();
-  return{file:base,source:'extracted from '+base,text:text.slice(0,1500),currency,
+  return{file:base,source:'extracted from '+base,text:text.slice(0,1500),unreadable:false,currency,
    venue:grab('venue'),city:grab('city'),agency:grab('agency','agency legal name','legal name'),ourPm:grab('our pm','client pm','northwind pm'),agencyPm:grab('agency pm','vendor pm'),
    amount,tax:taxLine.trim(),taxRate:rate?rate[1]+'%':'',gstin,signing:grab('signing authority'),start:grab('start date','event date'),end:grab('end date'),milestone:grab('payment milestones','milestones','milestone','payment')}}
+function sowAnswer(row,key){return String(row.sow&&row.sow.answers&&row.sow.answers[key]||'').trim()}
 function applyExtract(row,ex){if(!row.sow)throw new Error('Send the SOW request first.');
- const set=(field,value)=>{if(!value)return;let f=row.sow.fields.find(x=>x.field.toLowerCase()===field.toLowerCase());if(!f){f={field,value:'',source:'',confidence:'extracted'};row.sow.fields.push(f)}f.value=value;f.source=ex.source;f.confidence='extracted'};
+ if(ex.unreadable){row.sow.extracted=ex;row.sow.extractNote=`Could not read ${ex.file}. Please confirm the fields.`;row.sow.html=require('./lifecycle').sowHtml(row);return}
+ const set=(field,value,source)=>{if(!value)return;let f=row.sow.fields.find(x=>x.field.toLowerCase()===field.toLowerCase());if(!f){f={field,value:'',source:'',confidence:'extracted'};row.sow.fields.push(f)}f.value=value;f.source=source||ex.source;f.confidence=source&&/marketer/.test(source)?'typed':'extracted'};
  if(ex.city){set('City',ex.city);if(!row.fields.city)row.fields.city=ex.city}
- if(ex.venue){set('Venue',ex.venue);row.fields.venue=ex.venue}
- if(ex.agency){set('Agency',ex.agency);row.fields.vendor=ex.agency}
- if(ex.ourPm){set('Our PM',ex.ourPm);row.fields.client_pm=ex.ourPm}
- if(ex.agencyPm){set('Agency PM',ex.agencyPm);row.fields.agency_pm=ex.agencyPm}
+ if(ex.venue){const edited=sowAnswer(row,'venue');if(edited){set('Venue',edited,'edited by the marketer');row.fields.venue=edited}else{set('Venue',ex.venue);row.fields.venue=ex.venue}}
+ const agencyEdit=sowAnswer(row,'agency_confirm');
+ if(agencyEdit){set('Agency',agencyEdit,'edited by the marketer');row.fields.vendor=agencyEdit}
+ else if(ex.agency){set('Agency',ex.agency);row.fields.vendor=ex.agency}
+ const ourEdit=sowAnswer(row,'client_pm');
+ if(ourEdit){set('Our PM',ourEdit,'edited by the marketer');row.fields.client_pm=ourEdit}
+ else if(ex.ourPm){set('Our PM',ex.ourPm);row.fields.client_pm=ex.ourPm}
+ const pmEdit=sowAnswer(row,'agency_pm');
+ if(pmEdit){set('Agency PM',pmEdit,'edited by the marketer');row.fields.agency_pm=pmEdit}
+ else if(ex.agencyPm){set('Agency PM',ex.agencyPm);row.fields.agency_pm=ex.agencyPm}
  if(ex.currency)set('Currency',ex.currency);
  if(ex.amount)set('Not-to-exceed',ex.amount);
  if(ex.tax)set('Tax (GST/VAT)',ex.tax);
@@ -167,7 +196,7 @@ async function previewUpload(row,{name,buf,csv,overrides}){
   stats:mapped.stats,report,errorCsv,csv:csvOut,confirmed:false,targets:TEMPLATE,needsConfirm:true}}
 function sowDiff(row){const ex=row.sow&&row.sow.extracted;if(!ex)return[];const f=row.fields||{};const amount=row.budget&&row.budget.total||f.budget||'';const cur=f.currency||'';const tax=taxOf(f.country,amount);
  const pairs=[['Agency legal name',ex.agency,f.vendor],['Venue',ex.venue,f.venue],['City',ex.city,f.city],['Dates',[ex.start,ex.end].filter(Boolean).join(' to '),[f.start_date,f.end_date].filter(Boolean).join(' to ')],['Currency',ex.currency,cur],['Amount',ex.amount,amount?require('./money').format(amount,cur||'USD'):''],['Tax',ex.tax,tax.note],['GSTIN',ex.gstin,''],['Signing authority',ex.signing,(row.sow.signOffRoute&&row.sow.signOffRoute.signer)||''],['Our PM',ex.ourPm,f.client_pm],['Agency PM',ex.agencyPm,f.agency_pm],['Milestones',ex.milestone,milestonesOf(amount,f.country).map(m=>m.pct+'% '+m.name).join(', ')]];
- return pairs.map(([field,extracted,approved])=>{const a=String(extracted||'').trim(),b=String(approved||'').trim();const x=a.toLowerCase(),y=b.toLowerCase();const short=x.length<=y.length?x:y,long=x.length<=y.length?y:x;const match=!!x&&!!y&&(x===y||(short.length>8&&long.includes(short)));return{field,extracted:a,approved:b,match}})}
+ return pairs.map(([field,extracted,approved])=>{const a=String(extracted||'').trim(),b=String(approved||'').trim();const x=a.toLowerCase(),y=b.toLowerCase();const short=x.length<=y.length?x:y,long=x.length<=y.length?y:x;const num=s=>{const m=String(s||'').match(/\d[\d,]*(?:\.\d+)?/);if(!m)return null;const n=Number(m[0].replace(/,/g,''));return Number.isFinite(n)?n:null};const sameMoney=field==='Amount'&&num(a)!=null&&num(a)===num(b);const match=!!x&&!!y&&(x===y||(short.length>8&&long.includes(short))||sameMoney);return{field,extracted:a,approved:b,match}})}
 function sowJob(row){const f=row.fields||{};const amount=row.budget&&row.budget.total||f.budget||0;const cur=f.currency||'USD';const tax=taxOf(f.country,amount);
  return{ready:!!row.sow,status:row.sow?row.sow.status:'not requested',request:row.sowRequest||null,agency:agencyOf(f),tax,milestones:milestonesOf(amount,f.country),route:signRoute(amount,f.country,cur,f.owner),diff:sowDiff(row),
   ourPm:f.client_pm||'',agencyPm:f.agency_pm||'',fields:row.sow?row.sow.fields:[],questions:row.sow?row.sow.questions:[],answers:row.sow?row.sow.answers||{}:{},extracted:row.sow&&row.sow.extracted||null,extractNote:row.sow&&row.sow.extractNote||'',signedBy:row.sow&&row.sow.signedBy||null,selfCheck:row.sow&&row.sow.selfCheck||null}}

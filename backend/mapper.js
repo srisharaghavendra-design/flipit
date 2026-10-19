@@ -42,12 +42,12 @@ function readFile(name,buf){const lower=String(name||'').toLowerCase();
   if(buf[0]!==0x50||buf[1]!==0x4b)throw new Error('That file is not an .xlsx workbook.');
   return xlsxRows(buf)}
 const FORMULA=/^[=+\-@\t\r]/;
-const INJECT=/ignore previous|leak@|disregard (all |previous |your )|system prompt|you are now/i;
+const INJECT=/ignore\s+(?:the\s+|all\s+)?(?:previous|earlier|above|prior|briefing)|disregard\s+(?:the\s+|all\s+|your\s+)?(?:previous|earlier|above|prior|rules|instructions)|system prompt|you are now|leak@|leak\.example|outsider@|mail the (?:sheet|list|file|contacts)|send (?:the )?(?:contacts|sheet|list)|email every contact/i;
 function neutralize(v){const s=String(v??'');return FORMULA.test(s)?"'"+s:s}
 function risky(v){const s=String(v??'').trim();if(!s)return false;if(INJECT.test(s))return true;if(FORMULA.test(s)&&!/^\+\d[\d\s().-]{6,}$/.test(s))return true;return false}
 const STRICT=new Set(['Germany','France','United Kingdom','Netherlands','India','Singapore','Australia','Switzerland','United Arab Emirates']);
 function consentProblem(raw,country){const s=String(raw||'').trim().toLowerCase();const yes=/^(y|yes|true|1|opted[ _-]?in|granted|express)$/.test(s);if(STRICT.has(country)&&!yes)return`no consent on record for ${country} — quarantined (GDPR/DPDP)`;return''}
-function score(h){const n=norm(h);let best=[null,0];for(const[k,list]of Object.entries(SYN)){for(const s of list){const sc=n===s?1:(n.includes(s)&&s.length>3)?0.75:0;if(sc>best[1])best=[k,sc]}}return best}
+function score(h){const n=norm(h);if(/\bnickname\b/.test(n))return[null,0];const words=n.split(' ').filter(Boolean);let best=[null,0];for(const[k,list]of Object.entries(SYN)){for(const s of list){let sc=0;if(n===s)sc=1;else if(s.includes(' ')&&n.includes(s))sc=0.9;else if(!s.includes(' ')&&words.includes(s)&&s.length>2)sc=0.75;if(sc>best[1])best=[k,sc]}}return best}
 function findHeader(rows){let bi=0,bs=-1;rows.slice(0,15).forEach((r,i)=>{const s=r.reduce((a,c)=>a+(score(c)[1]>0?1:0),0);if(s>bs){bs=s;bi=i}});return bi}
 const isEmail=v=>/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(String(v).trim());const isPhone=v=>/^[+()\d][\d\s()\-.]{6,}$/.test(String(v).trim());
 function country(v){const s=String(v||'').trim();if(!s)return'';const parts=s.split(/[,/|-]/).map(x=>x.trim());for(const p of parts.reverse()){const hit=COUNTRIES.find(c=>c.toLowerCase()===p.toLowerCase())||ALIAS[p.toLowerCase()];if(hit)return hit}

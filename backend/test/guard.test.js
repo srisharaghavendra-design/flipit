@@ -42,6 +42,8 @@ test('demo sign-in replaces the passcode, and loopback is not a bypass', async (
   assert.match(api.res.body, /sign in required/);
   const bad = await hit('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"user":"nobody"}' });
   assert.equal(bad.res.status, 401);
+  const admin = await hit('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"user":"admin"}' });
+  assert.equal(admin.res.status, 403);
   const good = await hit('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"user":"maria"}' });
   assert.equal(good.res.status, 200);
   assert.match(good.res.headers['set-cookie'], /mops_session=/);
@@ -63,7 +65,7 @@ test('the client address is the socket, not a header the caller sets', () => {
 });
 
 test('the scale-test button is rate limited for a signed-in caller', async () => {
-  const good = await hit('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"user":"admin"}', ip: '198.51.100.9' });
+  const good = await hit('/api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-mops-internal': process.env.MOPS_SECRET }, body: '{"user":"admin"}', ip: '198.51.100.9' });
   const cookie = good.res.headers['set-cookie'].split(';')[0];
   let blocked = 0;
   for (let i = 0; i < 6; i++) {

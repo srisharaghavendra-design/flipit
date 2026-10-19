@@ -91,6 +91,13 @@ async function login(req, res) {
     return;
   }
   const user = auth.USERS.find(u => u.id === id);
+  if (user && user.role === 'admin') {
+    const got = String(req.headers['x-mops-internal'] || '');
+    const want = String(process.env.MOPS_SECRET || '');
+    let ok = false;
+    if (got && want && got.length === want.length) ok = require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(want));
+    if (!ok) { send(res, 403, JSON.stringify({ error: 'Admin sign-in is not on the demo picker.' }), { 'content-type': 'application/json' }); return; }
+  }
   if (!user) {
     const json = ct.includes('json') || (req.headers.accept || '').includes('json');
     if (json) send(res, 401, JSON.stringify({ error: 'Unknown demo user' }), { 'content-type': 'application/json' });

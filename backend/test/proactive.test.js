@@ -5,7 +5,7 @@ Object.assign(process.env,ENV);const{start}=require('../stack');const H='http://
 let cookie='';
 const j=async(p,body,h={})=>{const r=await fetch(H+p,{method:body===undefined?'GET':'POST',headers:{'content-type':'application/json',cookie,...h},body:body===undefined?undefined:(typeof body==='string'?body:JSON.stringify(body))});return{status:r.status,body:await r.json().catch(()=>({}))}};
 const wait=async(fn,ms=40000)=>{const t=Date.now();while(Date.now()-t<ms){const v=await fn();if(v)return v;await new Promise(r=>setTimeout(r,400))}throw new Error('timeout')};
-test.before(async()=>{stack=await start(ENV,{quiet:true});const login=await fetch(H+'/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({user:'admin'})});cookie=(login.headers.get('set-cookie')||'').split(';')[0];await j('/api/engine/reset',{});await j('/svc/warehouse/elt/run',{})});test.after(()=>stack&&stack.stop());
+test.before(async()=>{stack=await start(ENV,{quiet:true});const login=await fetch(H+'/api/login',{method:'POST',headers:{'content-type':'application/json','x-mops-internal':process.env.MOPS_SECRET},body:JSON.stringify({user:'admin'})});cookie=(login.headers.get('set-cookie')||'').split(';')[0];await j('/api/engine/reset',{});await j('/svc/warehouse/elt/run',{})});test.after(()=>stack&&stack.stop());
 
 test('cover watcher finds the seeded issues, acts within limits, and every action can be undone',async()=>{const s=(await j('/api/engine/covered/scan',{})).body;assert.deepEqual(s.errors,{});
   const L=(await j('/api/engine/covered')).body;const rules=new Set(L.map(x=>x.rule));

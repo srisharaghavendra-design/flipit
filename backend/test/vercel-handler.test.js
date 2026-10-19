@@ -30,7 +30,9 @@ test('the Vercel handler gates the site with demo sign-in',async()=>{
   assert.equal(home.status,401);assert.match(home.body,/Demo sign-in/);assert.doesNotMatch(home.body,/passcode/i);
   const bad=await request('POST','/api/login',{headers:{'content-type':'application/json'},body:'{"user":"nobody"}'});
   assert.equal(bad.status,401);
-  const good=await request('POST','/api/login',{headers:{'content-type':'application/json'},body:'{"user":"admin"}'});
+  const refused=await request('POST','/api/login',{headers:{'content-type':'application/json'},body:'{"user":"admin"}'});
+  assert.equal(refused.status,403);
+  const good=await request('POST','/api/login',{headers:{'content-type':'application/json','x-mops-internal':process.env.MOPS_SECRET},body:'{"user":"admin"}'});
   assert.equal(good.status,200);assert.match(good.headers['set-cookie'],/mops_session=/);assert.match(good.headers['set-cookie'],/HttpOnly/);assert.match(good.headers['set-cookie'],/Secure/);
   const cookie=good.headers['set-cookie'].split(';')[0];
   const state=await request('GET','/api/state',{headers:{cookie}});
