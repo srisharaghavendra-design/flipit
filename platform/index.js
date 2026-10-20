@@ -88,7 +88,8 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/platform/brain') return html(res, pages.brainPage());
     if (method === 'GET' && p === '/platform/architecture') return html(res, pages.architecture());
     if (method === 'GET' && p === '/platform/ops') {
-      const workspace = !!require('../backend/sandbox').workspaceFromRequest(req);
+      const live = require('./scope').brand();
+      const workspace = !!require('../backend/sandbox').workspaceFromRequest(req) || !!(live && live.name);
       return html(res, pages.opsPage({ workspace }));
     }
     if (method === 'GET' && p === '/platform/samples/chicago-attendees.xlsx') {
@@ -178,7 +179,7 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/api/platform/brain/policy') return json(res, 200, { rules: policy.RULES, chicago: policy.explain(180000) }, started);
     if (method === 'GET' && p === '/api/platform/brain/why') return json(res, 200, await why.feed({ q: u.searchParams.get('q') || '', limit: u.searchParams.get('limit') || 40 }), started);
     if (method === 'GET' && p === '/api/platform/ops/snapshot') return json(res, 200, await require('./live').snapshot(), started);
-    if (method === 'GET' && p === '/api/platform/ops/inbox') return json(res, 200, { events: require('./inbound').feed() }, started);
+    if (method === 'GET' && p === '/api/platform/ops/inbox') return json(res, 200, { events: require('./inbound').feed(require('./scope').tenantId()) }, started);
     if (method === 'POST' && p === '/api/platform/ops/demo') {
       const body = await parseBody(req);
       const live = require('./live');

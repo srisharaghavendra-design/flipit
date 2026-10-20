@@ -16,15 +16,21 @@ function cacheWrap(sqlite) {
     if (!s) { s = sqlite.prepare(sql); cache.set(sql, s); }
     return s;
   }
+  function scoped(sql, args) {
+    return require('./scope').scopeStatement(sql, require('./scope').tenantId(), args);
+  }
   const api = {
     dialect: 'sqlite',
     close() { sqlite.close(); },
     exec(sql) { sqlite.exec(sql); return Promise.resolve(); },
-    all(sql, args = []) { return Promise.resolve(stmt(sql).all(...args)); },
-    get(sql, args = []) { return Promise.resolve(stmt(sql).get(...args)); },
-    run(sql, args = []) { return Promise.resolve(stmt(sql).run(...args)); },
+    all(sql, args = []) { return Promise.resolve(stmt(scoped(sql, args)).all(...args)); },
+    get(sql, args = []) { return Promise.resolve(stmt(scoped(sql, args)).get(...args)); },
+    run(sql, args = []) { return Promise.resolve(stmt(scoped(sql, args)).run(...args)); },
     insertMany(sql, rows) {
-      const st = stmt(sql);
+      if (!rows || !rows.length) return Promise.resolve(0);
+      let next = sql;
+      for (const args of rows) next = scoped(sql, args);
+      const st = stmt(next);
       for (const args of rows) st.run(...args);
       return Promise.resolve(rows.length);
     },
@@ -64,14 +70,20 @@ function openPostgres() {
   const { Pool } = require('pg');
   const pool = new Pool({ connectionString: process.env.PLATFORM_DATABASE_URL });
   function bind(queryable) {
+    function scoped(sql, args) {
+      return require('./scope').scopeStatement(sql, require('./scope').tenantId(), args);
+    }
     return {
       dialect: 'postgres',
       exec(sql) { return queryable.query(adapt(sql, 'postgres')).then(() => {}); },
-      all(sql, args = []) { return queryable.query(toPg(sql), args).then(r => r.rows); },
-      get(sql, args = []) { return queryable.query(toPg(sql), args).then(r => r.rows[0]); },
-      run(sql, args = []) { return queryable.query(toPg(sql), args).then(r => ({ changes: r.rowCount })); },
+      all(sql, args = []) { return queryable.query(toPg(scoped(sql, args)), args).then(r => r.rows); },
+      get(sql, args = []) { return queryable.query(toPg(scoped(sql, args)), args).then(r => r.rows[0]); },
+      run(sql, args = []) { return queryable.query(toPg(scoped(sql, args)), args).then(r => ({ changes: r.rowCount })); },
       async insertMany(sql, rows) {
-        const text = toPg(sql);
+        if (!rows || !rows.length) return 0;
+        let next = sql;
+        for (const args of rows) next = scoped(sql, args);
+        const text = toPg(next);
         for (const args of rows) await queryable.query(text, args);
         return rows.length;
       }

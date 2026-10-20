@@ -200,6 +200,12 @@ async function send({ segmentId, templateId, campaignId, actor, channel, sourceM
   if (found.tooMany) fail(400, `Narrow the segment. ${found.count} contacts is too many for one send.`);
   const allowed = found.rows.filter(c => c.consent_status === 'opted_in');
   const held = found.rows.filter(c => c.consent_status !== 'opted_in');
+  const tenantId = require('./scope').tenantId();
+  if (tenantId !== 'demo') {
+    const cap = require('./catalog').limitOf(tenantId);
+    const used = await d.get('SELECT COUNT(*) AS n FROM send_recipients');
+    require('./scope').assertSend(used && used.n, allowed.length, cap);
+  }
   const sendId = 'SND-' + crypto.randomBytes(4).toString('hex');
   const sample = [];
   await d.tx(async (q) => {
@@ -231,6 +237,12 @@ async function beginQueue({ segmentId, templateId, campaignId, actor, channel, s
   if (found.tooMany) fail(400, `Narrow the segment. ${found.count} contacts is too many for one send.`);
   const allowed = found.rows.filter(c => c.consent_status === 'opted_in');
   const held = found.rows.filter(c => c.consent_status !== 'opted_in');
+  const tenantId = require('./scope').tenantId();
+  if (tenantId !== 'demo') {
+    const cap = require('./catalog').limitOf(tenantId);
+    const used = await d.get('SELECT COUNT(*) AS n FROM send_recipients');
+    require('./scope').assertSend(used && used.n, allowed.length, cap);
+  }
   const sendId = 'SND-' + crypto.randomBytes(4).toString('hex');
   await d.tx(async (q) => {
     await q.run('INSERT INTO sends(id, segment_id, template_id, campaign_id, idempotency_key, actor, channel, source_message, sent, held, at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)',

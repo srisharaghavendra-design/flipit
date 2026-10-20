@@ -22,7 +22,16 @@ const ICONS = {
   arch: '<path d="M4 20h16M6 20V10l6-6 6 6v10M10 20v-5h4v5"/>'
 };
 
+function liveBrand() {
+  let row = null;
+  try { row = require('./scope').brand(); } catch (e) { row = null; }
+  const name = row && row.name ? row.name : brandName();
+  const color = row && /^#[0-9a-fA-F]{6}$/.test(row.color || '') ? row.color : '';
+  return { name, color, inbound: row && row.inbound || '', workspace: !!(row && row.name) };
+}
+
 function layout(active, body) {
+  const live = liveBrand();
   const nav = [
     ['/platform', 'Cloud', 'home'],
     ['/platform/data', 'Data', 'data'],
@@ -35,11 +44,12 @@ function layout(active, body) {
     ['/platform/ask', 'Ask', 'ask'],
     ['/platform/architecture', 'Architecture', 'arch']
   ].map(([href, label, id]) => `<a href="${href}" class="${id === active ? 'on' : ''}"><svg viewBox="0 0 24 24">${ICONS[id]}</svg><span>${label}</span></a>`).join('');
-  const mark = esc(brandName());
-  const letter = esc((brandName().charAt(0) || 'N').toUpperCase());
+  const mark = esc(live.name);
+  const letter = esc((live.name.charAt(0) || 'N').toUpperCase());
+  const lime = live.color || '#e4f5a8';
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${mark} Marketing Cloud</title>
 <style>
-:root{color-scheme:light;--ink:#1c1d1a;--muted:#5f5c55;--line:#e6e1d6;--paper:#f5f4f0;--card:#fff;--lime:#e4f5a8}
+:root{color-scheme:light;--ink:#1c1d1a;--muted:#5f5c55;--line:#e6e1d6;--paper:#f5f4f0;--card:#fff;--lime:${lime}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 ui-sans-serif,system-ui,sans-serif}
 a,a:visited{color:inherit;text-decoration:none}
@@ -137,13 +147,16 @@ document.addEventListener('click',async (ev)=>{
 window.whoReady=(async()=>{
   const s=await api('/api/session');
   const users=await api('/api/login/users');
-  document.querySelector('#who').innerHTML='Signed in as <b>'+esc(s.user.name)+'</b>';
+  document.querySelector('#who').innerHTML='Signed in as <b>'+esc(s.user.name)+'</b>'+(s.user.workspace?' · '+esc(s.user.company||''):'');
   const sel=document.querySelector('#switch');
+  if(s.user.workspace){sel.remove();document.body.dataset.user=s.user.id;document.body.dataset.role=s.user.role}
+  else{
   sel.innerHTML=users.users.map(u=>'<option value="'+esc(u.id)+'">'+esc(u.name)+'</option>').join('');
   sel.value=s.user.id;
   document.body.dataset.user=s.user.id;
   document.body.dataset.role=s.user.role;
   sel.onchange=async()=>{await api('/api/login',{method:'POST',body:JSON.stringify({user:sel.value})});location.reload()};
+  }
 })();
 document.querySelector('#reset').onclick=async()=>{
   if(!confirm('Reset the demo? The next ask will be a first run.'))return;
@@ -413,10 +426,12 @@ function architecture() {
 function opsPage(opts) {
   const sandboxOn = require('../backend/sandbox').enabled() && !(opts && opts.workspace);
   const paced = sandboxOn || process.env.VERCEL === '1';
-  const mark = esc(brandName());
+  const live = liveBrand();
+  const mark = esc(live.name);
+  const accent = live.color || '#0f6e56';
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${mark} live ops</title>
 <style>
-:root{color-scheme:light;--ink:#1c1b19;--muted:#6b675f;--line:#e6e2da;--bg:#f3f2ef;--card:#fff;--accent:#0f6e56}
+:root{color-scheme:light;--ink:#1c1b19;--muted:#6b675f;--line:#e6e2da;--bg:#f3f2ef;--card:#fff;--accent:${accent}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 ui-sans-serif,system-ui,sans-serif}
 header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line)}
@@ -451,6 +466,7 @@ h1{font-size:18px;margin:0 0 8px;letter-spacing:-.02em}
     <div id="checks"></div>
     <div id="feed"></div>
     <h2 style="font-size:15px;margin:16px 0 6px">Email and Webex</h2>
+    ${live.inbound ? `<p class="event"><small>Inbox</small><br>${esc(live.inbound)}</p>` : ''}
     <p id="inbox-status">Waiting for a tag.</p>
     <div id="inbox"></div>
   </aside>

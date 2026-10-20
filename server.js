@@ -188,7 +188,7 @@ function attachLog(req,res){const journal=require('./backend/journal');
   res.end=function(chunk,enc,cb){try{if(req._mopsLog&&chunk!=null){const text=Buffer.isBuffer(chunk)?chunk.toString('utf8'):String(chunk);
     if(text.charCodeAt(0)===123){const obj=JSON.parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj)&&obj.mopsLog==null){obj.mopsLog=req._mopsLog;chunk=JSON.stringify(obj)}}}}catch(e){console.error('embed log',e&&e.message||e)}
     return origEnd(chunk,enc,cb)}}
-function servePage(res,file,req){try{let raw=fs.readFileSync(file);const text=raw.toString('utf8');if(text.includes('__BRAND__')||text.includes('__BRAND_JSON__')||text.includes('__SANDBOX_FLAG__')){const name=brandName();const safe=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const workspace=req&&require('./backend/sandbox').workspaceFromRequest(req);const sandbox=require('./backend/sandbox').enabled()&&!workspace?'true':'false';raw=text.replaceAll('__BRAND_JSON__',JSON.stringify(name)).replaceAll('__BRAND__',safe).replaceAll('__SANDBOX_FLAG__',sandbox)}res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(raw)}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
+function servePage(res,file,req){try{let raw=fs.readFileSync(file);const text=raw.toString('utf8');if(text.includes('__BRAND__')||text.includes('__BRAND_JSON__')||text.includes('__SANDBOX_FLAG__')){let name=brandName();let accent='';try{const company=req&&require('./platform/workspace').sessionUser(req);if(company&&company.company){name=company.company;accent=company.color||''}}catch(e){}const safe=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const workspace=req&&(require('./backend/sandbox').workspaceFromRequest(req)||require('./platform/workspace').sessionUser(req));const sandbox=require('./backend/sandbox').enabled()&&!workspace?'true':'false';raw=text.replaceAll('__BRAND_JSON__',JSON.stringify(name)).replaceAll('__BRAND__',safe).replaceAll('__SANDBOX_FLAG__',sandbox);if(accent&&/^#[0-9a-fA-F]{6}$/.test(accent))raw=raw.toString('utf8').replace('--accent: #0f6e56','--accent: '+accent)}res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(raw)}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
 function pinWorkspace(req,res){let token='';try{token=new URL(req.url||'/','http://x').searchParams.get('ws')||''}catch(e){token=''}const sandbox=require('./backend/sandbox');if(!token||!sandbox.readWorkspace(token))return;const cookie=sandbox.workspaceCookie(token);const orig=res.writeHead.bind(res);res.writeHead=function(code,h){const headers=h&&typeof h==='object'&&!Array.isArray(h)?Object.assign({},h):{};const prev=headers['set-cookie'];const list=prev==null?[]:(Array.isArray(prev)?prev.slice():[prev]);list.push(cookie);headers['set-cookie']=list;return orig(code,headers)}}
 async function handleInner(req,res){pinWorkspace(req,res);const HUB=require('./backend/hub.js');let u;try{u=new URL(req.url,'http://x')}catch(e){u=new URL('/','http://x')}const p=u.pathname;
  if(p==='/login'||p==='/login/'){res.writeHead(303,{location:'/','cache-control':'no-store'});return res.end()}
@@ -200,6 +200,7 @@ async function handleInner(req,res){pinWorkspace(req,res);const HUB=require('./b
  try{
  if(await guard.handle(req,res,p))return;
  if((p==='/api/inbound/email'||p==='/api/inbound/webex')&&req.method==='POST')return require('./platform/inbound').http(req,res,u);
+ if(p==='/signup'||p==='/onboarding'||p==='/api/signup'||p.startsWith('/api/workspace'))return require('./platform/workspace').http(req,res,u);
  if((p==='/api/sandbox'||p==='/api/sandbox/sync')){
   const sandbox=require('./backend/sandbox');
   if(req.method==='GET'&&p==='/api/sandbox')return J(res,{enabled:sandbox.enabled(),expiresMs:sandbox.BOX_MS});
@@ -208,6 +209,9 @@ async function handleInner(req,res){pinWorkspace(req,res);const HUB=require('./b
  }
  if(p.startsWith('/platform')||p.startsWith('/api/platform')){
   const sandbox=require('./backend/sandbox');
+  const company=require('./platform/workspace').sessionUser(req);
+  const scope=require('./platform/scope');
+  if(company)return sandbox.run(company.dir,()=>scope.bind({id:company.tenantId,name:company.company,color:company.color,inbound:company.inbound},()=>require('./platform').handle(req,res,u)));
   if(req.method==='GET'&&!p.startsWith('/api/'))return require('./platform').handle(req,res,u);
   const dir=await sandbox.prepare(req,res);
   if(dir===false)return;

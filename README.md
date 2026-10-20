@@ -46,6 +46,16 @@ curl https://webexapis.com/v1/webhooks \
 
 The ops list lives on the instance that received the webhook. A cold start on Hobby has an empty list until the next tag. The email or Webex reply is the record that survives that. The sender workspace lives under `/tmp` on that instance and expires two hours after it was created.
 
+## Workspaces
+
+Open `/signup` to create a company workspace. The form asks for a company name, a brand color, an optional logo, and the admin's name, email, and passcode. A magic link is the other way in: it is sent from the free AgentMail inbox when `AGENTMAIL_API_KEY` is set. Each workspace is a separate book. Every row carries that workspace id, and every query is limited to it. The sample demo at `/` is unchanged.
+
+The setup page is `/onboarding`. Upload a contacts file and a campaigns file (CSV or Excel; the columns are matched by their headers), or start from the sample book. Set the approver, the territory owner, and the send limit, then invite a teammate as a marketer or an approver.
+
+Each workspace gets a plus-address on the same free inbox: `local+slug@agentmail.to`. Tag `@mops` at that address and the ask runs in that workspace. The Webex bot token, bot email, and webhook secret are optional fields on the setup page. A bot whose webhook secret matches that field replies in the workspace. No DNS change and no paid plan.
+
+On Vercel Hobby the workspace file lives on the instance disk and does not survive a cold start. A free Postgres connection string can be added later as `PLATFORM_DATABASE_URL` with `PLATFORM_DB=postgres`. This preview does not require one.
+
 Every account, person, and campaign in the demo is fictional.
 
 ```bash

@@ -22,6 +22,7 @@ function clientIp(req) {
 
 function exempt(pathname) {
   if (pathname === '/health' || pathname === '/healthz' || pathname === '/favicon.ico') return true;
+  if (pathname === '/signup' || pathname === '/onboarding' || pathname === '/api/signup' || pathname.startsWith('/api/workspace')) return true;
   if (pathname === '/api/inbound/email' || pathname === '/api/inbound/webex') return true;
   if (pathname === '/api/login' || pathname === '/api/login/users' || pathname === '/api/login/callback' || pathname === '/api/login/saml') return true;
   if (pathname.startsWith('/svc/engine/t/') || pathname.startsWith('/svc/engine/u/') || pathname.startsWith('/svc/engine/r/')) return true;
@@ -121,7 +122,8 @@ function passcodePage(error) {
   const note = error ? `<p>${error}</p>` : '<p>This preview is private. Enter the shared passcode to continue.</p>';
   return shell('Sign in', `<form method="post" action="/api/gate"><p class="tag">Private preview</p><h1>Enter the passcode</h1>${note}
 <label for="passcode">Preview passcode</label><input id="passcode" name="passcode" type="password" autocomplete="off" required>
-<button class="go" type="submit">Continue</button></form>`);
+<button class="go" type="submit">Continue</button>
+<p><a href="/signup">Create a workspace</a></p></form>`);
 }
 function landingPage() {
   return shell('Choose a role', `<main><p class="tag">Private preview</p><h1>Who are you today?</h1>
@@ -135,7 +137,8 @@ function landingPage() {
 <form method="post" action="/api/login">
 <button type="submit" name="user" value="maria"><b>Maria Alvarez</b><span>Marketer · Americas</span></button>
 <button type="submit" name="user" value="chris"><b>Chris M.</b><span>Approver · the $180,000</span></button>
-</form></main>`);
+</form>
+<p><a href="/signup">Create a workspace</a></p></main>`);
 }
 function door(req) { return previewOn() ? (readGate(req) ? landingPage() : passcodePage()) : page(); }
 
@@ -150,7 +153,8 @@ h1{font-size:36px;margin:0 0 8px;letter-spacing:-.04em;font-weight:560}p{color:#
 button{display:block;width:100%;text-align:left;margin:8px 0;padding:14px 16px;border-radius:14px;border:1px solid #2a2d34;background:#101114;color:#f5f5f7;cursor:pointer}
 button b{display:block;font-size:16px}button span{color:#9b9ba3;font-size:13px}</style>
 <form method="post" action="/api/login"><p class="tag">Demo sign-in</p><h1>Who are you today?</h1>
-<p>This picker is a demo, not company SSO. Each person has a role and a region. Spend over $150,000 needs Chris M.</p>${sso}${people}</form>`;
+<p>This picker is a demo, not company SSO. Each person has a role and a region. Spend over $150,000 needs Chris M.</p>${sso}${people}
+<p><a href="/signup">Create a workspace</a></p></form>`;
 }
 
 function send(res, code, body, headers) {
@@ -222,6 +226,10 @@ async function login(req, res) {
   else send(res, 303, '', { location: '/', 'set-cookie': auth.cookieHeader(token) });
 }
 
+function companyUser(req) {
+  try { return require('../platform/workspace').sessionUser(req); } catch (e) { return null; }
+}
+
 async function handle(req, res, pathname) {
   if (previewOn() && pathname === '/api/gate' && req.method === 'POST') {
     if (limited(req, pathname)) { send(res, 429, JSON.stringify({ error: 'Too many requests. Please wait a minute.' }), { 'content-type': 'application/json' }); return true; }
@@ -229,6 +237,11 @@ async function handle(req, res, pathname) {
     return true;
   }
   if (pathname === '/api/login/users' && req.method === 'GET') {
+    const company = companyUser(req);
+    if (company) {
+      send(res, 200, JSON.stringify({ provider: 'workspace', demo: false, users: [require('../platform/workspace').publicUser(company)] }), { 'content-type': 'application/json' });
+      return true;
+    }
     let users = auth.USERS.filter(u => u.role !== 'admin');
     if (previewOn()) users = users.filter(u => u.id === 'maria' || u.id === 'chris');
     send(res, 200, JSON.stringify({ provider: auth.provider(), demo: true, users: users.map(auth.publicUser) }), { 'content-type': 'application/json' });
@@ -243,15 +256,19 @@ async function handle(req, res, pathname) {
     send(res, 200, JSON.stringify({ ok: true }), { 'content-type': 'application/json', 'set-cookie': 'mops_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax' });
     return true;
   }
+  const company = companyUser(req);
   const user = auth.fromRequest(req);
-  req.mopsUser = user || null;
+  req.mopsUser = company || user || null;
   if (exempt(pathname)) return false;
   if (pathname === '/api/session' && req.method === 'GET') {
-    if (!user) { send(res, 401, JSON.stringify({ error: 'sign in required' }), { 'content-type': 'application/json' }); return true; }
-    send(res, 200, JSON.stringify({ user: auth.publicUser(user), provider: auth.provider() }), { 'content-type': 'application/json' });
+    if (!req.mopsUser) { send(res, 401, JSON.stringify({ error: 'sign in required' }), { 'content-type': 'application/json' }); return true; }
+    const body = company
+      ? { user: require('../platform/workspace').publicUser(company), provider: 'workspace' }
+      : { user: auth.publicUser(user), provider: auth.provider() };
+    send(res, 200, JSON.stringify(body), { 'content-type': 'application/json' });
     return true;
   }
-  if (!user) {
+  if (!req.mopsUser) {
     if (limited(req, pathname)) {
       const json = (req.headers.accept || '').includes('json') || pathname.startsWith('/api/');
       if (json) send(res, 429, JSON.stringify({ error: 'Too many requests. Please wait a minute.' }), { 'content-type': 'application/json' });

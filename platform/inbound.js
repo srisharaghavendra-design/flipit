@@ -21,9 +21,12 @@ function writeJson(file, value) {
   fs.writeFileSync(file, JSON.stringify(value));
 }
 
-function feed() {
+function feed(tenantId) {
   const rows = readJson(feedFile(), []);
-  return Array.isArray(rows) ? rows : [];
+  const list = Array.isArray(rows) ? rows : [];
+  if (!tenantId) return list;
+  if (tenantId === 'demo') return list.filter(row => !row.tenantId || row.tenantId === 'demo');
+  return list.filter(row => row.tenantId === tenantId);
 }
 
 function same(a, b) {
@@ -67,6 +70,22 @@ function visible(text) {
     out.push(line);
   }
   return out.join('\n').trim();
+}
+
+function collect(value, into) {
+  if (!value) return;
+  if (Array.isArray(value)) { for (const item of value) collect(item, into); return; }
+  if (typeof value === 'object') { collect(value.email || value.address, into); return; }
+  const matches = String(value).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
+  for (const match of matches) into.push(match.toLowerCase());
+}
+
+function plusSlug(addresses) {
+  for (const addr of addresses || []) {
+    const match = String(addr).match(/\+([a-z0-9-]+)@/i);
+    if (match) return match[1].toLowerCase();
+  }
+  return '';
 }
 
 function askText(subject, text) {
@@ -116,7 +135,11 @@ function parseEmail(body) {
   const eventId = String(body.event_id || body.eventId || messageId);
   const inboxId = String(msg.inbox_id || body.inbox_id || process.env.AGENTMAIL_INBOX_ID || '');
   const eventType = String(body.event_type || body.eventType || 'message.received');
-  return { from, name: nameOf(fromRaw, from), subject, text, messageId, eventId, inboxId, eventType };
+  const to = [];
+  collect(msg.to || msg.to_ || body.to, to);
+  collect(msg.recipients, to);
+  collect(msg.delivered_to || body.delivered_to, to);
+  return { from, name: nameOf(fromRaw, from), subject, text, messageId, eventId, inboxId, eventType, to };
 }
 
 function note(row) {
@@ -138,15 +161,15 @@ function remember(id, result) {
   writeJson(seenFile(), all);
 }
 
-async function applyAsk({ email, name, text, channel, source, messageId }) {
+async function applyAsk({ email, name, text, channel, source, messageId, tenant, role }) {
   const sandbox = require('../backend/sandbox');
-  const dir = await sandbox.senderDir(email);
-  const token = sandbox.signWorkspace(email);
-  return sandbox.run(dir, async () => {
+  const dir = tenant ? require('./workspace').dirOf(tenant.id) : await sandbox.senderDir(email);
+  const token = tenant ? '' : sandbox.signWorkspace(email);
+  const run = async () => {
     const platform = require('./index');
     await platform.ensure();
     const brain = require('./brain');
-    const out = await brain.ask({ text, channel, actor: name || email, role: roleFor(email) });
+    const out = await brain.ask({ text, channel, actor: name || email, role: role || roleFor(email) });
     const reply = out.reply || out.error || 'The ask did not match.';
     const db = require('./db').current();
     await require('./log').append(db, {
@@ -160,7 +183,11 @@ async function applyAsk({ email, name, text, channel, source, messageId }) {
     });
     if (db.checkpoint) db.checkpoint();
     return { reply, matched: out.matched !== false && out.ok !== false, askId: out.askId || '', token };
-  });
+  };
+  if (!tenant) return sandbox.run(dir, run);
+  return sandbox.run(dir, () => require('./scope').bind({
+    id: tenant.id, name: tenant.name, color: tenant.color, inbound: tenant.inbound
+  }, run));
 }
 
 async function postJson(url, opts) {
@@ -184,12 +211,12 @@ async function deliverEmail(parsed, text) {
   return { ok: sent.status >= 200 && sent.status < 300, status: sent.status, body: sent.body };
 }
 
-async function deliverWebex({ roomId, messageId, text }) {
-  const token = String(process.env.WEBEX_BOT_TOKEN || '');
-  if (!token || !roomId) return { ok: false, reason: 'Webex reply is not configured.' };
+async function deliverWebex({ roomId, messageId, text, token }) {
+  const key = token || String(process.env.WEBEX_BOT_TOKEN || '');
+  if (!key || !roomId) return { ok: false, reason: 'Webex reply is not configured.' };
   const sent = await postJson('https://webexapis.com/v1/messages', {
     method: 'POST',
-    headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+    headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
     body: JSON.stringify({ roomId, parentId: messageId || undefined, markdown: text })
   });
   return { ok: sent.status >= 200 && sent.status < 300, status: sent.status, body: sent.body };
@@ -199,10 +226,60 @@ function replyText(reply, link) {
   return reply + '\n\nOpen this workspace: ' + link + '\n\n— @mops';
 }
 
+async function workspaceLink(req, tenant, email) {
+  const catalog = require('./catalog');
+  if (!catalog.member(tenant.id, email)) return origin(req) + '/signup';
+  const token = crypto.randomBytes(24).toString('base64url');
+  catalog.saveMagic(token, tenant.id, email);
+  return origin(req) + '/api/workspace/magic?token=' + encodeURIComponent(token);
+}
+
+async function runWorkspaceEmail(parsed, req, slug) {
+  const catalog = require('./catalog');
+  const tenant = catalog.bySlug(slug);
+  if (!tenant) return { status: 404, body: { ok: false, error: 'No workspace uses that address.' } };
+  if (!parsed.from || !parsed.messageId) return { status: 400, body: { ok: false, error: 'The email needs a sender and a message id.' } };
+  const member = catalog.member(tenant.id, parsed.from);
+  if (!member && !allow('MOPS_EMAIL_ALLOWLIST').includes(parsed.from)) return { status: 403, body: { ok: false, error: 'That sender is not on the allow list.' } };
+  const seenId = 'email:' + (parsed.eventId || parsed.messageId);
+  const again = prior(seenId);
+  if (again) return { status: 200, body: Object.assign({}, again, { idempotent: true }) };
+  const text = askText(parsed.subject, parsed.text);
+  const applied = await applyAsk({
+    email: parsed.from,
+    name: parsed.name,
+    text,
+    channel: 'Email',
+    source: `Email from ${parsed.from}${parsed.subject ? ', “' + parsed.subject.slice(0, 120) + '”' : ''}`,
+    messageId: parsed.messageId,
+    tenant,
+    role: member && member.role === 'approver' ? 'approver' : 'marketer'
+  });
+  const link = await workspaceLink(req, tenant, parsed.from);
+  const outgoing = replyText(applied.reply, link);
+  let delivered = { ok: false };
+  try { delivered = await deliverEmail(parsed, outgoing); } catch (e) { delivered = { ok: false, reason: e.message }; }
+  const result = { ok: true, channel: 'Email', from: parsed.from, reply: applied.reply, link, askId: applied.askId, delivered: !!delivered.ok, idempotent: false, workspace: tenant.slug };
+  remember(seenId, result);
+  note({
+    id: seenId,
+    at: new Date().toISOString(),
+    channel: 'Email',
+    actor: parsed.from,
+    source: parsed.subject || parsed.messageId,
+    message: applied.reply,
+    why: `Tagged @mops from email. ${parsed.subject || 'No subject.'}`,
+    tenantId: tenant.id
+  });
+  return { status: 200, body: result };
+}
+
 async function runEmail(parsed, req) {
   const own = String(process.env.AGENTMAIL_INBOX_ID || '').toLowerCase();
   if (own && parsed.from === own) return { status: 200, body: { ok: true, ignored: true, reason: 'Own message.' } };
   if (parsed.eventType && parsed.eventType !== 'message.received') return { status: 200, body: { ok: true, ignored: true } };
+  const slug = plusSlug(parsed.to);
+  if (slug) return runWorkspaceEmail(parsed, req, slug);
   if (!parsed.from || !parsed.messageId) return { status: 400, body: { ok: false, error: 'The email needs a sender and a message id.' } };
   if (!allow('MOPS_EMAIL_ALLOWLIST').includes(parsed.from)) return { status: 403, body: { ok: false, error: 'That sender is not on the allow list.' } };
   const seenId = 'email:' + (parsed.eventId || parsed.messageId);
@@ -244,9 +321,9 @@ async function runEmail(parsed, req) {
   return { status: 200, body: result };
 }
 
-async function loadWebexMessage(data) {
+async function loadWebexMessage(data, tenant) {
   if (data.text) return data;
-  const token = String(process.env.WEBEX_BOT_TOKEN || '');
+  const token = (tenant && tenant.webex_token) || String(process.env.WEBEX_BOT_TOKEN || '');
   if (!token || !data.id) return data;
   const got = await postJson('https://webexapis.com/v1/messages/' + encodeURIComponent(data.id), {
     method: 'GET',
@@ -255,15 +332,16 @@ async function loadWebexMessage(data) {
   return Object.assign({}, data, got.body || {});
 }
 
-async function runWebex(payload, req) {
-  const data = await loadWebexMessage(payload.data || {});
+async function runWebex(payload, req, tenant) {
+  const data = await loadWebexMessage(payload.data || {}, tenant);
   const from = addressOf(data.personEmail || data.person_email);
-  const bot = String(process.env.WEBEX_BOT_EMAIL || '').toLowerCase();
+  const bot = String((tenant && tenant.webex_email) || process.env.WEBEX_BOT_EMAIL || '').toLowerCase();
   if (bot && from === bot) return { status: 200, body: { ok: true, ignored: true, reason: 'Own message.' } };
   const text = String(data.text || data.markdown || '');
   if (!/@mops/i.test(text)) return { status: 200, body: { ok: true, ignored: true, reason: 'Not a tag.' } };
   if (!from || !data.id) return { status: 400, body: { ok: false, error: 'The Webex message needs a sender and an id.' } };
-  if (!allow('MOPS_WEBEX_ALLOWLIST').includes(from)) return { status: 403, body: { ok: false, error: 'That sender is not on the allow list.' } };
+  const member = tenant ? require('./catalog').member(tenant.id, from) : null;
+  if (!(member || allow('MOPS_WEBEX_ALLOWLIST').includes(from))) return { status: 403, body: { ok: false, error: 'That sender is not on the allow list.' } };
   const seenId = 'webex:' + data.id;
   const again = prior(seenId);
   if (again) return { status: 200, body: Object.assign({}, again, { idempotent: true }) };
@@ -273,12 +351,14 @@ async function runWebex(payload, req) {
     text,
     channel: 'Webex',
     source: `Webex from ${from}`,
-    messageId: data.id
+    messageId: data.id,
+    tenant: tenant || null,
+    role: member ? (member.role === 'approver' ? 'approver' : 'marketer') : undefined
   });
-  const link = origin(req) + '/?ws=' + encodeURIComponent(applied.token);
+  const link = tenant ? await workspaceLink(req, tenant, from) : origin(req) + '/?ws=' + encodeURIComponent(applied.token);
   const outgoing = replyText(applied.reply, link);
   let delivered = { ok: false };
-  try { delivered = await deliverWebex({ roomId: data.roomId, messageId: data.id, text: outgoing }); } catch (e) { delivered = { ok: false, reason: e.message }; }
+  try { delivered = await deliverWebex({ roomId: data.roomId, messageId: data.id, text: outgoing, token: tenant && tenant.webex_token }); } catch (e) { delivered = { ok: false, reason: e.message }; }
   const result = {
     ok: true,
     channel: 'Webex',
@@ -298,7 +378,8 @@ async function runWebex(payload, req) {
     actor: from,
     source: 'Webex',
     message: applied.reply,
-    why: 'Tagged @mops from Webex.'
+    why: 'Tagged @mops from Webex.',
+    tenantId: tenant ? tenant.id : ''
   });
   return { status: 200, body: result };
 }
@@ -324,12 +405,14 @@ async function http(req, res, u) {
       return send(res, result.status, result.body);
     }
     if (pathname === '/api/inbound/webex') {
-      if (!sparkOk(raw, header(req, 'x-spark-signature'))) return send(res, 401, { ok: false, error: 'Bad signature.' });
+      const sig = header(req, 'x-spark-signature');
+      const tenant = sparkOk(raw, sig) ? null : require('./catalog').matchWebex(raw, sig);
+      if (!sparkOk(raw, sig) && !tenant) return send(res, 401, { ok: false, error: 'Bad signature.' });
       let body = {};
       try { body = JSON.parse(raw || '{}'); } catch (e) { return send(res, 400, { ok: false, error: 'That was not valid JSON.' }); }
       if (body.resource && body.resource !== 'messages') return send(res, 200, { ok: true, ignored: true });
       if (body.event && body.event !== 'created') return send(res, 200, { ok: true, ignored: true });
-      const result = await runWebex(body, req);
+      const result = await runWebex(body, req, tenant);
       return send(res, result.status, result.body);
     }
     return send(res, 404, { ok: false, error: 'Unknown inbound route.' });
