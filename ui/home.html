@@ -267,6 +267,8 @@ li.just .tick { animation: pop .45s ease; }
   <h2>Behind the scenes</h2>
   <div id="trace"></div>
 </aside>
+<script>window.__MOPS_SANDBOX__ = ("__SANDBOX_FLAG__" === "true");</script>
+<script src="/sandbox.js"></script>
 <script>
 const storedChannel = localStorage.getItem('mops-channel');
 if (storedChannel) document.querySelector('#channel').value = storedChannel;
@@ -910,6 +912,7 @@ async function load() {
     api('/api/platform/insights/dashboard')
   ]);
   state.user = session.user;
+  window.__MOPS_UID = (session.user && session.user.id) || '';
   state.users = users.users || [];
   state.metrics = metrics;
   state.campaigns = camps.rows || [];
@@ -1116,6 +1119,14 @@ document.querySelector('#report').addEventListener('click', () => {
 document.querySelector('#reset').addEventListener('click', async () => {
   if (!confirm('Start the demo over? This clears what @mops did today.')) return;
   try {
+    if (window.__MOPS_SANDBOX__ && window.mopsSandboxReset) {
+      window.mopsSandboxReset();
+      localStorage.removeItem(SAVED_KEY);
+      localStorage.removeItem(SAVED_LOG);
+      localStorage.removeItem(REJECT_KEY);
+      location.reload();
+      return;
+    }
     await api('/api/platform/reset', { method: 'POST', body: '{}' });
     localStorage.removeItem(SAVED_KEY);
     localStorage.removeItem(SAVED_LOG);

@@ -15,18 +15,26 @@ const why = require('./why');
 const { MODULES } = require('./modules');
 
 const PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-let ready = null;
+const ready = new Map();
+let workerOn = false;
 
 function ensure() {
-  if (!ready) {
-    ready = (async () => {
+  let key = '';
+  try { key = require('../backend/sandbox').currentDir() || ''; } catch (e) { key = ''; }
+  if (key && !require('./db').peek(key)) ready.delete(key);
+  if (!ready.has(key)) {
+    ready.set(key, (async () => {
       const database = await open();
       await seed.run(database);
-      require('./live').startWorker();
+      const sandbox = require('../backend/sandbox');
+      if (!workerOn && !sandbox.enabled() && process.env.VERCEL !== '1') {
+        workerOn = true;
+        require('./live').startWorker();
+      }
       return database;
-    })().catch((e) => { ready = null; throw e; });
+    })().catch((e) => { ready.delete(key); throw e; }));
   }
-  return ready;
+  return ready.get(key);
 }
 
 function readBody(req) {
@@ -170,11 +178,34 @@ async function handle(req, res, u) {
     if (method === 'POST' && p === '/api/platform/ops/demo') {
       const body = await parseBody(req);
       const live = require('./live');
-      return json(res, 200, await live.armDemo({
-        spanMs: body.spanMs == null ? 60000 : Number(body.spanMs),
+      const sandbox = require('../backend/sandbox');
+      const paced = sandbox.enabled() || process.env.VERCEL === '1';
+      const armed = await live.armDemo({
+        spanMs: paced ? 0 : (body.spanMs == null ? 60000 : Number(body.spanMs)),
         actor: actor(req),
         channel: body.channel || 'App'
-      }), started);
+      });
+      if (!paced) return json(res, 200, armed, started);
+      const database = require('./db').current();
+      const before = await database.get('SELECT COALESCE(MAX(id), 0) AS n FROM ops_events');
+      try {
+        await live.drain();
+      } catch (e) {
+        console.error('ops drain', e && e.message || e);
+        return json(res, 200, { ...armed, paced: true, fallback: true, events: sandbox.trace(), snapshot: await live.snapshot().catch(() => ({})) }, started);
+      }
+      const events = await database.all('SELECT id, at, service, kind, message, actor, channel, source, why FROM ops_events WHERE id > ? ORDER BY id', [before.n]);
+      const snapshot = await live.snapshot();
+      return json(res, 200, { ...armed, paced: true, events: events.length ? events : sandbox.trace(), snapshot }, started);
+    }
+    if (method === 'POST' && p === '/api/platform/ops/tick') {
+      const live = require('./live');
+      const stepped = await live.tick();
+      const snapshot = await live.snapshot();
+      return json(res, 200, { ...snapshot, stepped }, started);
+    }
+    if (method === 'GET' && p === '/platform/ops-trace.json') {
+      return json(res, 200, { events: require('../backend/sandbox').trace() }, started);
     }
     if (method === 'GET' && p === '/api/platform/ops/stream') return require('./live').stream(req, res);
     if (method === 'POST' && p === '/api/platform/reset') return json(res, 200, await seed.reset(require('./db').current()), started);

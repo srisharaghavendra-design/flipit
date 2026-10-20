@@ -19,11 +19,21 @@ fs.statSync(path.join(__dirname,'platform/migrations/002_engage.sql'));
 fs.statSync(path.join(__dirname,'platform/migrations/003_ops.sql'));
 fs.statSync(path.join(__dirname,'platform/migrations/004_brain.sql'));
 fs.statSync(path.join(__dirname,'platform/migrations/005_live.sql'));
+fs.statSync(path.join(__dirname,'ui/sandbox.js'));
+fs.statSync(path.join(__dirname,'platform/ops-trace.json'));
 fs.statSync(path.join(__dirname,'platform/samples/chicago-attendees.xlsx'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/abm_target_list.csv'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/booth_badge_scans.xlsx'));
 fs.statSync(path.join(__dirname,'backend/test/fixtures/event_attendees_export.xlsx'));
-let db=JSON.parse(fs.readFileSync(DB));db.company=brandCompany();const save=()=>fs.writeFileSync(DB,JSON.stringify(db));
+let db=JSON.parse(fs.readFileSync(DB));db.company=brandCompany();
+let jsonFile=DB;
+const save=()=>fs.writeFileSync(jsonFile,JSON.stringify(db));
+function bindJson(dir){
+  const file=dir?path.join(dir,'data.json'):DB;
+  if(dir&&!fs.existsSync(file))fs.copyFileSync(path.join(__dirname,'data.seed.json'),file);
+  if(file===jsonFile)return;
+  db=JSON.parse(fs.readFileSync(file));db.company=brandCompany();jsonFile=file;
+}
 const KEY=process.env.MOPS_API_KEY,BASE=process.env.MOPS_API_BASE||'https://api.x.ai/v1',MODEL=process.env.MOPS_MODEL||'grok-4';
 // Mail never leaves the process. An external MOPS_SMTP_URL is ignored on purpose.
 let sender={name:'in-process-catcher',send(m){try{require('./backend/mail').deliver({from:process.env.MOPS_FROM||'mops@mops.local',to:m.to,subject:m.subject,text:m.body})}catch(e){console.error('mail',e.message)}}};
@@ -178,7 +188,7 @@ function attachLog(req,res){const journal=require('./backend/journal');
   res.end=function(chunk,enc,cb){try{if(req._mopsLog&&chunk!=null){const text=Buffer.isBuffer(chunk)?chunk.toString('utf8'):String(chunk);
     if(text.charCodeAt(0)===123){const obj=JSON.parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj)&&obj.mopsLog==null){obj.mopsLog=req._mopsLog;chunk=JSON.stringify(obj)}}}}catch(e){console.error('embed log',e&&e.message||e)}
     return origEnd(chunk,enc,cb)}}
-function servePage(res,file){try{let raw=fs.readFileSync(file);if(raw.includes('__BRAND__')||raw.includes('__BRAND_JSON__')){const name=brandName();const safe=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));raw=raw.toString('utf8').replaceAll('__BRAND_JSON__',JSON.stringify(name)).replaceAll('__BRAND__',safe)}res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(raw)}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
+function servePage(res,file){try{let raw=fs.readFileSync(file);const text=raw.toString('utf8');if(text.includes('__BRAND__')||text.includes('__BRAND_JSON__')||text.includes('__SANDBOX_FLAG__')){const name=brandName();const safe=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const sandbox=require('./backend/sandbox').enabled()?'true':'false';raw=text.replaceAll('__BRAND_JSON__',JSON.stringify(name)).replaceAll('__BRAND__',safe).replaceAll('__SANDBOX_FLAG__',sandbox)}res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(raw)}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
 async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;try{u=new URL(req.url,'http://x')}catch(e){u=new URL('/','http://x')}const p=u.pathname;
  if(p==='/login'||p==='/login/'){res.writeHead(303,{location:'/','cache-control':'no-store'});return res.end()}
  if(p==='/api/logout'&&req.method==='POST'){res.writeHead(200,{'content-type':'application/json','cache-control':'no-store','set-cookie':'mops_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax'});return res.end('{"ok":true}')}
@@ -188,7 +198,19 @@ async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;
  attachLog(req,res);
  try{
  if(await guard.handle(req,res,p))return;
- if(p.startsWith('/platform')||p.startsWith('/api/platform'))return require('./platform').handle(req,res,u);
+ if((p==='/api/sandbox'||p==='/api/sandbox/sync')){
+  const sandbox=require('./backend/sandbox');
+  if(req.method==='GET'&&p==='/api/sandbox')return J(res,{enabled:sandbox.enabled(),expiresMs:sandbox.BOX_MS});
+  if(req.method==='POST'&&p==='/api/sandbox/sync'){const raw=await body(req);let log=[];try{log=JSON.parse(raw||'{}').log||[]}catch(e){log=[]}return J(res,await sandbox.sync(log))}
+  res.writeHead(404);return res.end('not found');
+ }
+ if(p.startsWith('/platform')||p.startsWith('/api/platform')){
+  const sandbox=require('./backend/sandbox');
+  if(req.method==='GET'&&!p.startsWith('/api/'))return require('./platform').handle(req,res,u);
+  const dir=await sandbox.prepare(req,res);
+  if(dir===false)return;
+  return sandbox.run(dir,()=>{bindJson(dir);return require('./platform').handle(req,res,u)});
+ }
  if(p==='/')return servePage(res,path.join(__dirname,'ui','home.html'));
  if(p==='/classic'||p==='/classic/')return servePage(res,path.join(__dirname,'ui','index.html'));
  if(p==='/engine'||p==='/engine/')return servePage(res,path.join(__dirname,'ui','engine.html'));

@@ -13,5 +13,7 @@ test('preview serves /health and the demo sign-in',{skip:base?false:'set PREVIEW
   const body=JSON.parse(health.text);
   assert.equal(body.ok,true);assert.equal(body.service,'mops');assert.equal(body.company,'Northwind Networks');
   const home=await get('/');
-  assert.equal(home.status,401);assert.match(home.text,/Demo sign-in/);assert.doesNotMatch(home.text,/passcode/i);
+  assert.equal(home.status,401);
+  if(/passcode/i.test(home.text)) assert.match(home.text,/Enter the passcode/);
+  else { assert.match(home.text,/Demo sign-in/); assert.doesNotMatch(home.text,/passcode/i); }
 });

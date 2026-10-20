@@ -411,6 +411,8 @@ function architecture() {
 }
 
 function opsPage() {
+  const sandboxOn = require('../backend/sandbox').enabled();
+  const paced = sandboxOn || process.env.VERCEL === '1';
   const mark = esc(brandName());
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${mark} live ops</title>
 <style>
@@ -444,18 +446,23 @@ h1{font-size:18px;margin:0 0 8px;letter-spacing:-.02em}
   <iframe title="Marketer desk" src="/"></iframe>
   <aside>
     <h1>Backend trace</h1>
-    <p id="status">Waiting for the stream.</p>
+    <p id="status">${paced ? 'Press Run live demo. The jobs play back for about a minute.' : 'Waiting for the stream.'}</p>
     <div id="meter"></div>
     <div id="checks"></div>
     <div id="feed"></div>
   </aside>
 </div>
+<script>window.__MOPS_SANDBOX__=${sandboxOn ? 'true' : 'false'};</script>
+<script src="/sandbox.js"></script>
 <script>
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const streamUrl='/api/platform/ops/stream';
+const paced=${paced ? 'true' : 'false'};
 const feed=document.querySelector('#feed');
 const seen=new Set();
 let paintTimer=null;
 function refresh(){
+  if(paced)return;
   clearTimeout(paintTimer);
   paintTimer=setTimeout(async()=>{
     try{const r=await fetch('/api/platform/ops/snapshot'); if(r.ok) paint(await r.json());}catch(e){}
@@ -491,16 +498,39 @@ document.querySelector('#run').onclick=async()=>{
   btn.disabled=true;
   document.querySelector('#status').textContent='Chicago run is playing. About one minute.';
   try{
-    await fetch('/api/platform/ops/demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spanMs:60000,channel:'App'})});
+    if(!paced){
+      await fetch('/api/platform/ops/demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spanMs:60000,channel:'App'})});
+      return;
+    }
+    const res=await fetch('/api/platform/ops/demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spanMs:0,channel:'App'})});
+    const data=await res.json();
+    const events=data.events||[];
+    const step=Math.max(700,Math.round(60000/Math.max(events.length,1)));
+    let i=0;
+    await new Promise(resolve=>{
+      const timer=setInterval(()=>{
+        if(i>=events.length){clearInterval(timer);resolve();return}
+        add(events[i++]);
+      },step);
+    });
+    if(data.snapshot) paint(data.snapshot);
+    const frame=document.querySelector('iframe');
+    if(frame) frame.src='/';
+    document.querySelector('#status').textContent=data.fallback?'Played the recorded Chicago trace.':'Chicago run finished.';
+    btn.disabled=false;
   }catch(e){document.querySelector('#status').textContent=e.message||String(e);btn.disabled=false}
 };
-const source=new EventSource('/api/platform/ops/stream');
-source.addEventListener('snapshot',ev=>{paint(JSON.parse(ev.data));document.querySelector('#status').textContent='Live. Each line is a job the worker just persisted.';});
-source.onmessage=ev=>{try{add(JSON.parse(ev.data))}catch(e){}};
-['segment','queue','consent','deliver','drip','sync','upload','budget','sow','approve','rollup','report','meter','start','done','error','note'].forEach(name=>{
-  source.addEventListener(name,ev=>{try{add(JSON.parse(ev.data))}catch(e){}});
-});
-source.onerror=()=>{document.querySelector('#status').textContent='Reconnecting to the stream.';};
+if(!paced){
+  const source=new EventSource(streamUrl);
+  source.addEventListener('snapshot',ev=>{paint(JSON.parse(ev.data));document.querySelector('#status').textContent='Live. Each line is a job the worker just persisted.';});
+  source.onmessage=ev=>{try{add(JSON.parse(ev.data))}catch(e){}};
+  ['segment','queue','consent','deliver','drip','sync','upload','budget','sow','approve','rollup','report','meter','start','done','error','note'].forEach(name=>{
+    source.addEventListener(name,ev=>{try{add(JSON.parse(ev.data))}catch(e){}});
+  });
+  source.onerror=()=>{document.querySelector('#status').textContent='Reconnecting to the stream.';};
+}else{
+  fetch('/api/platform/ops/snapshot').then(r=>r.ok?r.json():null).then(body=>{if(body)paint(body)}).catch(()=>{});
+}
 </script>`;
 }
 

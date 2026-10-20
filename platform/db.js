@@ -6,6 +6,8 @@ const { DATA } = require('../backend/lib');
 const { adapt, toPg, statements, planDriver } = require('./sql');
 
 let singleton = null;
+const opened = new Map();
+const opening = new Map();
 
 function cacheWrap(sqlite) {
   const cache = new Map();
@@ -42,15 +44,20 @@ function cacheWrap(sqlite) {
   return api;
 }
 
-function openSqlite() {
+function openSqlite(dir) {
   const Database = require('better-sqlite3');
-  fs.mkdirSync(DATA, { recursive: true });
-  const sqlite = new Database(path.join(DATA, 'platform.db'));
+  const root = dir || DATA;
+  fs.mkdirSync(root, { recursive: true });
+  const file = path.join(root, 'platform.db');
+  const sqlite = new Database(file);
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('synchronous = NORMAL');
   sqlite.pragma('foreign_keys = ON');
   sqlite.pragma('busy_timeout = 5000');
-  return cacheWrap(sqlite);
+  const api = cacheWrap(sqlite);
+  api.file = file;
+  api.checkpoint = () => { sqlite.pragma('wal_checkpoint(TRUNCATE)'); };
+  return api;
 }
 
 function openPostgres() {
@@ -104,7 +111,37 @@ async function migrate(database) {
   }
 }
 
+function activeKey() {
+  try {
+    const dir = require('../backend/sandbox').currentDir();
+    return dir || '';
+  } catch (e) { return ''; }
+}
+
 async function open() {
+  const key = activeKey();
+  if (key) {
+    if (opened.has(key)) return opened.get(key);
+    let pending = opening.get(key);
+    if (!pending) {
+      pending = (async () => {
+        const db = openSqlite(key);
+        await migrate(db);
+        opened.set(key, db);
+        if (opened.size > 8) {
+          for (const [dir, database] of opened) {
+            if (dir === key) continue;
+            try { if (database.close) database.close(); } catch (e) {}
+            opened.delete(dir);
+            if (opened.size <= 8) break;
+          }
+        }
+        return db;
+      })();
+      opening.set(key, pending);
+    }
+    try { return await pending; } finally { opening.delete(key); }
+  }
   if (singleton) return singleton;
   const plan = planDriver();
   if (plan.error) throw new Error(plan.error);
@@ -114,8 +151,16 @@ async function open() {
 }
 
 function current() {
+  const key = activeKey();
+  if (key) {
+    const db = opened.get(key);
+    if (!db) throw new Error('Platform database is not open yet');
+    return db;
+  }
   if (!singleton) throw new Error('Platform database is not open yet');
   return singleton;
 }
 
-module.exports = { open, current, planDriver };
+function peek(dir) { return opened.get(dir) || null; }
+
+module.exports = { open, current, peek, planDriver };
