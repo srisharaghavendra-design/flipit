@@ -95,6 +95,14 @@ Brain API: 11 screens, 22 fields, 45 minutes to check policy and the why across 
 
 Those minutes are an operator baseline for the old tools, not a stopwatch of an employee. The seconds are the median of real runs stored in `ask_runs`. Reads on the seeded book (5,000 contacts, 300 accounts, 40 campaigns, four regions) stay under 300ms.
 
+## Live ops
+
+`/platform/ops` is the watchable backend. The marketer desk stays in the left pane. The right pane is a server-sent stream of jobs, queue depth, CRM sync payloads, warehouse rollups, command checks, and the efficiency meter.
+
+Engage keeps a real send queue. A worker delivers one invite at a time, holds anyone who is not opted in, and writes opens and clicks as they arrive. The CRM bridge maps the attendee file, assigns the territory AE or SDR, and stores the outbound payload. The warehouse rolls activities into campaign-day rows on a nightly beat, and those rows feed the weekly and monthly decks. Command Center keeps the campaign, the budget, the SOW, and the purchase order, with Chris's approval and the three human-check fields. Every ops line has a plain-English why and a source: email, Webex, or the user ask. The meter compares each task's old-tool baseline minutes with the measured milliseconds, against a 20x line.
+
+Run live demo plays the Chicago flow in about a minute. The same chain can be drained immediately in tests.
+
 ## Enterprise path
 
 This demo is one SQLite file, fictional data, and the demo sign-in. The wordmark is `BRAND_NAME` (default Northwind). Production is the same modules with a harder edge:

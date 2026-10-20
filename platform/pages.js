@@ -17,6 +17,7 @@ const ICONS = {
   plan: '<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
   insights: '<path d="M5 19V10M10 19V5M15 19v-7M20 19V8"/>',
   brain: '<path d="M9 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.5A3.5 3.5 0 0 0 9 18h1V5zM15 5a3 3 0 0 1 3 3 3 3 0 0 1 1 5.5A3.5 3.5 0 0 1 15 18h-1V5z"/>',
+  ops: '<path d="M4 14h4l2-8 4 12 2-4h4"/>',
   ask: '<path d="M5 6h14v8H9l-4 3z"/>',
   arch: '<path d="M4 20h16M6 20V10l6-6 6 6v10M10 20v-5h4v5"/>'
 };
@@ -30,6 +31,7 @@ function layout(active, body) {
     ['/platform/spend', 'Spend', 'plan'],
     ['/platform/insights', 'Insights', 'insights'],
     ['/platform/brain', 'Brain', 'brain'],
+    ['/platform/ops', 'Ops', 'ops'],
     ['/platform/ask', 'Ask', 'ask'],
     ['/platform/architecture', 'Architecture', 'arch']
   ].map(([href, label, id]) => `<a href="${href}" class="${id === active ? 'on' : ''}"><svg viewBox="0 0 24 24">${ICONS[id]}</svg><span>${label}</span></a>`).join('');
@@ -155,7 +157,7 @@ document.querySelector('#reset').onclick=async()=>{
 function home() {
   const cards = MODULES.map(m => `<article class="card" data-module="${esc(m.id)}" data-status="${esc(m.status)}"><span class="tag ${esc(m.status)}">${esc(m.status)}</span><h2>${esc(m.name)}</h2><p>Replaces ${esc(m.replaces)}</p>${m.note ? `<p>${esc(m.note)}</p>` : ''}${m.href ? `<p><a class="btn" href="${esc(m.href)}">Open</a></p>` : ''}</article>`).join('');
   const names = Object.fromEntries(MODULES.map(m => [m.id, m.name]));
-  return layout('home', `<h1>One platform, six modules.</h1><p class="sub">Data core, Engage, CRM, Plan and spend, Insights, and the Brain API are running on this machine. Fictional ${esc(brandName())} data only.</p><div class="grid">${cards}</div><h2>What @mops did today</h2><div class="today"><div id="today" class="panel feed">Loading…</div><div id="saved" class="panel">Loading…</div></div>
+  return layout('home', `<h1>One platform, six modules.</h1><p class="sub">Data core, Engage, CRM, Plan and spend, Insights, and the Brain API are running on this machine. Fictional ${esc(brandName())} data only.</p><p class="panel"><a class="btn" href="/platform/ops">Watch it work</a> The live ops page streams the queue, the sync payloads, and the audit feed while the Chicago run plays.</p><div class="grid">${cards}</div><h2>What @mops did today</h2><div class="today"><div id="today" class="panel feed">Loading…</div><div id="saved" class="panel">Loading…</div></div>
 <script>
 const NAME=${JSON.stringify(names)};
 function noise(why){return /Loaded the fictional .+ book|Scored from title|Minted the campaign code from the region|Recorded \\$|Recorded opted_in|Recorded opted_out|Recorded unknown consent|Approved \\$180,000 because Chris/.test(why||'')}
@@ -408,4 +410,98 @@ function architecture() {
   return layout('arch', `<article class="arch">${html}</article>`);
 }
 
-module.exports = { home, dataPage, engagePage, askPage, crmPage, spendPage, insightsPage, brainPage, architecture };
+function opsPage() {
+  const mark = esc(brandName());
+  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${mark} live ops</title>
+<style>
+:root{color-scheme:light;--ink:#1c1b19;--muted:#6b675f;--line:#e6e2da;--bg:#f3f2ef;--card:#fff;--accent:#0f6e56}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 ui-sans-serif,system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line)}
+a{color:var(--accent);text-decoration:none}
+.logo{color:var(--ink);font-weight:700;letter-spacing:-.03em}
+button{background:var(--accent);color:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:650;cursor:pointer}
+button[disabled]{opacity:.6}
+.depths{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.depths span{background:#e7f4ef;color:var(--accent);border-radius:999px;padding:3px 8px;font-size:12px;font-weight:650}
+.split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);height:calc(100vh - 58px)}
+iframe{width:100%;height:100%;border:0;background:#fff}
+aside{overflow:auto;border-left:1px solid var(--line);padding:12px 14px 28px;background:#faf9f7}
+h1{font-size:18px;margin:0 0 8px;letter-spacing:-.02em}
+.meter,.event,.check{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:0 0 8px}
+.meter b{font-variant-numeric:tabular-nums}
+.event small,.check small{color:var(--muted)}
+.goal{color:var(--accent);font-weight:700}
+@media(max-width:900px){.split{grid-template-columns:1fr;height:auto}iframe{height:70vh}aside{border-left:0;border-top:1px solid var(--line)}}
+</style>
+<header>
+  <a class="logo" href="/platform">${mark}</a>
+  <a href="/platform/ops">Live ops</a>
+  <button id="run" type="button">Run live demo</button>
+  <div class="depths" id="depths"></div>
+</header>
+<div class="split">
+  <iframe title="Marketer desk" src="/"></iframe>
+  <aside>
+    <h1>Backend trace</h1>
+    <p id="status">Waiting for the stream.</p>
+    <div id="meter"></div>
+    <div id="checks"></div>
+    <div id="feed"></div>
+  </aside>
+</div>
+<script>
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const feed=document.querySelector('#feed');
+const seen=new Set();
+let paintTimer=null;
+function refresh(){
+  clearTimeout(paintTimer);
+  paintTimer=setTimeout(async()=>{
+    try{const r=await fetch('/api/platform/ops/snapshot'); if(r.ok) paint(await r.json());}catch(e){}
+  },120);
+}
+function add(ev){
+  if(!ev||ev.id==null||seen.has(ev.id))return;
+  seen.add(ev.id);
+  const row=document.createElement('article');
+  row.className='event';
+  row.innerHTML='<small>'+esc(ev.service)+' · '+esc(ev.channel||'')+' · '+esc(ev.source||'')+'</small><br>'+esc(ev.message||ev.why||'');
+  feed.prepend(row);
+  while(feed.children.length>80)feed.removeChild(feed.lastChild);
+  refresh();
+}
+function paint(body){
+  const mail=body.mail||{};
+  const jobs=body.jobs||{};
+  document.querySelector('#depths').innerHTML=[
+    'Queue '+Number(mail.queued||0),
+    'Delivered '+Number(mail.delivered||0),
+    'Held '+Number(mail.held||0),
+    'Jobs '+Number(jobs.queued||0),
+    'Sync '+(body.sync||[]).length,
+    'Mart '+(body.mart||[]).length
+  ].map(t=>'<span>'+esc(t)+'</span>').join('');
+  document.querySelector('#meter').innerHTML=(body.efficiency||[]).map(s=>'<article class="meter"><b>'+esc(s.task)+'</b> · '+s.baseline_min+' min → '+s.measured_ms+' ms · '+s.ratio+'x <span class="goal">'+(s.pastGoal?'past 20x':'under 20x')+'</span></article>').join('');
+  document.querySelector('#checks').innerHTML=(body.checks||[]).map(c=>'<article class="check"><small>'+esc(c.label)+' · '+esc(c.status)+'</small><br>'+esc(c.value||'Waiting on a person')+'</article>').join('');
+  (body.events||[]).slice().reverse().forEach(add);
+}
+document.querySelector('#run').onclick=async()=>{
+  const btn=document.querySelector('#run');
+  btn.disabled=true;
+  document.querySelector('#status').textContent='Chicago run is playing. About one minute.';
+  try{
+    await fetch('/api/platform/ops/demo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spanMs:60000,channel:'App'})});
+  }catch(e){document.querySelector('#status').textContent=e.message||String(e);btn.disabled=false}
+};
+const source=new EventSource('/api/platform/ops/stream');
+source.addEventListener('snapshot',ev=>{paint(JSON.parse(ev.data));document.querySelector('#status').textContent='Live. Each line is a job the worker just persisted.';});
+source.onmessage=ev=>{try{add(JSON.parse(ev.data))}catch(e){}};
+['segment','queue','consent','deliver','drip','sync','upload','budget','sow','approve','rollup','report','meter','start','done','error','note'].forEach(name=>{
+  source.addEventListener(name,ev=>{try{add(JSON.parse(ev.data))}catch(e){}});
+});
+source.onerror=()=>{document.querySelector('#status').textContent='Reconnecting to the stream.';};
+</script>`;
+}
+
+module.exports = { home, dataPage, engagePage, askPage, crmPage, spendPage, insightsPage, brainPage, architecture, opsPage };

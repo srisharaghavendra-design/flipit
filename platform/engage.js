@@ -211,6 +211,61 @@ async function send({ segmentId, templateId, campaignId, actor, channel, sourceM
   return { id: sendId, sent: allowed.length, held: held.length, heldSample: held.slice(0, 8).map(h => ({ email: h.email, status: h.consent_status })), sample: sample.slice(0, 5), idempotent: false, ...(await rates(sendId)) };
 }
 
+async function beginQueue({ segmentId, templateId, campaignId, actor, channel, sourceMessage, idempotencyKey }) {
+  const d = db();
+  if (idempotencyKey) {
+    const prev = await d.get('SELECT * FROM sends WHERE idempotency_key = ?', [idempotencyKey]);
+    if (prev && prev.sent > 0) {
+      const people = await d.all('SELECT contact_id, email, token FROM send_recipients WHERE send_id = ? ORDER BY contact_id', [prev.id]);
+      return { sendId: prev.id, already: true, sent: prev.sent, held: prev.held, queued: [], people };
+    }
+    if (prev) return { sendId: prev.id, already: false, sent: 0, held: prev.held, queued: [], heldRows: [] };
+  }
+  const seg = await d.get('SELECT * FROM segments WHERE id = ?', [segmentId]);
+  if (!seg) fail(404, 'Unknown segment');
+  const template = await d.get('SELECT * FROM templates WHERE id = ?', [templateId]);
+  if (!template) fail(404, 'Unknown template');
+  const campaign = await d.get('SELECT * FROM campaigns WHERE id = ?', [campaignId]);
+  if (!campaign) fail(404, 'Unknown campaign');
+  const found = await members(JSON.parse(seg.rules_json));
+  if (found.tooMany) fail(400, `Narrow the segment. ${found.count} contacts is too many for one send.`);
+  const allowed = found.rows.filter(c => c.consent_status === 'opted_in');
+  const held = found.rows.filter(c => c.consent_status !== 'opted_in');
+  const sendId = 'SND-' + crypto.randomBytes(4).toString('hex');
+  await d.tx(async (q) => {
+    await q.run('INSERT INTO sends(id, segment_id, template_id, campaign_id, idempotency_key, actor, channel, source_message, sent, held, at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)',
+      [sendId, segmentId, templateId, campaignId, idempotencyKey || null, actor || 'Engage', channel || 'App', sourceMessage || '', held.length, now()]);
+    await append(q, { entity: 'sends', entityId: sendId, op: 'insert', actor, channel, sourceMessage, why: `Queued the ${template.name} for ${allowed.length}. Held ${held.length} without opted-in consent.`, after: { queued: allowed.length, held: held.length, campaignId } });
+  });
+  return {
+    sendId, already: false, sent: 0, held: held.length,
+    queued: allowed.map(c => ({ id: c.id, email: c.email, name: [c.first_name, c.last_name].filter(Boolean).join(' ') })),
+    heldRows: held.map(c => ({ id: c.id, email: c.email, status: c.consent_status }))
+  };
+}
+
+async function deliverContact(sendId, contactId, ctx = {}) {
+  const d = db();
+  const send = await d.get('SELECT * FROM sends WHERE id = ?', [sendId]);
+  if (!send) fail(404, 'Unknown send');
+  const contact = await d.get(`${SELECT} ${FROM} WHERE c.id = ?`, [contactId]);
+  if (!contact) return { held: true, reason: 'Unknown contact' };
+  if (contact.consent_status !== 'opted_in') {
+    const reason = contact.consent_status === 'opted_out' ? 'Unsubscribed. Consent is opted out.' : 'Held. Consent is not opted in.';
+    return { held: true, reason, email: contact.email };
+  }
+  const already = await d.get('SELECT token FROM send_recipients WHERE send_id = ? AND contact_id = ?', [sendId, contactId]);
+  if (already) return { delivered: true, duplicate: true, token: already.token, email: contact.email };
+  const template = await d.get('SELECT * FROM templates WHERE id = ?', [send.template_id]);
+  const campaign = await d.get('SELECT * FROM campaigns WHERE id = ?', [send.campaign_id]);
+  let sample;
+  await d.tx(async (q) => {
+    sample = await deliverOne(q, { contact, template, campaign, sendId, actor: ctx.actor, channel: ctx.channel || 'Email', sourceMessage: ctx.sourceMessage });
+    await q.run('UPDATE sends SET sent = sent + 1 WHERE id = ?', [sendId]);
+  });
+  return { delivered: true, duplicate: false, email: contact.email, token: sample.token, name: contact.first_name };
+}
+
 async function rescore(q, contactId, why, actor) {
   const before = await q.get('SELECT fit, score, stage FROM contacts WHERE id = ?', [contactId]);
   const kinds = await q.all('SELECT kind FROM activities WHERE contact_id = ?', [contactId]);
@@ -422,5 +477,5 @@ async function register(slug, fields, ctx = {}) {
 
 module.exports = {
   MQL_THRESHOLD, SEND_CAP, OPEN_RATE, CLICK_RATE, compile, preview, members, listSegments, saveSegment, listTemplates, saveTemplate,
-  send, getSend, listSends, sendLog, simulate, mark, scores, listJourneys, enrollClickers, tickJourney, page, pageHtml, register, merge
+  send, beginQueue, deliverContact, getSend, listSends, sendLog, simulate, mark, scores, listJourneys, enrollClickers, tickJourney, page, pageHtml, register, merge
 };

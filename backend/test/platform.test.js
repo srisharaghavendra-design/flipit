@@ -826,3 +826,94 @@ test('marketer home runs the demo without the consoles', { timeout: 300000 }, as
     stack.stop();
   }
 });
+
+test('live ops services persist the Chicago run', { timeout: 180000 }, async () => {
+  const { ensure } = require('../../platform');
+  const { current } = require('../../platform/db');
+  const live = require('../../platform/live');
+  const engage = require('../../platform/engage');
+  const warehouse = require('../../platform/warehouse');
+  const pages = require('../../platform/pages');
+  const { BASELINES } = require('../../platform/modules');
+  await ensure();
+  live.stopWorker();
+  const db = current();
+  const armed = await live.armDemo({ spanMs: 0, actor: 'Maria Alvarez', channel: 'Webex', source: 'user ask' });
+  assert.equal(armed.stepMs, 0);
+  const steps = await live.drain();
+  assert.ok(steps > 40, 'expected the Chicago chain to run, got ' + steps);
+  const errors = await db.all("SELECT kind, error FROM ops_jobs WHERE run_id = ? AND status = 'error'", [armed.runId]);
+  assert.deepEqual(errors, []);
+
+  const send = await db.get("SELECT id, sent, held FROM sends WHERE idempotency_key = 'live:chicago'");
+  assert.ok(send, 'live send should be on the book');
+  assert.equal(send.sent, 30);
+  const rates = await db.get('SELECT COUNT(*) AS n, COALESCE(SUM(opened), 0) AS opened, COALESCE(SUM(clicked), 0) AS clicked FROM send_recipients WHERE send_id = ?', [send.id]);
+  assert.equal(rates.n, 30);
+  assert.equal(rates.opened, Math.round(30 * engage.OPEN_RATE));
+  assert.equal(rates.clicked, Math.round(30 * engage.CLICK_RATE));
+  const delivered = await db.get("SELECT COUNT(*) AS n FROM mail_jobs WHERE run_id = ? AND status = 'delivered'", [armed.runId]);
+  assert.equal(delivered.n, 30);
+  const held = await db.all("SELECT reason FROM mail_jobs WHERE status = 'held'");
+  assert.ok(held.some(row => /Unsubscribed/.test(row.reason || '')), 'an opted-out contact should be held');
+
+  const sync = await db.all('SELECT payload_json, why FROM sync_payloads');
+  assert.ok(sync.length > 0);
+  const payloads = sync.map(row => JSON.parse(row.payload_json));
+  assert.ok(payloads.some(row => row.email || row.ownerId || row.type));
+  assert.ok(sync.every(row => row.why));
+
+  const mart = await db.get("SELECT sent, opened, clicked FROM mart_campaign_day WHERE campaign_id = 'CAMP-CHI' ORDER BY sent DESC LIMIT 1");
+  assert.ok(mart && mart.sent >= 1);
+  const roll = await db.get("SELECT status, why FROM rollup_runs WHERE status = 'done' ORDER BY at DESC LIMIT 1");
+  assert.equal(roll.status, 'done');
+  assert.match(roll.why, /warehouse mart/);
+  await db.run('UPDATE scheduler_beats SET next_at = ? WHERE id = ?', [new Date(Date.now() - 1000).toISOString(), 'nightly-rollup']);
+  const ran = await warehouse.runScheduler(new Date().toISOString());
+  assert.ok(ran.some(row => row.job === 'nightly-rollup'));
+  const beat = await db.get('SELECT next_at FROM scheduler_beats WHERE id = ?', ['nightly-rollup']);
+  assert.ok(Date.parse(beat.next_at) > Date.now());
+
+  const checks = await db.all("SELECT field_key, value, status FROM command_checks WHERE campaign_id = 'CAMP-CHI' ORDER BY field_key");
+  assert.deepEqual(checks.map(row => row.field_key), ['our_pm', 'po_number', 'venue_contact']);
+  assert.equal(checks.find(row => row.field_key === 'our_pm').value, 'Maria Alvarez');
+  assert.equal(checks.find(row => row.field_key === 'po_number').value, 'PO-2044');
+  assert.equal(checks.find(row => row.field_key === 'venue_contact').value, 'Jordan Hale');
+  assert.ok(checks.every(row => row.status === 'approved'));
+
+  const events = await db.all('SELECT why, source, channel, kind FROM ops_events');
+  assert.ok(events.length > 10);
+  assert.ok(events.every(row => row.why && row.channel && row.source));
+  assert.ok(events.some(row => row.channel === 'Webex' && row.source === 'user ask'));
+  assert.ok(events.some(row => row.channel === 'Email'));
+  assert.equal(events.filter(row => /Minted and/.test(row.why)).length, 0);
+  assert.ok(events.some(row => row.kind === 'done'));
+
+  const samples = await db.all('SELECT task, baseline_min, measured_ms, ratio FROM efficiency_samples WHERE id LIKE ?', [armed.runId + ':%']);
+  assert.deepEqual(samples.map(row => row.task).sort(), ['brain', 'crm', 'data', 'engage', 'insights', 'plan']);
+  for (const row of samples) {
+    assert.equal(row.baseline_min, BASELINES[row.task].minutes);
+    assert.ok(row.ratio >= live.GOAL, row.task + ' ratio ' + row.ratio);
+    assert.equal(row.ratio, live.ratio(row.baseline_min, row.measured_ms));
+  }
+  assert.equal(live.ratio(35, 100), 21000);
+
+  const html = pages.opsPage();
+  assert.match(html, /Run live demo/);
+  assert.match(html, /iframe/);
+  assert.match(html, /\/api\/platform\/ops\/stream/);
+  const writes = [];
+  const res = { writeHead() {}, write(chunk) { writes.push(String(chunk)); return true; } };
+  const req = { on() {} };
+  const drop = live.stream(req, res);
+  const started = Date.now();
+  while (!writes.some(chunk => chunk.includes('event: snapshot')) && Date.now() - started < 2000) {
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  assert.ok(writes.some(chunk => chunk.includes('event: snapshot')));
+  assert.ok(writes.some(chunk => chunk.includes('\ndata:')));
+  drop();
+  const before = writes.length;
+  await live.emit({ service: 'ops', kind: 'note', message: 'after drop', actor: 'Maria Alvarez', channel: 'App', source: 'user ask', why: 'The listener already closed.' });
+  assert.equal(writes.length, before);
+});

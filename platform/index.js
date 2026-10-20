@@ -22,6 +22,7 @@ function ensure() {
     ready = (async () => {
       const database = await open();
       await seed.run(database);
+      require('./live').startWorker();
       return database;
     })().catch((e) => { ready = null; throw e; });
   }
@@ -78,6 +79,7 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/platform/insights') return html(res, pages.insightsPage());
     if (method === 'GET' && p === '/platform/brain') return html(res, pages.brainPage());
     if (method === 'GET' && p === '/platform/architecture') return html(res, pages.architecture());
+    if (method === 'GET' && p === '/platform/ops') return html(res, pages.opsPage());
     if (method === 'GET' && p === '/platform/samples/chicago-attendees.xlsx') {
       const buf = crm.sample.buffer();
       res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-disposition': 'attachment; filename="chicago-attendees.xlsx"', 'cache-control': 'no-store' });
@@ -164,6 +166,17 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/api/platform/insights/dashboard') return json(res, 200, await insights.dashboard(u.searchParams.get('region') || ''), started);
     if (method === 'GET' && p === '/api/platform/brain/policy') return json(res, 200, { rules: policy.RULES, chicago: policy.explain(180000) }, started);
     if (method === 'GET' && p === '/api/platform/brain/why') return json(res, 200, await why.feed({ q: u.searchParams.get('q') || '', limit: u.searchParams.get('limit') || 40 }), started);
+    if (method === 'GET' && p === '/api/platform/ops/snapshot') return json(res, 200, await require('./live').snapshot(), started);
+    if (method === 'POST' && p === '/api/platform/ops/demo') {
+      const body = await parseBody(req);
+      const live = require('./live');
+      return json(res, 200, await live.armDemo({
+        spanMs: body.spanMs == null ? 60000 : Number(body.spanMs),
+        actor: actor(req),
+        channel: body.channel || 'App'
+      }), started);
+    }
+    if (method === 'GET' && p === '/api/platform/ops/stream') return require('./live').stream(req, res);
     if (method === 'POST' && p === '/api/platform/reset') return json(res, 200, await seed.reset(require('./db').current()), started);
     if (method === 'GET' && (m = p.match(/^\/api\/platform\/insights\/reports\/(weekly|monthly)\.(pptx|pdf)$/))) {
       const region = u.searchParams.get('region') || (m[1] === 'monthly' ? 'portfolio' : 'Americas');
