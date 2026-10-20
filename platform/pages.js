@@ -410,8 +410,8 @@ function architecture() {
   return layout('arch', `<article class="arch">${html}</article>`);
 }
 
-function opsPage() {
-  const sandboxOn = require('../backend/sandbox').enabled();
+function opsPage(opts) {
+  const sandboxOn = require('../backend/sandbox').enabled() && !(opts && opts.workspace);
   const paced = sandboxOn || process.env.VERCEL === '1';
   const mark = esc(brandName());
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${mark} live ops</title>
@@ -450,6 +450,9 @@ h1{font-size:18px;margin:0 0 8px;letter-spacing:-.02em}
     <div id="meter"></div>
     <div id="checks"></div>
     <div id="feed"></div>
+    <h2 style="font-size:15px;margin:16px 0 6px">Email and Webex</h2>
+    <p id="inbox-status">Waiting for a tag.</p>
+    <div id="inbox"></div>
   </aside>
 </div>
 <script>window.__MOPS_SANDBOX__=${sandboxOn ? 'true' : 'false'};</script>
@@ -520,6 +523,18 @@ document.querySelector('#run').onclick=async()=>{
     btn.disabled=false;
   }catch(e){document.querySelector('#status').textContent=e.message||String(e);btn.disabled=false}
 };
+async function pollInbox(){
+  try{
+    const r=await fetch('/api/platform/ops/inbox');
+    if(!r.ok)return;
+    const body=await r.json();
+    const rows=body.events||[];
+    document.querySelector('#inbox-status').textContent=rows.length?(rows.length+' tag'+(rows.length===1?'':'s')+' on this instance.'):'Waiting for a tag.';
+    document.querySelector('#inbox').innerHTML=rows.slice(0,20).map(ev=>'<article class="event"><small>'+esc(ev.channel)+' · '+esc(ev.actor)+' · '+esc(ev.source)+'</small><br>'+esc(ev.message)+'</article>').join('');
+  }catch(e){}
+}
+pollInbox();
+setInterval(pollInbox,2000);
 if(!paced){
   const source=new EventSource(streamUrl);
   source.addEventListener('snapshot',ev=>{paint(JSON.parse(ev.data));document.querySelector('#status').textContent='Live. Each line is a job the worker just persisted.';});

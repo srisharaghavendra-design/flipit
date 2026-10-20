@@ -22,6 +22,7 @@ function clientIp(req) {
 
 function exempt(pathname) {
   if (pathname === '/health' || pathname === '/healthz' || pathname === '/favicon.ico') return true;
+  if (pathname === '/api/inbound/email' || pathname === '/api/inbound/webex') return true;
   if (pathname === '/api/login' || pathname === '/api/login/users' || pathname === '/api/login/callback' || pathname === '/api/login/saml') return true;
   if (pathname.startsWith('/svc/engine/t/') || pathname.startsWith('/svc/engine/u/') || pathname.startsWith('/svc/engine/r/')) return true;
   if (pathname.startsWith('/t/') || pathname.startsWith('/r/')) return true;

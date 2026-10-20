@@ -101,6 +101,11 @@ function requestedHash(req) {
 }
 
 async function prepare(req, res) {
+  const ws = workspaceFromRequest(req);
+  if (ws) {
+    maybeSweep();
+    return senderDir(ws.email);
+  }
   if (!enabled()) return null;
   maybeSweep();
   await materializeEmpty();
@@ -211,15 +216,98 @@ async function sync(log) {
   return { ok: true, hash: prev, enabled: true, expiresMs: BOX_MS };
 }
 
+function secret() { return process.env.MOPS_SESSION_SECRET || 'mops-demo-workspace'; }
+
+function same(a, b) {
+  const x = Buffer.from(String(a));
+  const y = Buffer.from(String(b));
+  if (!x.length || x.length !== y.length) return false;
+  return crypto.timingSafeEqual(x, y);
+}
+
+function senderId(email) {
+  return crypto.createHash('sha256').update('mops-sender-v1\n' + String(email || '').toLowerCase()).digest('hex').slice(0, 24);
+}
+
+async function senderDir(email) {
+  const id = senderId(email);
+  const dir = path.join(root(), 'senders', id);
+  const metaPath = path.join(dir, 'meta.json');
+  if (fs.existsSync(metaPath)) {
+    try {
+      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      if (meta.created && Date.now() - meta.created > BOX_MS) fs.rmSync(dir, { recursive: true, force: true });
+    } catch (e) { /* recopy below */ }
+  }
+  if (fs.existsSync(path.join(dir, 'platform.db'))) return dir;
+  let pending = buildLocks.get('sender:' + id);
+  if (!pending) {
+    pending = (async () => {
+      await ensureTemplate();
+      if (!fs.existsSync(path.join(dir, 'platform.db'))) {
+        copyDb(templateDir(), dir);
+        fs.writeFileSync(metaPath, JSON.stringify({ email: String(email).toLowerCase(), created: Date.now() }));
+      }
+      return dir;
+    })();
+    buildLocks.set('sender:' + id, pending);
+  }
+  try { return await pending; } finally { buildLocks.delete('sender:' + id); }
+}
+
+function signWorkspace(email) {
+  const payload = Buffer.from(JSON.stringify({ e: String(email).toLowerCase(), exp: Date.now() + BOX_MS })).toString('base64url');
+  const sig = crypto.createHmac('sha256', secret()).update(payload).digest('base64url');
+  return payload + '.' + sig;
+}
+
+function readWorkspace(token) {
+  const raw = String(token || '');
+  const cut = raw.lastIndexOf('.');
+  if (cut <= 0) return null;
+  const payload = raw.slice(0, cut);
+  const sig = raw.slice(cut + 1);
+  const want = crypto.createHmac('sha256', secret()).update(payload).digest('base64url');
+  if (!same(sig, want)) return null;
+  try {
+    const body = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!body || !body.e || !(body.exp > Date.now())) return null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.e)) return null;
+    return { email: body.e, exp: body.exp };
+  } catch (e) { return null; }
+}
+
+function cookies(req) {
+  const out = {};
+  for (const part of String((req.headers && req.headers.cookie) || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return out;
+}
+
+function workspaceFromRequest(req) { return readWorkspace(cookies(req).mops_ws); }
+
+function workspaceCookie(token) {
+  const secure = (process.env.VERCEL || process.env.NODE_ENV === 'production') ? '; Secure' : '';
+  return `mops_ws=${encodeURIComponent(token)}; HttpOnly; Path=/; Max-Age=${Math.floor(BOX_MS / 1000)}; SameSite=Lax${secure}`;
+}
+
 function sweep() {
   const now = Date.now();
-  for (const bucket of ['cache', 'work']) {
+  for (const bucket of ['cache', 'work', 'senders']) {
     const dir = path.join(root(), bucket);
     if (!fs.existsSync(dir)) continue;
     const limit = bucket === 'work' ? 15 * 60 * 1000 : BOX_MS;
     for (const name of fs.readdirSync(dir)) {
       const full = path.join(dir, name);
       try {
+        if (bucket === 'senders') {
+          const metaPath = path.join(full, 'meta.json');
+          const meta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {};
+          if (meta.created && now - meta.created > limit) fs.rmSync(full, { recursive: true, force: true });
+          continue;
+        }
         const stat = fs.statSync(full);
         if (now - stat.mtimeMs > limit) fs.rmSync(full, { recursive: true, force: true });
       } catch (e) { /* a request is using it */ }
@@ -242,4 +330,4 @@ function trace() {
   } catch (e) { return []; }
 }
 
-module.exports = { enabled, currentDir, run, prepare, sync, EMPTY, BOX_MS, trace, fold };
+module.exports = { enabled, currentDir, run, prepare, sync, EMPTY, BOX_MS, trace, fold, senderDir, signWorkspace, readWorkspace, workspaceFromRequest, workspaceCookie };

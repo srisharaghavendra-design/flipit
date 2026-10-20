@@ -87,7 +87,10 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/platform/insights') return html(res, pages.insightsPage());
     if (method === 'GET' && p === '/platform/brain') return html(res, pages.brainPage());
     if (method === 'GET' && p === '/platform/architecture') return html(res, pages.architecture());
-    if (method === 'GET' && p === '/platform/ops') return html(res, pages.opsPage());
+    if (method === 'GET' && p === '/platform/ops') {
+      const workspace = !!require('../backend/sandbox').workspaceFromRequest(req);
+      return html(res, pages.opsPage({ workspace }));
+    }
     if (method === 'GET' && p === '/platform/samples/chicago-attendees.xlsx') {
       const buf = crm.sample.buffer();
       res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-disposition': 'attachment; filename="chicago-attendees.xlsx"', 'cache-control': 'no-store' });
@@ -175,6 +178,7 @@ async function handle(req, res, u) {
     if (method === 'GET' && p === '/api/platform/brain/policy') return json(res, 200, { rules: policy.RULES, chicago: policy.explain(180000) }, started);
     if (method === 'GET' && p === '/api/platform/brain/why') return json(res, 200, await why.feed({ q: u.searchParams.get('q') || '', limit: u.searchParams.get('limit') || 40 }), started);
     if (method === 'GET' && p === '/api/platform/ops/snapshot') return json(res, 200, await require('./live').snapshot(), started);
+    if (method === 'GET' && p === '/api/platform/ops/inbox') return json(res, 200, { events: require('./inbound').feed() }, started);
     if (method === 'POST' && p === '/api/platform/ops/demo') {
       const body = await parseBody(req);
       const live = require('./live');

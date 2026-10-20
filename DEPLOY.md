@@ -80,3 +80,7 @@ Fastest rollback, no code:
 To roll back in git as well: on the pull request, click **Revert**, then merge the revert. The next production deploy is FlipIt again.
 
 The old Render / Docker files are gone on purpose. Do not add a paid host for this demo.
+
+## Preview only: email and Webex
+
+The private preview can take a tag from email or Webex. Do not point either of those at flipit.fyi, and do not change DNS. Use a free AgentMail inbox and a free Webex bot. The steps are in the README section "Tag @mops from email or Webex". Set `INBOUND_WEBHOOK_SECRET`, `MOPS_EMAIL_ALLOWLIST`, and the Webex variables on the Preview environment only. Leave `BRAND_NAME` unset. Turn off Deployment Protection for Preview or the webhook never reaches the function. Production mail stays in the in-process catcher.

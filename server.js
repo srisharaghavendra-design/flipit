@@ -188,8 +188,9 @@ function attachLog(req,res){const journal=require('./backend/journal');
   res.end=function(chunk,enc,cb){try{if(req._mopsLog&&chunk!=null){const text=Buffer.isBuffer(chunk)?chunk.toString('utf8'):String(chunk);
     if(text.charCodeAt(0)===123){const obj=JSON.parse(text);if(obj&&typeof obj==='object'&&!Array.isArray(obj)&&obj.mopsLog==null){obj.mopsLog=req._mopsLog;chunk=JSON.stringify(obj)}}}}catch(e){console.error('embed log',e&&e.message||e)}
     return origEnd(chunk,enc,cb)}}
-function servePage(res,file){try{let raw=fs.readFileSync(file);const text=raw.toString('utf8');if(text.includes('__BRAND__')||text.includes('__BRAND_JSON__')||text.includes('__SANDBOX_FLAG__')){const name=brandName();const safe=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const sandbox=require('./backend/sandbox').enabled()?'true':'false';raw=text.replaceAll('__BRAND_JSON__',JSON.stringify(name)).replaceAll('__BRAND__',safe).replaceAll('__SANDBOX_FLAG__',sandbox)}res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(raw)}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
-async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;try{u=new URL(req.url,'http://x')}catch(e){u=new URL('/','http://x')}const p=u.pathname;
+function servePage(res,file,req){try{let raw=fs.readFileSync(file);const text=raw.toString('utf8');if(text.includes('__BRAND__')||text.includes('__BRAND_JSON__')||text.includes('__SANDBOX_FLAG__')){const name=brandName();const safe=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const workspace=req&&require('./backend/sandbox').workspaceFromRequest(req);const sandbox=require('./backend/sandbox').enabled()&&!workspace?'true':'false';raw=text.replaceAll('__BRAND_JSON__',JSON.stringify(name)).replaceAll('__BRAND__',safe).replaceAll('__SANDBOX_FLAG__',sandbox)}res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(raw)}catch(e){console.error('page',e&&e.message||e);if(!res.headersSent)J(res,{error:'The page did not load. Please retry.'},500)}}
+function pinWorkspace(req,res){let token='';try{token=new URL(req.url||'/','http://x').searchParams.get('ws')||''}catch(e){token=''}const sandbox=require('./backend/sandbox');if(!token||!sandbox.readWorkspace(token))return;const cookie=sandbox.workspaceCookie(token);const orig=res.writeHead.bind(res);res.writeHead=function(code,h){const headers=h&&typeof h==='object'&&!Array.isArray(h)?Object.assign({},h):{};const prev=headers['set-cookie'];const list=prev==null?[]:(Array.isArray(prev)?prev.slice():[prev]);list.push(cookie);headers['set-cookie']=list;return orig(code,headers)}}
+async function handleInner(req,res){pinWorkspace(req,res);const HUB=require('./backend/hub.js');let u;try{u=new URL(req.url,'http://x')}catch(e){u=new URL('/','http://x')}const p=u.pathname;
  if(p==='/login'||p==='/login/'){res.writeHead(303,{location:'/','cache-control':'no-store'});return res.end()}
  if(p==='/api/logout'&&req.method==='POST'){res.writeHead(200,{'content-type':'application/json','cache-control':'no-store','set-cookie':'mops_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax'});return res.end('{"ok":true}')}
  if(p==='/health'||p==='/healthz'||p==='/api/health')return J(res,{ok:true,service:'mops',company:brandCompany()});
@@ -198,6 +199,7 @@ async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;
  attachLog(req,res);
  try{
  if(await guard.handle(req,res,p))return;
+ if((p==='/api/inbound/email'||p==='/api/inbound/webex')&&req.method==='POST')return require('./platform/inbound').http(req,res,u);
  if((p==='/api/sandbox'||p==='/api/sandbox/sync')){
   const sandbox=require('./backend/sandbox');
   if(req.method==='GET'&&p==='/api/sandbox')return J(res,{enabled:sandbox.enabled(),expiresMs:sandbox.BOX_MS});
@@ -211,10 +213,10 @@ async function handleInner(req,res){const HUB=require('./backend/hub.js');let u;
   if(dir===false)return;
   return sandbox.run(dir,()=>{bindJson(dir);return require('./platform').handle(req,res,u)});
  }
- if(p==='/')return servePage(res,path.join(__dirname,'ui','home.html'));
- if(p==='/classic'||p==='/classic/')return servePage(res,path.join(__dirname,'ui','index.html'));
- if(p==='/engine'||p==='/engine/')return servePage(res,path.join(__dirname,'ui','engine.html'));
- if(p==='/engine/data'||p==='/engine/data/')return servePage(res,path.join(__dirname,'ui','data.html'));
+ if(p==='/')return servePage(res,path.join(__dirname,'ui','home.html'),req);
+ if(p==='/classic'||p==='/classic/')return servePage(res,path.join(__dirname,'ui','index.html'),req);
+ if(p==='/engine'||p==='/engine/')return servePage(res,path.join(__dirname,'ui','engine.html'),req);
+ if(p==='/engine/data'||p==='/engine/data/')return servePage(res,path.join(__dirname,'ui','data.html'),req);
  await ready();
  if(p==='/api/carry'&&req.method==='POST')return carry(req,res);
  if(p==='/health'||p==='/healthz')return J(res,{ok:true,service:'mops',company:brandCompany()});
