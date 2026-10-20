@@ -14,3 +14,4 @@ shots/
 *.duckdb.wal
 *.log
 .DS_Store
+.vercel
