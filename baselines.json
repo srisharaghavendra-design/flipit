@@ -1,0 +1,190 @@
+{
+  "_label": "Baselines v3 (19 Oct 2026). Sources are labelled per task: SRISHA = Srisha's estimate of his own manual time; ASSUMPTION = sourced or reasoned assumption, labelled; PLACEHOLDER = unverified, excluded from the headline 20x numbers.",
+  "_mopsHumanNote": "mopsHumanMinutes = ASSUMED human time with @mops (typing/reviewing/approving). Machine time is measured separately from runs.",
+  "touchMinutes": 0.5,
+  "tasks": {
+    "code": {
+      "label": "Campaign code",
+      "kinds": [
+        "Campaign code"
+      ],
+      "source": "SRISHA",
+      "sourceNote": "Srisha's estimate: 10 min for the campaign code alone",
+      "baselineMinutes": 10,
+      "baselineHandoffs": 1,
+      "baselineToolSwitches": 2,
+      "baselineSteps": 5,
+      "mopsHumanMinutes": 0.25,
+      "mopsHumanNote": "assumed: glance at the generated code (fields come from the one intake)"
+    },
+    "code_sfdc": {
+      "label": "Campaign code + SFDC upload",
+      "kinds": [
+        "SFDC campaign"
+      ],
+      "source": "SRISHA",
+      "sourceNote": "Srisha's estimate: 15 min. Time goes into mapping the event/ABM Excel to the SFDC upload template and finding the SFDC owner ID (SDR/AE)",
+      "baselineMinutes": 15,
+      "baselineHandoffs": 1,
+      "baselineToolSwitches": 3,
+      "baselineSteps": 8,
+      "mopsHumanMinutes": 0.5,
+      "mopsHumanNote": "assumed: review auto-mapping + owner IDs"
+    },
+    "budget": {
+      "label": "Budget request",
+      "kinds": [
+        "Budget request"
+      ],
+      "source": "SRISHA",
+      "sourceNote": "Srisha's estimate: 5 min",
+      "baselineMinutes": 5,
+      "baselineHandoffs": 1,
+      "baselineToolSwitches": 2,
+      "baselineSteps": 4,
+      "mopsHumanMinutes": 0.25,
+      "mopsHumanNote": "assumed: 15s to review @mops's proactive quarterly draft (goal + warehouse ROI + calendar, with reasoning) and tap Approve or adjust"
+    },
+    "sow": {
+      "label": "SOW",
+      "kinds": [
+        "SOW"
+      ],
+      "source": "SRISHA",
+      "sourceNote": "Srisha's estimate: 15-20 min, the most painful (many variables). Midpoint 17.5 used",
+      "baselineMinutes": 17.5,
+      "baselineRange": [
+        15,
+        20
+      ],
+      "baselineHandoffs": 2,
+      "baselineToolSwitches": 3,
+      "baselineSteps": 10,
+      "mopsHumanMinutes": 4,
+      "mopsHumanNote": "assumed, realistic: 3\u20135 min (4 used) to answer one @mops question (venue if not booked, our PM, agency PM, agency confirmation), do a final review of every prefilled field with its source, and sign off. NOT zero-touch.",
+      "mopsHumanRange": [
+        3,
+        5
+      ]
+    },
+    "upload": {
+      "label": "List upload (event/ABM file)",
+      "kinds": [
+        "Lead upload"
+      ],
+      "source": "ASSUMPTION",
+      "sourceNote": "ASSUMPTION, varies by format. Conservative 60 min = low end of published ranges: 1-2 h per import incl. fix/re-import loops (Integrate case study), 2-4 h per 500-row tradeshow file (FoundryOps), ~3 h per messy CSV (Cotera), ~5 h per list (Mobly case study). Vendor sources, likely inflated, hence the low end",
+      "baselineMinutes": 60,
+      "baselineRange": [
+        60,
+        180
+      ],
+      "baselineHandoffs": 2,
+      "baselineToolSwitches": 4,
+      "baselineSteps": 12,
+      "mopsHumanMinutes": 1,
+      "mopsHumanNote": "assumed: review low-confidence mappings + quarantined rows"
+    },
+    "report": {
+      "label": "Post-event report",
+      "kinds": [
+        "Insight",
+        "Lead score"
+      ],
+      "source": "ASSUMPTION",
+      "sourceNote": "ASSUMPTION: the report comes from the agency. Human time 30 min (chase, read, reformat). Elapsed wait 3 business days (72 h), an assumption, not measured",
+      "baselineMinutes": 30,
+      "baselineWaitHours": 72,
+      "baselineHandoffs": 2,
+      "baselineToolSwitches": 3,
+      "baselineSteps": 6,
+      "mopsHumanMinutes": 1,
+      "mopsHumanNote": "assumed: read the generated report"
+    },
+    "email": {
+      "label": "Segment + email",
+      "kinds": [
+        "Segment"
+      ],
+      "source": "PLACEHOLDER",
+      "baselineMinutes": 300,
+      "baselineHandoffs": 3,
+      "baselineToolSwitches": 5,
+      "baselineSteps": 18,
+      "mopsHumanMinutes": 8
+    },
+    "event": {
+      "label": "Event setup",
+      "kinds": [
+        "Event"
+      ],
+      "source": "PLACEHOLDER",
+      "baselineMinutes": 240,
+      "baselineHandoffs": 3,
+      "baselineToolSwitches": 5,
+      "baselineSteps": 16,
+      "mopsHumanMinutes": 8
+    },
+    "sync": {
+      "label": "SFDC sync fix",
+      "kinds": [
+        "Sync doctor"
+      ],
+      "source": "PLACEHOLDER",
+      "baselineMinutes": 90,
+      "baselineHandoffs": 2,
+      "baselineToolSwitches": 4,
+      "baselineSteps": 10,
+      "mopsHumanMinutes": 1
+    },
+    "attribution": {
+      "label": "Attribution",
+      "kinds": [
+        "Attribution"
+      ],
+      "source": "PLACEHOLDER",
+      "baselineMinutes": 120,
+      "baselineHandoffs": 2,
+      "baselineToolSwitches": 3,
+      "baselineSteps": 8,
+      "mopsHumanMinutes": 3
+    },
+    "shift": {
+      "label": "Budget reallocation",
+      "kinds": [
+        "Delegated:medium"
+      ],
+      "source": "PLACEHOLDER",
+      "baselineMinutes": 90,
+      "baselineHandoffs": 2,
+      "baselineToolSwitches": 3,
+      "baselineSteps": 8,
+      "mopsHumanMinutes": 1
+    },
+    "sellers": {
+      "label": "Seller push",
+      "kinds": [
+        "Target list",
+        "Delegated:low"
+      ],
+      "source": "PLACEHOLDER",
+      "baselineMinutes": 60,
+      "baselineHandoffs": 1,
+      "baselineToolSwitches": 3,
+      "baselineSteps": 6,
+      "mopsHumanMinutes": 1
+    }
+  },
+  "endToEnd": {
+    "label": "One event, intake \u2192 report (tasks Srisha estimated + labelled assumptions)",
+    "tasks": [
+      "budget",
+      "code_sfdc",
+      "sow",
+      "upload",
+      "report"
+    ],
+    "mopsIntakeMinutes": 2,
+    "mopsIntakeNote": "assumed: type or speak one @mops message with the shared fields"
+  }
+}

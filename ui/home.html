@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>__BRAND__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f3f2ef;
+  --card: #fff;
+  --ink: #1c1b19;
+  --muted: #6b675f;
+  --line: #e6e2da;
+  --accent: #0f6e56;
+  --accent-soft: #e7f4ef;
+  --you: #3d3a34;
+  --wait: #8a5a12;
+  --wait-soft: #f8f1e4;
+  --shadow: 0 1px 2px rgba(28, 27, 25, .04), 0 16px 40px rgba(28, 27, 25, .05);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 16px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; min-height: 100vh; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+h1 { font-size: 44px; line-height: 1.05; letter-spacing: -.045em; font-weight: 620; margin: 8px 0 8px; }
+h2 { font-size: 18px; letter-spacing: -.02em; margin: 0 0 12px; }
+p { margin: 0; }
+header {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+  padding: 14px 28px;
+  background: rgba(243, 242, 239, .92);
+  backdrop-filter: blur(12px);
+}
+.logo { color: var(--ink); text-decoration: none; font-weight: 680; letter-spacing: -.03em; font-size: 18px; display: inline-flex; align-items: center; gap: 8px; }
+.logo i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); display: block; }
+.saved-wrap { display: inline-flex; align-items: baseline; gap: 8px; }
+#saved { margin: 0; color: var(--muted); font-size: 14px; }
+#saved b { color: var(--ink); font-weight: 640; }
+#bump { color: var(--accent); font-weight: 700; font-size: 14px; }
+#bump.bump { animation: rise .45s ease; }
+#bump[hidden] { display: none !important; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
+#schedule { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+#schedule button { border: 0; background: transparent; border-radius: 999px; padding: 6px 12px; color: var(--muted); }
+#schedule button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 640; }
+#send, #report, .primary {
+  background: var(--accent); color: #fff; border: 1px solid var(--accent);
+  border-radius: 999px; padding: 10px 18px; font-weight: 620;
+}
+#reset, .ghost {
+  background: #fff; color: var(--ink); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 14px;
+}
+#who { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; max-width: 100%; }
+main { width: min(920px, 100%); margin: 0 auto; padding: 12px 24px 80px; }
+.lede { color: var(--muted); font-size: 17px; margin-bottom: 22px; }
+#hello-wrap { text-align: center; margin: 28px 0 18px; }
+#hello-wrap .lede { margin-bottom: 0; }
+.subline { color: var(--muted); font-size: 16px; margin: -2px 0 12px; }
+#camp-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 18px; }
+.textlink { border: 0; background: transparent; color: var(--accent); padding: 0 0 0 6px; font-weight: 620; text-decoration: underline; }
+.sum { margin: 0; }
+#composer {
+  background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+  box-shadow: var(--shadow); padding: 18px 18px 14px; margin-bottom: 18px;
+}
+#ask {
+  width: 100%; border: 0; resize: vertical; outline: none; background: transparent;
+  min-height: 72px; font-size: 18px; line-height: 1.4;
+}
+body.home #ask { min-height: 116px; font-size: 22px; }
+.composer-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+#channel-wrap { position: relative; }
+#channel-toggle {
+  border: 0; background: transparent; color: var(--muted); padding: 6px 2px; font-size: 14px;
+}
+#channel-menu {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 6;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 6px; min-width: 140px;
+}
+#channel-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; border-radius: 10px; padding: 8px 10px; }
+#channel-menu button:hover, #channel-menu button[aria-checked="true"] { background: var(--accent-soft); color: var(--accent); }
+#channel-menu[hidden], #chips[hidden], #answer[hidden], #drawer[hidden], #toast[hidden], #needs[hidden], #hello-wrap[hidden], .detail[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+#chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 8px 14px; color: var(--ink);
+}
+.chip:hover { border-color: #cfcabe; }
+#answer { margin: 0 0 18px; }
+#answer article, .your-turn {
+  background: var(--card); border-radius: 22px; border: 1px solid var(--line);
+  padding: 18px 20px; box-shadow: var(--shadow);
+  animation: rise .4s ease;
+}
+.your-turn { margin-bottom: 18px; }
+.your-turn h2, .headline { font-size: 28px; line-height: 1.15; letter-spacing: -.03em; font-weight: 700; margin: 6px 0 12px; }
+.answer-top, .card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.answer-tools { display: inline-flex; gap: 8px; align-items: center; }
+.from { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+.behind, .copy {
+  width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; color: var(--muted); display: inline-grid; place-items: center; padding: 0;
+}
+.reply p { margin: 0 0 8px; font-size: 16px; }
+.reply p:last-child { margin-bottom: 0; }
+summary { cursor: pointer; color: var(--muted); font-weight: 620; }
+details { margin-top: 12px; }
+.need-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.file-btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 16px; }
+#downloads { display: flex; flex-wrap: wrap; gap: 10px; margin: -6px 0 18px; }
+#downloads:empty { display: none; }
+#downloads a { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; text-decoration: none; font-weight: 600; }
+.section { margin: 28px 0; }
+.stack { display: grid; gap: 12px; }
+.card {
+  display: block; background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+  padding: 18px 20px; box-shadow: var(--shadow); color: inherit; text-decoration: none;
+}
+.card.large { padding: 22px 22px 18px; }
+.card.large h2 { font-size: 22px; }
+.meta, .progress, .quiet { color: var(--muted); }
+.meta { margin-top: 4px; }
+.progress { margin-top: 8px; font-size: 14px; }
+.next { margin-top: 4px; font-weight: 640; }
+.bar { height: 8px; background: #eceae6; border-radius: 999px; overflow: hidden; margin-top: 14px; }
+.bar span { display: block; height: 100%; background: var(--accent); }
+.status { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 650; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.status.wait { background: var(--wait-soft); color: var(--wait); }
+.status.plain { background: #eceae6; color: var(--you); }
+.all-camps { margin-top: 8px; }
+.all-camps summary { padding: 8px 2px; }
+.kicker { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+.lanes { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 16px; }
+.lane { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 18px 18px 8px; box-shadow: var(--shadow); min-width: 0; }
+.lane.you { background: #faf9f7; }
+.lane h2 { display: flex; align-items: center; gap: 8px; }
+.who { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 7px; }
+.who.you { background: #eceae4; color: var(--you); }
+.who.mops { background: var(--accent-soft); color: var(--accent); }
+.steps { list-style: none; padding: 0; margin: 0; }
+.steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.tick {
+  width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 1.5px solid #d9d4cb;
+  display: grid; place-items: center; color: transparent; font-size: 11px;
+}
+li.done .tick { background: var(--accent); border-color: var(--accent); color: #fff; }
+li.done.you .tick { background: var(--you); border-color: var(--you); }
+li.just .tick { animation: pop .45s ease; }
+.sow { display: grid; gap: 8px; margin-top: 10px; }
+.sow label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.sow input { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; width: 100%; font-size: 16px; color: var(--ink); opacity: 1; }
+#sow-note { font-size: 14px; color: var(--ink); }
+.stats, .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; }
+.stats article, .tiles article { min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
+.tiles { margin: 4px 0 12px; }
+.stats span, .tiles span { display: block; color: var(--muted); font-size: 13px; }
+.stats b, .tiles b { display: block; font-size: 28px; line-height: 1.1; letter-spacing: -.03em; font-weight: 680; white-space: nowrap; }
+.why { display: grid; gap: 10px; }
+.why article { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
+.source { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.back { color: var(--muted); text-decoration: none; font-size: 14px; }
+#err { color: #8d2d2d; min-height: 1.2em; }
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #fff; border-radius: 999px; padding: 10px 16px;
+  font-weight: 650; z-index: 30; box-shadow: var(--shadow);
+}
+#drawer {
+  position: fixed; top: 0; right: 0; height: 100%; width: min(420px, 100%);
+  background: #fff; z-index: 20; padding: 22px 22px 40px; overflow: auto;
+  border-left: 1px solid var(--line); box-shadow: -16px 0 40px rgba(28, 27, 25, .08);
+  transform: translateX(100%); transition: transform .28s ease;
+}
+#drawer.show { transform: translateX(0); }
+#drawer h2 { margin-top: 12px; }
+#drawer .human { margin: 16px 0 8px; padding-left: 22px; }
+#drawer .human li { margin: 0 0 10px; }
+#drawer pre { white-space: pre-wrap; word-break: break-word; background: var(--bg); border-radius: 14px; padding: 12px; font-size: 12px; line-height: 1.45; max-width: 100%; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+#ops-link { color: var(--muted); font-size: 14px; text-decoration: none; white-space: nowrap; }
+#webinar-link { color: var(--accent); background: var(--accent-soft); font-size: 14px; font-weight: 650; text-decoration: none; white-space: nowrap; border-radius: 999px; padding: 6px 12px; }
+@media (max-width: 800px) {
+  #ops-link { display: none !important; }
+  h1 { font-size: 34px; }
+  header { padding: 12px 16px; }
+  .tools { margin-left: 0; width: 100%; }
+  main { padding: 8px 16px 64px; }
+  .lanes { grid-template-columns: 1fr; }
+  body.home #ask { font-size: 18px; min-height: 96px; }
+  .headline, .your-turn h2 { font-size: 24px; }
+  .stats b, .tiles b { font-size: 24px; }
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body class="home">
+<header>
+  <a class="logo" href="#/"><i></i>__BRAND__</a>
+  <div class="saved-wrap">
+    <p id="saved">Saved today: 0m vs old tools</p>
+    <span id="bump" hidden></span>
+  </div>
+  <div class="tools">
+    <a id="webinar-link" href="/webinar">Webinar demo</a>
+    <a id="ops-link" href="/platform/ops">Watch it work</a>
+    <div id="schedule" role="group" aria-label="Report schedule">
+      <button type="button" data-period="weekly" aria-pressed="true">Weekly</button>
+      <button type="button" data-period="monthly" aria-pressed="false">Monthly</button>
+    </div>
+    <button id="report" type="button">Weekly report</button>
+    <select id="who" aria-label="Switch user"></select>
+    <button id="reset" type="button">Start over</button>
+  </div>
+</header>
+<main>
+  <div id="hello-wrap">
+    <h1 id="hello">Hey Maria</h1>
+    <p class="lede" id="hello-lede">One ask. You step in only when it needs you.</p>
+  </div>
+  <form id="composer">
+    <label class="sr-only" for="ask">Ask</label>
+    <textarea id="ask" placeholder="Tag @mops…"></textarea>
+    <div class="composer-row">
+      <div id="channel-wrap">
+        <button id="channel-toggle" type="button" aria-expanded="false" aria-controls="channel-menu">Asked from: App</button>
+        <div id="channel-menu" hidden>
+          <button type="button" data-channel="App" aria-checked="true">App</button>
+          <button type="button" data-channel="Webex" aria-checked="false">Webex</button>
+          <button type="button" data-channel="Email" aria-checked="false">Email</button>
+        </div>
+        <select id="channel" class="sr-only" aria-label="Channel" tabindex="-1">
+          <option>Email</option>
+          <option>Webex</option>
+          <option selected>App</option>
+        </select>
+      </div>
+      <button id="send" class="primary" type="submit">Ask</button>
+    </div>
+    <div id="chips">
+      <button type="button" class="chip" data-ask="@mops who can I email in Illinois">Who can I email in Illinois</button>
+      <button type="button" class="chip" data-ask="@mops send the Chicago invite to CIOs in Illinois who opened last month">Send the Chicago invite</button>
+      <button type="button" class="chip" data-ask="@mops new budget: Chicago security roundtable, $180K">File the Chicago budget</button>
+      <button type="button" class="chip" data-ask="@mops why did the Chicago venue change">Why did the venue change</button>
+    </div>
+  </form>
+  <section id="answer" hidden></section>
+  <div id="downloads"></div>
+  <div id="view"></div>
+  <p id="err"></p>
+</main>
+<div id="toast" role="status" hidden></div>
+<aside id="drawer" hidden aria-label="Behind the scenes">
+  <button id="drawer-close" class="ghost" type="button">Close</button>
+  <h2>Behind the scenes</h2>
+  <div id="trace"></div>
+</aside>
+<script>window.__MOPS_SANDBOX__ = ("__SANDBOX_FLAG__" === "true");</script>
+<script src="/sandbox.js"></script>
+<script>
+const storedChannel = localStorage.getItem('mops-channel');
+if (storedChannel) document.querySelector('#channel').value = storedChannel;
+const BRAND = __BRAND_JSON__;
+
+const NOISE = /Loaded the fictional .+ book|Scored from title|Minted the campaign code|Recorded \$|Recorded opted_in|opted_out|unknown consent|Approved \$180,000 because Chris|does not own|Recorded an open from the tracking pixel|Recorded a click from the redirect|Recorded a (?:open|click|send) on /;
+const STEPS = [
+  ['budget', 'Budget', 'you'],
+  ['code', 'Code', 'mops'],
+  ['sow', 'SOW', 'you'],
+  ['invite', 'Invite', 'mops'],
+  ['upload', 'Upload', 'you'],
+  ['report', 'Report', 'mops']
+];
+const MINUTES = { data: 20, engage: 35, crm: 25, plan: 40, insights: 30, brain: 45 };
+const SAVED_KEY = 'mops-saved-min';
+const SAVED_LOG = 'mops-saved-log';
+const REJECT_KEY = 'mops-reject-chi';
+const EYE = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>';
+const COPY = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.2" y="5.2" width="8" height="8" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.5 5.2V3.6A1.4 1.4 0 0 0 9.1 2.2H3.6A1.4 1.4 0 0 0 2.2 3.6v5.5A1.4 1.4 0 0 0 3.6 10.5H5.2" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+
+const state = { user: null, users: [], metrics: {}, campaigns: [], packets: [], sends: [], uploads: [], why: [], dash: null, mqls: 0, last: null };
+let busy = false;
+let hold = false;
+let undoTimer = null;
+let toastTimer = null;
+let seenDone = null;
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function money(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+function hours(min) {
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h && m) return h + 'h ' + m + 'm';
+  if (h) return h + 'h';
+  return m + 'm';
+}
+function savedLog() {
+  let raw = [];
+  try { raw = JSON.parse(localStorage.getItem(SAVED_LOG) || '[]'); } catch (e) { raw = []; }
+  if (!Array.isArray(raw)) raw = [];
+  const log = raw.map(n => Math.max(0, Math.round(Number(n) || 0))).filter(Boolean);
+  if (log.length) return log;
+  const legacy = Math.max(0, Math.round(Number(localStorage.getItem(SAVED_KEY)) || 0));
+  return legacy ? [legacy] : [];
+}
+function savedMinutes() { return savedLog().reduce((sum, n) => sum + n, 0); }
+function paintSaved() {
+  const log = savedLog();
+  const total = log.reduce((sum, n) => sum + n, 0);
+  document.querySelector('#saved').textContent = 'Saved today: ' + hours(total) + ' vs old tools';
+  const bump = document.querySelector('#bump');
+  const last = log.length ? log[log.length - 1] : 0;
+  if (!last) { bump.hidden = true; bump.textContent = ''; return; }
+  bump.hidden = false;
+  bump.textContent = '+' + last + ' min';
+}
+function addSaved(min) {
+  const n = Math.max(0, Math.round(Number(min) || 0));
+  if (!n) return;
+  const log = savedLog();
+  log.push(n);
+  localStorage.setItem(SAVED_LOG, JSON.stringify(log));
+  localStorage.setItem(SAVED_KEY, String(log.reduce((sum, x) => sum + x, 0)));
+  paintSaved();
+  const bump = document.querySelector('#bump');
+  bump.classList.remove('bump');
+  void bump.offsetWidth;
+  bump.classList.add('bump');
+}
+function rejected() { return localStorage.getItem(REJECT_KEY) === '1'; }
+function toast(text) {
+  const node = document.querySelector('#toast');
+  node.hidden = false;
+  node.textContent = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { node.hidden = true; }, 2600);
+}
+function dayLabel(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return '';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return Number(m[3]) + ' ' + months[Number(m[2]) - 1];
+}
+function channel() { return document.querySelector('#channel').value || 'App'; }
+function setChannel(value) {
+  const next = value || 'App';
+  document.querySelector('#channel').value = next;
+  localStorage.setItem('mops-channel', next);
+  document.querySelector('#channel-toggle').textContent = 'Asked from: ' + next;
+  document.querySelectorAll('#channel-menu button').forEach(btn => btn.setAttribute('aria-checked', btn.dataset.channel === next ? 'true' : 'false'));
+  document.querySelector('#channel-menu').hidden = true;
+  document.querySelector('#channel-toggle').setAttribute('aria-expanded', 'false');
+}
+function chiPacket() { return (state.packets || []).find(p => p.campaignId === 'CAMP-CHI') || null; }
+function chiSend() { return (state.sends || []).find(s => s.campaign_id === 'CAMP-CHI' && s.recipients > 0) || null; }
+function uploaded() { return (state.uploads || []).some(u => u.accepted > 0); }
+function reportDone() { return !!(state.metrics.insights && state.metrics.insights.runs); }
+function onChicago() { return (location.hash || '#/').indexOf('#/chicago') === 0; }
+function isSendAsk(text) { return /send the chicago invite/i.test(text || ''); }
+function approver() { return !!(state.user && state.user.role === 'approver'); }
+
+async function api(url, opt) {
+  const r = await fetch(url, Object.assign({ headers: { 'content-type': 'application/json' } }, opt));
+  const j = await r.json().catch(() => ({ ok: false, error: 'Bad response' }));
+  if (!r.ok || j.ok === false) throw new Error(j.error || ('Request failed ' + r.status));
+  return j;
+}
+function showErr(e) { const n = document.querySelector('#err'); if (n) n.textContent = (e && e.message) || String(e); }
+
+function chicagoProgress() {
+  const packet = chiPacket();
+  const send = chiSend();
+  const done = {
+    budget: !!(packet && packet.status === 'approved'),
+    code: !!(packet && packet.campaignCode),
+    sow: !!(packet && Array.isArray(packet.open) && packet.open.length === 0),
+    invite: !!send,
+    upload: uploaded(),
+    report: reportDone()
+  };
+  return STEPS.map(([key, label, who]) => ({ id: 'chi:' + key, key, label, who, done: !!done[key] }));
+}
+function otherProgress(c) {
+  const send = (state.sends || []).find(s => s.campaign_id === c.id && s.recipients > 0);
+  const done = { budget: true, code: true, sow: false, invite: !!send, upload: false, report: false };
+  return STEPS.map(([key, label, who]) => ({ id: c.id + ':' + key, key, label, who, done: !!done[key] }));
+}
+function flightSteps() {
+  const packet = chiPacket();
+  const send = chiSend();
+  return [
+    { id: 'chi:venue', done: true },
+    { id: 'chi:draft', done: !!packet },
+    { id: 'chi:code', done: !!(packet && packet.campaignCode) },
+    { id: 'chi:invite', done: !!send },
+    { id: 'chi:report', done: reportDone() },
+    { id: 'chi:upload', done: uploaded() },
+    { id: 'chi:sow', done: !!(packet && Array.isArray(packet.open) && packet.open.length === 0) },
+    { id: 'chi:budget', done: !!(packet && packet.status === 'approved') }
+  ];
+}
+function snapshotDone() {
+  const ids = flightSteps().filter(s => s.done).map(s => s.id);
+  splitCamps().top.concat(splitCamps().rest).forEach(c => {
+    const steps = c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c);
+    steps.forEach(s => { if (s.done) ids.push(s.id); });
+  });
+  return ids;
+}
+function justNow(steps) {
+  if (!seenDone) { seenDone = new Set(snapshotDone()); return new Set(); }
+  const just = new Set();
+  steps.forEach(s => { if (s.done && !seenDone.has(s.id)) just.add(s.id); });
+  snapshotDone().forEach(id => seenDone.add(id));
+  return just;
+}
+function ranked() {
+  const regions = new Set((state.user && state.user.regions) || []);
+  const rows = (state.campaigns || []).filter(c => c.id === 'CAMP-CHI' || regions.has(c.region));
+  rows.sort((a, b) => a.id === 'CAMP-CHI' ? -1 : b.id === 'CAMP-CHI' ? 1 : String(a.name).localeCompare(String(b.name)));
+  return rows;
+}
+function splitCamps() {
+  const rows = ranked();
+  const live = rows.filter(c => c.id === 'CAMP-CHI' || String(c.status || '').toLowerCase() === 'live');
+  const top = live.slice(0, 3);
+  const ids = new Set(top.map(c => c.id));
+  return { top, rest: rows.filter(c => !ids.has(c.id)) };
+}
+function stepNext(steps) {
+  const open = steps.find(s => !s.done);
+  if (!open) return 'Next: @mops · Done';
+  if (open.key === 'sow') return 'Next: You · Fill 3 SOW details';
+  if (open.key === 'report') return 'Next: @mops · Sending report Fri';
+  if (open.key === 'invite') return 'Next: @mops · Send the invite';
+  if (open.key === 'upload') return 'Next: You · Upload the attendee file';
+  if (open.key === 'code') return 'Next: @mops · Mint the code';
+  return 'Next: You · File the budget';
+}
+function chicagoNext() {
+  const packet = chiPacket();
+  const pending = packet && packet.status === 'pending' && !rejected();
+  const sowOpen = packet && packet.open && packet.open.length;
+  if (!packet) {
+    if (!chiSend()) return 'Next: @mops · Send the invite';
+    if (!uploaded()) return 'Next: You · Upload the attendee file';
+    return 'Next: You · File the budget';
+  }
+  if (sowOpen) return 'Next: You · Fill 3 SOW details';
+  if (pending && approver()) return 'Next: You · Approve $180,000';
+  if (pending) return 'Next: Chris · Approve $180,000';
+  if (!chiSend()) return 'Next: @mops · Send the invite';
+  if (!uploaded()) return 'Next: You · Upload the attendee file';
+  if (!reportDone()) return 'Next: @mops · Sending report Fri';
+  return 'Next: @mops · Done';
+}
+function cardStatus(c) {
+  if (c.id === 'CAMP-CHI') {
+    const packet = chiPacket();
+    if (packet && packet.status === 'pending' && !rejected()) return '<span class="status wait">Waiting on Chris</span>';
+    if (packet && packet.status === 'approved') return '<span class="status">Approved</span>';
+    if (rejected()) return '<span class="status plain">Rejected</span>';
+  }
+  return '<span class="status plain">' + esc(c.status || 'Live') + '</span>';
+}
+function campCard(c, large) {
+  const steps = c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c);
+  const doneN = steps.filter(s => s.done).length;
+  const width = Math.round((doneN / 6) * 100);
+  const next = c.id === 'CAMP-CHI' ? chicagoNext() : stepNext(steps);
+  const inner = '<div class="card-top"><h2>' + esc(c.name) + '</h2>' + cardStatus(c) + '</div>'
+    + '<p class="meta">' + esc([c.city, dayLabel(c.start_date)].filter(Boolean).join(' · ')) + '</p>'
+    + '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="' + doneN + '" aria-label="' + doneN + ' of 6 steps done"><span style="width:' + width + '%"></span></div>'
+    + '<p class="progress">' + doneN + ' of 6 steps done</p>'
+    + '<p class="next">' + esc(next) + '</p>';
+  if (!large) return '<article class="card slim">' + inner + '</article>';
+  return c.id === 'CAMP-CHI' ? '<a class="card large" href="#/chicago">' + inner + '</a>' : '<article class="card large">' + inner + '</article>';
+}
+function needsHtml() {
+  const packet = chiPacket();
+  const pending = packet && packet.status === 'pending' && !rejected();
+  const sowOpen = !!(packet && packet.open && packet.open.length);
+  if (sowOpen && !approver()) {
+    return '<article class="card"><p class="kicker">Your turn</p><h2 class="headline">Fill 3 SOW details</h2><div class="need-actions"><button class="primary" type="button" data-act="fill">Fill 3 SOW details</button></div></article>';
+  }
+  if (!pending) return '';
+  if (approver()) {
+    return '<article class="card"><p class="kicker">Needs you</p><h2 class="headline">Approve ' + money(packet.amountUsd) + ' for Chicago roundtable</h2><div class="need-actions"><button class="primary" type="button" data-act="approve">Approve</button><button class="ghost" type="button" data-act="reject">Reject</button></div></article>';
+  }
+  return '<article class="card"><p class="kicker">Your turn</p><h2 class="headline">Waiting on Chris · nudge</h2><div class="need-actions"><button id="nudge" class="primary" type="button" data-act="nudge">Nudge</button></div></article>';
+}
+function homeHtml() {
+  const parts = splitCamps();
+  const needs = needsHtml();
+  const top = parts.top.map(c => campCard(c, true)).join('');
+  const rest = parts.rest.length
+    ? '<details class="all-camps"><summary>All campaigns</summary><div class="stack">' + parts.rest.map(c => campCard(c, false)).join('') + '</div></details>'
+    : '';
+  return '<section class="section" id="needs"' + (needs ? '' : ' hidden') + '>' + needs + '</section>'
+    + '<section class="section"><h2>My campaigns</h2><div class="stack" id="campaigns">' + top + '</div>' + rest + '</section>';
+}
+
+function pct(part, whole) { return whole ? Math.round((part / whole) * 100) : 0; }
+function plain(text) {
+  let s = String(text || '');
+  s = s.replace(/\(AE\)/g, ', Account owner').replace(/\(SDR\)/g, ', Follow-up rep');
+  s = s.replace(/\bAEs\b/g, 'Account owners').replace(/\bAE\b/g, 'Account owner');
+  s = s.replace(/\bSDRs\b/g, 'Follow-up reps').replace(/\bSDR\b/g, 'Follow-up rep');
+  s = s.replace(/\bMQLs\b/g, 'Sales-ready leads').replace(/\bMQL\b/g, 'Sales-ready lead');
+  s = s.replace(/\bBAN\s+BAN-[A-Z0-9-]+\.?/g, '');
+  s = s.replace(/\bCode\s+FY\d{2}[A-Z0-9-]+\.?/g, '');
+  s = s.replace(/\bBAN-[A-Z0-9-]+/g, '');
+  s = s.replace(/\bFY\d{2}[A-Z0-9-]+/g, '');
+  s = s.replace(/\bCAMP-[A-Z0-9-]+/g, '');
+  s = s.replace(/\bEM-[A-Z0-9-]+/g, '');
+  s = s.replace(/\bMinted\s+and\b\.?/gi, 'code ready');
+  s = s.replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').trim();
+  return s;
+}
+function whoLabel(actor) {
+  const name = String(actor || '').trim();
+  if (!name || name === 'Seed' || name === 'Plan' || name === 'Engage' || name === 'system') return '@mops';
+  return name;
+}
+function whyWhat(raw) {
+  const text = String(raw || '');
+  if (/Moved the Chicago security roundtable to 19 Mar/.test(text)) return 'Moved the Chicago security roundtable to 19 Mar';
+  if (/approved/i.test(text) && /Minted/.test(text)) {
+    const amt = text.match(/\$[\d,]+/);
+    return amt ? ('Approved ' + amt[0] + ' · code ready') : 'Budget approved · code ready';
+  }
+  if (/^Minted\s+/i.test(text)) return 'Code ready';
+  const cleaned = plain(text).replace(/\s{2,}/g, ' ').trim();
+  return ((cleaned.split(/(?<=[.!?])\s+/)[0] || cleaned).replace(/\.$/, '')).trim();
+}
+function whySource(row) {
+  if (row.source === 'EM-JH-1014' || /Jordan Hale's email/i.test(row.why || '')) return "Jordan Hale's email, 14 Oct";
+  if (row.channel && row.channel !== 'system') return row.channel;
+  return '';
+}
+function whyLine(row) {
+  return [whoLabel(row.actor), whyWhat(row.why), whySource(row)].filter(Boolean).join(' · ');
+}
+function codesOf(text) {
+  const raw = String(text || '');
+  const ban = (raw.match(/\bBAN-[A-Z0-9-]+/) || [])[0] || '';
+  const labeled = raw.match(/\bCode\s+(FY\d{2}[A-Z0-9-]+)/);
+  const code = labeled ? labeled[1] : ((raw.match(/(?:^|[^A-Z0-9-])(FY\d{2}[A-Z0-9-]+)/) || [])[1] || '');
+  return [ban, code].filter(Boolean).join(' ');
+}
+function clipSentences(text) {
+  const parts = String(text || '').split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  const out = [];
+  parts.forEach(part => {
+    const w = part.split(/\s+/).filter(Boolean);
+    if (w.length <= 20) { out.push(w.join(' ')); return; }
+    for (let i = 0; i < w.length; i += 18) out.push(w.slice(i, i + 18).join(' '));
+  });
+  return out;
+}
+function whyHtml() {
+  const rows = (state.why || []).filter(r => r.why && !NOISE.test(r.why));
+  const lines = [];
+  const seen = new Set();
+  rows.forEach(r => {
+    const line = whyLine(r);
+    if (!line || seen.has(line)) return;
+    seen.add(line);
+    lines.push({ line, venue: /Moved the Chicago security roundtable to 19 Mar/.test(r.why || '') });
+  });
+  let shown = lines.slice(0, 8);
+  const venue = lines.find(r => r.venue);
+  if (venue && shown.indexOf(venue) < 0) shown.push(venue);
+  if (!shown.length) return '<p class="quiet">Nothing has changed yet.</p>';
+  return shown.map(r => '<article><p>' + esc(r.line) + '</p></article>').join('');
+}
+function sowFields() {
+  const packet = chiPacket();
+  return (packet && packet.sow && packet.sow.fields) || {};
+}
+function sowForm(fields) {
+  return '<div class="sow">'
+    + '<label>Our project manager<input id="our_pm" value="' + esc(fields.our_pm || '') + '"></label>'
+    + '<label>Purchase order<input id="po_number" value="' + esc(fields.po_number || '') + '"></label>'
+    + '<label>Venue contact<input id="venue_contact" value="' + esc(fields.venue_contact || '') + '"></label>'
+    + '<button id="save" class="primary" type="button">Save</button></div>';
+}
+function sowBlock() {
+  const packet = chiPacket();
+  const fields = sowFields();
+  const saved = !!(packet && packet.open && packet.open.length === 0);
+  let note = 'File the budget first.';
+  if (saved) note = 'Saved, SOW ready for review';
+  else if (packet && packet.open && packet.open.length) {
+    const short = { our_pm: 'PM', po_number: 'PO', venue_contact: 'venue contact' };
+    note = 'Waiting on you: ' + packet.open.map(f => f.short || short[f.key] || f.label).join(', ');
+  }
+  const form = sowForm(fields);
+  if (!saved) return '<p id="sow-note">' + esc(note) + '</p>' + form;
+  const summary = [fields.our_pm, fields.po_number, fields.venue_contact].filter(Boolean).join(' · ') || 'Details saved';
+  return '<p id="sow-note">' + esc(note) + '</p>'
+    + '<p class="sum">' + esc(summary) + ' <button type="button" class="textlink" data-edit="sow">Edit</button></p>'
+    + '<div class="detail" data-detail="sow" hidden>' + form + '</div>';
+}
+function fileControls() {
+  return '<div class="need-actions"><label class="primary file-btn">Upload attendee file<input id="file" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"></label>'
+    + '<button id="upload" class="ghost" type="button" data-act="upload">Use sample file</button></div>';
+}
+function fold(key, summary, detail) {
+  return '<p class="sum">' + summary + ' <button type="button" class="textlink" data-edit="' + key + '">Edit</button></p>'
+    + '<div class="detail" data-detail="' + key + '" hidden>' + detail + '</div>';
+}
+function yourTurn() {
+  const packet = chiPacket();
+  const pending = packet && packet.status === 'pending' && !rejected();
+  const sowOpen = !!(packet && packet.open && packet.open.length);
+  if (!uploaded()) {
+    return '<section class="your-turn" id="your-turn"><p class="kicker">Your turn</p><h2>Upload the attendee file</h2>'
+      + fileControls() + '</section>';
+  }
+  if (sowOpen && !approver()) {
+    return '<section class="your-turn" id="your-turn"><p class="kicker">Your turn</p><h2>Fill 3 SOW details</h2>'
+      + '<div class="need-actions"><button class="primary" type="button" data-act="fill">Fill 3 SOW details</button></div></section>';
+  }
+  if (pending && approver()) {
+    return '<section class="your-turn" id="your-turn"><p class="kicker">Needs you</p><h2>Approve ' + money(packet.amountUsd) + ' for Chicago roundtable</h2>'
+      + '<div class="need-actions"><button class="primary" type="button" data-act="approve">Approve</button><button class="ghost" type="button" data-act="reject">Reject</button></div></section>';
+  }
+  if (pending) {
+    return '<section class="your-turn" id="your-turn"><p class="kicker">Your turn</p><h2>Waiting on Chris · nudge</h2>'
+      + '<div class="need-actions"><button id="nudge" class="primary" type="button" data-act="nudge">Nudge</button></div></section>';
+  }
+  return '';
+}
+function stepItem(done, just, you, body) {
+  const cls = (done ? 'done' : '') + (you ? ' you' : '') + (just ? ' just' : '');
+  return '<li class="' + cls + '"><span class="tick" aria-hidden="true">' + (done ? '✓' : '') + '</span><div>' + body + '</div></li>';
+}
+function campaignHtml(just) {
+  const packet = chiPacket();
+  const send = chiSend();
+  const chi = (state.dash && state.dash.chicago) || {};
+  const sent = send ? send.recipients : 0;
+  const opens = send ? send.opens : 0;
+  const clicks = send ? send.clicks : 0;
+  const left = money((chi.budget || 0) - (chi.actual || 0));
+  const spent = packet && packet.status === 'approved'
+    ? '<article><b>' + money(chi.actual || 0) + '</b><span>Spent so far</span></article>'
+    : '';
+  const mops = [
+    { id: 'chi:venue', text: 'Moved the roundtable to 19 Mar.', done: true },
+    { id: 'chi:draft', text: packet ? ('Drafted the ' + money(packet.amountUsd) + ' budget.') : 'The budget waits for your ask.', done: !!packet },
+    { id: 'chi:code', text: packet && packet.campaignCode ? 'The code is ready.' : 'The code waits for Chris.', done: !!(packet && packet.campaignCode) },
+    { id: 'chi:invite', text: send ? ('Sent the invite to ' + sent + ' people.') : 'The invite waits for your ask.', done: !!send },
+    { id: 'chi:report', text: reportDone() ? 'Wrote the weekly report.' : 'The weekly report waits for your ask.', done: reportDone() }
+  ];
+  const youUpload = uploaded()
+    ? fold('upload', 'The attendee file is in.', fileControls())
+    : '<p>Upload the attendee file.</p>';
+  const youSow = sowBlock();
+  const youBudget = packet && packet.status === 'approved'
+    ? fold('budget', 'Budget approved · code ready', '<p class="quiet">Chris approved this. Copy the code from the answer above.</p>')
+    : '<p>Approve the budget.</p>';
+  const mopsSteps = mops.map(s => stepItem(s.done, just.has(s.id), false, s.done
+    ? fold(s.id, esc(s.text), '<p class="quiet">' + esc(s.text) + '</p>')
+    : '<p>' + esc(s.text) + '</p>')).join('');
+  return '<p><a class="back" href="#/">All campaigns</a></p>'
+    + yourTurn()
+    + '<h1>Chicago security roundtable</h1>'
+    + '<div id="camp-chips">'
+    + '<button type="button" class="chip" data-act="pick-file">Upload file</button>'
+    + '<button type="button" class="chip" data-ask="@mops weekly report for Americas">Weekly report</button>'
+    + '<button type="button" class="chip" data-ask="@mops why did the Chicago venue change">Why did this change</button>'
+    + '</div>'
+    + '<section class="section" id="flight"><div class="lanes">'
+    + '<div class="lane you"><h2><span class="who you">You</span></h2><ol class="steps">'
+    + stepItem(uploaded(), just.has('chi:upload'), true, youUpload)
+    + stepItem(!!(packet && packet.open && packet.open.length === 0), just.has('chi:sow'), true, youSow)
+    + stepItem(!!(packet && packet.status === 'approved'), just.has('chi:budget'), true, youBudget)
+    + '</ol></div>'
+    + '<div class="lane mops"><h2><span class="who mops">@mops</span></h2><ol class="steps">'
+    + mopsSteps
+    + '</ol></div></div></section>'
+    + '<section class="section"><h2>Live numbers</h2><div id="numbers" class="stats">'
+    + '<article><b>' + sent.toLocaleString('en-US') + '</b><span>Sent</span></article>'
+    + '<article><b>' + (send ? pct(opens, sent) + '%' : '—') + '</b><span>' + (send ? opens + ' of ' + sent + ' opened' : 'Opened') + '</span></article>'
+    + '<article><b>' + (send ? pct(clicks, sent) + '%' : '—') + '</b><span>' + (send ? clicks + ' of ' + sent + ' clicked' : 'Clicked') + '</span></article>'
+    + '<article><b id="mqls">' + Number(state.mqls || 0).toLocaleString('en-US') + '</b><span>Sales-ready leads</span></article>'
+    + '<article><b>' + money(chi.pipeline || 0) + '</b><span>Pipeline</span></article>'
+    + '<article><b>' + left + '</b><span>Budget left</span></article>'
+    + spent
+    + '</div>' + (send ? '<p style="margin-top:12px"><button id="simulate" class="ghost" type="button" data-act="simulate">See opens and clicks</button></p>' : '') + '</section>'
+    + '<section class="section"><h2>What changed and why</h2><div id="why" class="why">' + whyHtml() + '</div></section>';
+}
+
+function render() {
+  const camp = onChicago();
+  document.body.classList.toggle('home', !camp);
+  document.body.classList.toggle('camp', camp);
+  document.querySelector('#chips').hidden = camp;
+  const hello = document.querySelector('#hello');
+  const helloWrap = document.querySelector('#hello-wrap');
+  if (hello) {
+    const first = ((state.user && state.user.name) || 'Maria').split(' ')[0];
+    hello.textContent = 'Hey ' + first;
+  }
+  if (helloWrap) helloWrap.hidden = camp;
+  const steps = camp ? flightSteps().concat(chicagoProgress()) : splitCamps().top.concat(splitCamps().rest).flatMap(c => c.id === 'CAMP-CHI' ? chicagoProgress() : otherProgress(c));
+  const just = justNow(steps);
+  document.querySelector('#view').innerHTML = camp ? campaignHtml(just) : homeHtml();
+  paintSaved();
+  if (sessionStorage.getItem('mops-focus') === 'sow' && camp) {
+    sessionStorage.removeItem('mops-focus');
+    const el = document.querySelector('#our_pm');
+    if (el) el.focus();
+  }
+}
+
+function tileHtml(tiles) {
+  const rows = (tiles || []).slice(0, 3);
+  if (!rows.length) return '';
+  return '<div class="tiles">' + rows.map(t => '<article><b>' + esc(t.n) + '</b><span>' + esc(t.l) + '</span></article>').join('') + '</div>';
+}
+function present(body, extra) {
+  const reply = String((body && body.reply) || '');
+  const codes = codesOf(reply);
+  const sent = reply.match(/Sent the Chicago invite to (\d+)/);
+  const already = reply.match(/Already sent the Chicago invite to (\d+)/);
+  const opted = reply.match(/(\d+) opted-in contacts/);
+  const waiting = /Waiting on Chris/.test(reply) && /\$[\d,]+/.test(reply);
+  const approved = /approved/i.test(reply) && codes;
+  const venue = /venue changed|moved to 19 Mar/i.test(reply);
+  const report = /(?:Weekly|Monthly) report/i.test(reply);
+  let headline = 'Done';
+  let subline = '';
+  let tiles = [];
+  let primary = '';
+  if (extra && extra.kind === 'upload') {
+    headline = extra.accepted + ' people added';
+    tiles = [{ n: String(extra.accepted), l: 'Added' }, { n: String(extra.held), l: 'Held' }];
+  } else if (approved) {
+    headline = 'Budget approved · code ready';
+    const amt = reply.match(/\$[\d,]+/);
+    if (amt) tiles = [{ n: amt[0], l: 'Approved' }];
+  } else if (sent) {
+    headline = 'Invite sent to ' + sent[1] + ' CIOs';
+    const held = reply.match(/Held (\d+)/);
+    tiles = [{ n: sent[1], l: 'Sent' }];
+    if (held) tiles.push({ n: held[1], l: 'Held' });
+  } else if (already) {
+    headline = 'Invite already sent';
+    tiles = [{ n: already[1], l: 'Sent' }];
+  } else if (opted) {
+    headline = opted[1] + ' people you can email';
+    subline = '30 of them are CIOs who opened last month';
+    tiles = [{ n: opted[1], l: 'Opted in' }];
+  } else if (waiting) {
+    headline = 'Waiting on Chris';
+    const amt = reply.match(/\$[\d,]+/);
+    if (amt) tiles = [{ n: amt[0], l: 'Budget' }];
+  } else if (venue) {
+    headline = 'Venue moved to 19 Mar';
+  } else if (report) {
+    headline = 'Report is ready';
+  } else {
+    headline = clipSentences(plain(reply))[0] || 'Done';
+  }
+  const paras = clipSentences(plain(reply)).map(p => '<p>' + esc(p) + '</p>').join('');
+  const copy = codes ? '<button type="button" class="copy" data-copy="' + esc(codes) + '" aria-label="Copy code">' + COPY + '</button>' : '';
+  return '<article><div class="answer-top"><span class="from">Asked from: ' + esc((body && body.channel) || channel()) + '</span><span class="answer-tools">' + copy + '<button type="button" class="behind" data-trace="last" aria-label="Behind the scenes">' + EYE + '</button></span></div><h2 class="headline">' + esc(headline) + '</h2>' + (subline ? '<p class="subline">' + esc(subline) + '</p>' : '') + tileHtml(tiles) + (primary ? '<div class="need-actions">' + primary + '</div>' : '') + '<details><summary>More</summary><div class="reply">' + paras + '</div></details></article>';
+}
+function paintAnswer(body, extra) {
+  const node = document.querySelector('#answer');
+  node.hidden = false;
+  node.innerHTML = present(body, extra);
+}
+function paintDownloads(list) {
+  document.querySelector('#downloads').innerHTML = (list || []).map(d => '<a href="' + esc(d.href) + '">' + esc(d.label) + '</a>').join('');
+}
+function roleName(role) {
+  if (role === 'AE') return 'Account owner';
+  if (role === 'SDR') return 'Follow-up rep';
+  return role || '';
+}
+function uploadReply(result) {
+  const held = result.held || [];
+  const bits = [result.accepted + ' campaign members.'];
+  (result.owners || []).forEach(o => {
+    const accounts = o.accounts + ' Chicago account' + (o.accounts === 1 ? '' : 's');
+    const members = o.members + ' campaign member' + (o.members === 1 ? '' : 's');
+    bits.push(o.name + ', ' + roleName(o.role) + ': ' + accounts + ', ' + members + '.');
+  });
+  bits.push('Held ' + held.length + '.');
+  held.forEach(row => bits.push((row.name || 'Someone') + ' was held (' + (row.reason || 'held') + ').'));
+  if (result.retried) bits.push('Salesforce was busy, retried automatically.');
+  return bits.join(' ');
+}
+
+function serviceName(apiPath) {
+  const p = String(apiPath || '');
+  if (p.indexOf('/crm') >= 0) return 'Salesforce';
+  if (p.indexOf('/engage') >= 0) return 'Engage';
+  if (p.indexOf('/spend') >= 0) return 'Plan';
+  if (p.indexOf('/insights') >= 0) return 'Insights';
+  if (p.indexOf('/brain') >= 0) return 'Brain';
+  if (p.indexOf('/data') >= 0) return 'Data';
+  return BRAND;
+}
+function humanStep(call, written) {
+  const apiPath = String(call.api || '');
+  const upload = written && (written.upload || written);
+  let text = 'Ran a step';
+  if (/data\/emailable/.test(apiPath)) text = 'Checked consent in the data core';
+  else if (/data\/log/.test(apiPath)) text = 'Read the change log';
+  else if (/data\/campaigns/.test(apiPath)) text = 'Opened the campaign record';
+  else if (/data\//.test(apiPath)) text = 'Read the data core';
+  else if (/engage\/segments/.test(apiPath)) text = 'Built the audience';
+  else if (/engage\/templates/.test(apiPath)) text = 'Wrote the email';
+  else if (/simulate/.test(apiPath)) text = 'Counted opens and clicks';
+  else if (/engage\/sends/.test(apiPath)) text = 'Sent the invite';
+  else if (/engage\/scores/.test(apiPath)) text = 'Scored sales-ready leads';
+  else if (/crm\/uploads/.test(apiPath)) {
+    const n = upload && (upload.accepted || upload.accepted === 0) ? upload.accepted : (written && written.accepted);
+    text = n ? ('Created ' + n + ' contacts in Salesforce') : 'Created contacts in Salesforce';
+  }
+  else if (/crm\/queue/.test(apiPath)) text = 'Checked Salesforce and retried';
+  else if (/crm\//.test(apiPath)) text = 'Updated Salesforce';
+  else if (/spend\/approve/.test(apiPath)) text = 'Approved the budget';
+  else if (/spend\/budgets/.test(apiPath)) text = 'Filed the budget';
+  else if (/spend\/sow/.test(apiPath)) text = 'Saved the agreement';
+  else if (/spend\//.test(apiPath)) text = 'Updated the plan';
+  else if (/insights\//.test(apiPath)) text = 'Built the report';
+  else if (/brain\//.test(apiPath)) text = 'Checked the policy';
+  return { text, ms: call.ms || 0 };
+}
+function trimValue(value, depth) {
+  if (depth > 4) return '…';
+  if (Array.isArray(value)) {
+    const cut = value.slice(0, 6).map(v => trimValue(v, depth + 1));
+    if (value.length > 6) cut.push('… ' + (value.length - 6) + ' more');
+    return cut;
+  }
+  if (value && typeof value === 'object') {
+    const out = {};
+    Object.entries(value).forEach(([k, v]) => {
+      if (k === 'html' || k === 'before_json' || k === 'after_json') { out[k] = '…'; return; }
+      out[k] = trimValue(v, depth + 1);
+    });
+    return out;
+  }
+  if (typeof value === 'string' && value.length > 180) return value.slice(0, 180) + '…';
+  return value;
+}
+function drawerHtml(trace) {
+  const calls = trace.calls || [];
+  const services = [...new Set(calls.map(c => serviceName(c.api)))];
+  const steps = calls.map(c => {
+    const step = humanStep(c, trace.written);
+    return '<li>' + esc(step.text) + ' <span class="quiet">' + step.ms + ' ms</span></li>';
+  }).join('');
+  const raw = { calls: calls, payload: trimValue(trace.payload, 0), written: trimValue(trace.written, 0) };
+  return '<p class="kicker">' + esc(services.join(' · ') || BRAND) + '</p>'
+    + '<ol class="human">' + (steps || '<li>No steps recorded <span class="quiet">0 ms</span></li>') + '</ol>'
+    + '<details><summary>Raw payload</summary><pre>' + esc(JSON.stringify(raw, null, 2)) + '</pre></details>';
+}
+async function traceFor(kind) {
+  if (kind === 'last' && state.last) {
+    const body = state.last.body || {};
+    return { calls: body.calls || [], payload: { text: state.last.text, channel: state.last.channel }, written: body.result, audit: body.reply || '' };
+  }
+  return { calls: [], payload: {}, written: {}, audit: '' };
+}
+async function openDrawer(kind) {
+  const drawer = document.querySelector('#drawer');
+  drawer.hidden = false;
+  requestAnimationFrame(() => drawer.classList.add('show'));
+  document.querySelector('#trace').innerHTML = '<p class="quiet">Looking…</p>';
+  try {
+    const trace = await traceFor(kind);
+    document.querySelector('#trace').innerHTML = drawerHtml(trace);
+  } catch (e) {
+    document.querySelector('#trace').innerHTML = '<p>' + esc(e.message || String(e)) + '</p>';
+  }
+}
+function closeDrawer() {
+  const drawer = document.querySelector('#drawer');
+  drawer.classList.remove('show');
+  drawer.hidden = true;
+}
+
+async function load() {
+  const [session, users, metrics, camps, packets, sends, uploads, why, dash] = await Promise.all([
+    api('/api/session'),
+    api('/api/login/users'),
+    api('/api/platform/metrics'),
+    api('/api/platform/data/tables/campaigns?limit=100'),
+    api('/api/platform/spend/packets'),
+    api('/api/platform/engage/sends'),
+    api('/api/platform/crm/uploads?campaign=CAMP-CHI'),
+    api('/api/platform/brain/why?q=Chicago&limit=80'),
+    api('/api/platform/insights/dashboard')
+  ]);
+  state.user = session.user;
+  window.__MOPS_UID = (session.user && session.user.id) || '';
+  state.users = users.users || [];
+  state.metrics = metrics;
+  state.campaigns = camps.rows || [];
+  state.packets = packets.packets || [];
+  state.sends = sends.sends || [];
+  state.uploads = uploads.uploads || [];
+  state.why = why.rows || [];
+  state.dash = dash;
+  const send = chiSend();
+  state.mqls = 0;
+  if (send && send.segment_id) {
+    const board = await api('/api/platform/engage/scores?segment=' + encodeURIComponent(send.segment_id));
+    state.mqls = board.mqls || 0;
+  }
+}
+function fillUsers() {
+  const sel = document.querySelector('#who');
+  sel.innerHTML = state.users.map(u => '<option value="' + esc(u.id) + '">' + esc(u.name) + '</option>').join('');
+  if (state.user) sel.value = state.user.id;
+}
+function setSchedule(period) {
+  const next = period === 'monthly' ? 'monthly' : 'weekly';
+  localStorage.setItem('mops-schedule', next);
+  document.querySelectorAll('#schedule button').forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.period === next ? 'true' : 'false'));
+  document.querySelector('#report').textContent = next === 'monthly' ? 'Monthly report' : 'Weekly report';
+}
+
+async function runAsk(text) {
+  if (busy) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  const send = document.querySelector('#send');
+  send.disabled = true;
+  try {
+    const body = await api('/api/platform/ask', { method: 'POST', body: JSON.stringify({ text, channel: channel() }) });
+    state.last = { text, channel: channel(), body };
+    paintAnswer(body);
+    paintDownloads(body.downloads);
+    document.querySelector('#ask').value = '';
+    addSaved(MINUTES[body.module] || 0);
+    await load();
+    render();
+    if (body.downloads && body.downloads.length) toast('Report is ready');
+  } catch (e) { showErr(e); }
+  finally { busy = false; send.disabled = false; }
+}
+async function openSendPreview(text) {
+  if (busy || hold) return;
+  document.querySelector('#err').textContent = '';
+  const node = document.querySelector('#answer');
+  node.hidden = false;
+  node.innerHTML = '<article id="preview"><p class="quiet">Checking who can receive this.</p></article>';
+  try {
+    const preview = await api('/api/platform/engage/segments/preview', { method: 'POST', body: JSON.stringify({
+      rules: { all: [
+        { field: 'contact.title', op: 'eq', value: 'CIO' },
+        { field: 'contact.state', op: 'eq', value: 'Illinois' },
+        { field: 'contact.country', op: 'eq', value: 'United States' },
+        { field: 'activity.open', op: 'within_days', value: 30 },
+        { field: 'consent.status', op: 'eq', value: 'opted_in' }
+      ] },
+      limit: 1
+    }) });
+    const n = preview.count || 0;
+    node.innerHTML = '<article id="preview"><h2 class="headline">Send to ' + n + ' CIOs?</h2><p>Preview email</p><p class="quiet">You are invited to the Chicago security roundtable.</p><div class="need-actions"><button id="confirm-send" class="primary" type="button">Send</button><button id="cancel-send" class="ghost" type="button">Cancel</button></div></article>';
+    document.querySelector('#confirm-send').addEventListener('click', () => armSend(text, n));
+    document.querySelector('#cancel-send').addEventListener('click', () => { node.hidden = true; node.innerHTML = ''; });
+  } catch (e) { showErr(e); }
+}
+function armSend(text, n) {
+  hold = true;
+  const node = document.querySelector('#answer');
+  node.hidden = false;
+  node.innerHTML = '<article><span class="from">Asked from: ' + esc(channel()) + '</span><h2 class="headline">Invite sent to ' + n + ' CIOs</h2><p class="quiet">You can undo this for 10 seconds.</p><div class="need-actions"><button id="undo" class="ghost" type="button">Undo</button></div></article>';
+  undoTimer = setTimeout(() => { undoTimer = null; hold = false; runAsk(text); }, 10000);
+  document.querySelector('#undo').addEventListener('click', () => {
+    clearTimeout(undoTimer);
+    undoTimer = null;
+    hold = false;
+    node.hidden = true;
+    node.innerHTML = '';
+    toast('Send cancelled');
+  });
+}
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result || '');
+      const i = raw.indexOf(',');
+      resolve(i >= 0 ? raw.slice(i + 1) : raw);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Could not read the file'));
+    reader.readAsDataURL(file);
+  });
+}
+async function doUpload(file) {
+  if (busy) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  try {
+    const payload = { channel: channel(), text: 'Upload the Chicago attendee file' };
+    if (file) {
+      payload.filename = file.name;
+      payload.file = await readFile(file);
+    }
+    const result = await api('/api/platform/crm/uploads', { method: 'POST', body: JSON.stringify(payload) });
+    const queue = await api('/api/platform/crm/queue');
+    if (!result.retried && queue.retried && queue.retried.length) result.retried = queue.retried.length;
+    const reply = uploadReply(result);
+    const body = { channel: channel(), reply, module: 'crm', calls: [{ api: 'POST /api/platform/crm/uploads', ms: result.ms || 0 }, { api: 'GET /api/platform/crm/queue', ms: queue.ms || 0 }], result: { upload: result, queue } };
+    state.last = { text: 'Upload the Chicago attendee file', channel: channel(), body };
+    paintAnswer(body, { kind: 'upload', accepted: result.accepted, held: (result.held || []).length });
+    addSaved(MINUTES.crm);
+    toast('Uploaded');
+    await load();
+    render();
+  } catch (e) { showErr(e); }
+  finally { busy = false; }
+}
+async function doApprove() {
+  if (busy) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  try {
+    const result = await api('/api/platform/spend/approve', { method: 'POST', body: JSON.stringify({ campaignId: 'CAMP-CHI', channel: channel(), text: '@mops approve Chicago' }) });
+    const reply = 'Chris M. approved ' + money(result.amountUsd) + ' for the Chicago security roundtable. BAN ' + result.ban + '. Code ' + result.campaignCode + '.';
+    const body = { channel: channel(), reply, calls: [{ api: 'POST /api/platform/spend/approve', ms: result.ms || 0 }], result };
+    state.last = { text: '@mops approve Chicago', channel: channel(), body };
+    paintAnswer(body);
+    addSaved(10);
+    toast('Approved');
+    await load();
+    render();
+  } catch (e) { showErr(e); }
+  finally { busy = false; }
+}
+async function doSimulate() {
+  if (busy) return;
+  const send = chiSend();
+  if (!send) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  try {
+    const result = await api('/api/platform/engage/sends/' + encodeURIComponent(send.id) + '/simulate', { method: 'POST', body: JSON.stringify({ opens: true, clicks: true }) });
+    state.last = { text: 'See opens and clicks', channel: channel(), body: { channel: channel(), reply: 'Opens and clicks are in.', calls: [{ api: 'POST /api/platform/engage/sends/' + send.id + '/simulate', ms: result.ms || 0 }], result } };
+    addSaved(5);
+    await load();
+    render();
+  } catch (e) { showErr(e); }
+  finally { busy = false; }
+}
+async function saveSow() {
+  if (busy) return;
+  busy = true;
+  document.querySelector('#err').textContent = '';
+  try {
+    const answers = {
+      our_pm: document.querySelector('#our_pm').value,
+      po_number: document.querySelector('#po_number').value,
+      venue_contact: document.querySelector('#venue_contact').value
+    };
+    await api('/api/platform/spend/sow', { method: 'POST', body: JSON.stringify({ campaignId: 'CAMP-CHI', answers, channel: channel() }) });
+    addSaved(5);
+    await load();
+    render();
+    toast('Saved');
+  } catch (e) { showErr(e); }
+  finally { busy = false; }
+}
+function askText(text) {
+  if (!text) { document.querySelector('#err').textContent = 'Type a question, or pick a suggestion.'; return; }
+  if (busy || hold) return;
+  document.querySelector('#ask').value = text;
+  if (isSendAsk(text)) return openSendPreview(text);
+  return runAsk(text);
+}
+
+setChannel(storedChannel || 'App');
+document.querySelector('#composer').addEventListener('submit', ev => {
+  ev.preventDefault();
+  askText(document.querySelector('#ask').value.trim());
+});
+document.querySelector('#channel').addEventListener('change', () => setChannel(channel()));
+document.querySelector('#channel-toggle').addEventListener('click', () => {
+  const menu = document.querySelector('#channel-menu');
+  const open = menu.hidden;
+  menu.hidden = !open;
+  document.querySelector('#channel-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+document.querySelector('#channel-menu').addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-channel]');
+  if (btn) setChannel(btn.dataset.channel);
+});
+document.querySelector('#schedule').addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-period]');
+  if (btn) setSchedule(btn.dataset.period);
+});
+document.querySelector('#report').addEventListener('click', () => {
+  if (busy || hold) return;
+  const monthly = document.querySelector('#schedule [data-period="monthly"]').getAttribute('aria-pressed') === 'true';
+  runAsk(monthly ? '@mops monthly report for the portfolio' : '@mops weekly report for Americas');
+});
+document.querySelector('#reset').addEventListener('click', async () => {
+  if (!confirm('Start the demo over? This clears what @mops did today.')) return;
+  try {
+    if (window.__MOPS_SANDBOX__ && window.mopsSandboxReset) {
+      window.mopsSandboxReset();
+      localStorage.removeItem(SAVED_KEY);
+      localStorage.removeItem(SAVED_LOG);
+      localStorage.removeItem(REJECT_KEY);
+      location.reload();
+      return;
+    }
+    await api('/api/platform/reset', { method: 'POST', body: '{}' });
+    localStorage.removeItem(SAVED_KEY);
+    localStorage.removeItem(SAVED_LOG);
+    localStorage.removeItem(REJECT_KEY);
+    location.reload();
+  } catch (e) { showErr(e); }
+});
+document.querySelector('#who').addEventListener('change', async () => {
+  try {
+    await api('/api/login', { method: 'POST', body: JSON.stringify({ user: document.querySelector('#who').value }) });
+    location.reload();
+  } catch (e) { showErr(e); }
+});
+document.querySelector('#drawer-close').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeDrawer(); });
+document.addEventListener('click', ev => {
+  const wrap = document.querySelector('#channel-wrap');
+  if (wrap && !wrap.contains(ev.target)) {
+    document.querySelector('#channel-menu').hidden = true;
+    document.querySelector('#channel-toggle').setAttribute('aria-expanded', 'false');
+  }
+  const edit = ev.target.closest('[data-edit]');
+  if (edit) {
+    const box = document.querySelector('[data-detail="' + edit.getAttribute('data-edit') + '"]');
+    if (box) {
+      box.hidden = !box.hidden;
+      if (!box.hidden) {
+        const focus = box.querySelector('input, button');
+        if (focus) focus.focus();
+      }
+    }
+    return;
+  }
+  const chip = ev.target.closest('[data-ask]');
+  if (chip) { ev.preventDefault(); askText(chip.dataset.ask); return; }
+  const copyBtn = ev.target.closest('[data-copy]');
+  if (copyBtn) {
+    const value = copyBtn.getAttribute('data-copy') || '';
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(value).catch(() => {});
+    toast('Copied');
+    return;
+  }
+  const behindBtn = ev.target.closest('.behind');
+  if (behindBtn) { openDrawer(behindBtn.dataset.trace || 'last'); return; }
+  const act = ev.target.closest('[data-act]');
+  if (!act) {
+    if (ev.target && ev.target.id === 'save') saveSow();
+    return;
+  }
+  if (act.dataset.act === 'upload') return doUpload();
+  if (act.dataset.act === 'pick-file') {
+    const box = document.querySelector('[data-detail="upload"]');
+    if (box) box.hidden = false;
+    const file = document.querySelector('#file');
+    if (file) { file.click(); return; }
+    return doUpload();
+  }
+  if (act.dataset.act === 'approve') return doApprove();
+  if (act.dataset.act === 'simulate') return doSimulate();
+  if (act.dataset.act === 'nudge') return toast('Chris will see this on his next visit.');
+  if (act.dataset.act === 'reject') {
+    localStorage.setItem(REJECT_KEY, '1');
+    toast('Rejected');
+    render();
+    return;
+  }
+  if (act.dataset.act === 'fill') {
+    sessionStorage.setItem('mops-focus', 'sow');
+    if (!onChicago()) location.hash = '#/chicago';
+    else { sessionStorage.removeItem('mops-focus'); const el = document.querySelector('#our_pm'); if (el) el.focus(); }
+  }
+});
+document.addEventListener('change', ev => {
+  if (ev.target && ev.target.id === 'file' && ev.target.files && ev.target.files[0]) doUpload(ev.target.files[0]);
+});
+window.addEventListener('hashchange', () => { if (state.user) render(); });
+
+const savedPeriod = localStorage.getItem('mops-schedule') || 'weekly';
+setSchedule(savedPeriod);
+paintSaved();
+
+(async function boot() {
+  try {
+    await load();
+    fillUsers();
+    render();
+  } catch (e) { showErr(e); }
+})();
+</script>
+</body>
+</html>

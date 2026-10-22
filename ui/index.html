@@ -1,0 +1,310 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>@mops</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--tx:#12141a;--mu:#5c6570;--line:#e4e8ee;--ac:#1d4ed8;--ok:#047857;--warn:#b45309}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+vercel-live-feedback,vercel-toolbar{display:none!important;pointer-events:none!important}
+button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none}a{color:inherit}
+.app{max-width:1180px;margin:0 auto;padding:22px 22px 72px}
+header{display:flex;align-items:center;gap:18px;margin-bottom:22px}
+.logo{font-weight:720;letter-spacing:-.04em;font-size:20px;text-decoration:none}
+nav{display:flex;gap:16px}nav a{color:var(--mu);text-decoration:none;font-size:15px}nav a.on{color:var(--tx);font-weight:680}
+.eng,.who,.ghost{margin-left:0;font-size:13px;color:var(--mu);text-decoration:none;background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 12px}
+.who{margin-left:auto}
+h1{font-size:40px;line-height:1.08;letter-spacing:-.04em;font-weight:650;margin:0}
+.pending{display:inline-block;margin:10px 0 0;background:#eef3ff;color:#1d4ed8;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:700}
+.split{display:block}
+body.trace-on .split{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+#behind{display:none;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 14px 18px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+body.trace-on #behind{display:block}
+#behind h2{font-size:15px;margin:0 0 4px;letter-spacing:-.02em}
+#behind .sub{color:var(--mu);font-size:12px;margin:0 0 10px}
+.step{border-top:1px solid var(--line);padding:8px 0}
+.step summary{cursor:pointer;font-size:13px}
+.step .svc{font-weight:700}
+.step .ms{color:var(--mu);font-variant-numeric:tabular-nums}
+.step pre{white-space:pre-wrap;font:11px/1.4 ui-monospace,monospace;background:#f6f7f9;border-radius:8px;padding:8px;margin:6px 0 0;max-height:180px;overflow:auto}
+.okstep{color:var(--ok)}.routestep{color:var(--warn)}.badstep{color:#b91c1c}
+.next{background:#f8fafc;border-radius:12px;padding:10px 12px;font-size:14px;margin:0 0 12px}
+@media(max-width:980px){body.trace-on .split{grid-template-columns:1fr}#behind{position:static;max-height:none}}
+.did{font-size:18px;color:#2c3340;margin:12px 0 28px;max-width:38em}
+.ask{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:6px 6px 6px 18px;display:flex;gap:8px;align-items:flex-end;box-shadow:0 12px 40px #12141a0d}
+.ask textarea{flex:1;border:0;resize:none;outline:0;font-size:18px;line-height:1.4;padding:14px 0;min-height:56px;background:transparent}
+.ask textarea::placeholder{color:#98a0ab}
+.send{background:var(--ac);color:#fff;border-radius:14px;padding:12px 16px;font-weight:680;margin-bottom:6px}
+.send:disabled{opacity:.45}
+.starts{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 8px}
+.starts button{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;color:#1f2937}
+.starts button:hover{border-color:#c9d2de}
+.note{color:var(--mu);font-size:15px;margin:8px 2px 0}
+.sec{margin-top:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin:0 0 12px;box-shadow:0 8px 28px #12141a08}
+.card h2{font-size:22px;letter-spacing:-.03em;margin:0 0 6px;font-weight:650}
+.card .meta{color:var(--mu);font-size:14px;margin:0 0 12px}
+.card p{margin:0 0 12px}
+.bits{margin:0 0 14px;padding:0;list-style:none}
+.bits li{padding:8px 0;border-top:1px solid var(--line);font-size:16px}
+.bits li:first-child{border-top:0}
+.bits b{font-weight:650}
+.bits span{color:var(--mu);display:block;font-size:13px}
+.field{display:block;margin:8px 0;font-size:13px;color:var(--mu)}
+.field input,.field select{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;color:var(--tx);background:#fff}
+.err{color:var(--warn);font-size:14px;margin:0 0 8px}
+.reject{background:#fff;color:var(--warn);border:1px solid #f3d3a1;border-radius:12px;padding:11px 18px;font-weight:680}
+.map{margin-top:8px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.approve{background:var(--ac);color:#fff;border-radius:12px;padding:11px 18px;font-weight:680}
+.approve:disabled{opacity:.5}
+.edit{color:var(--ac);font-weight:650;padding:11px 12px}
+.bar{height:6px;background:#e7ebf0;border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ac);border-radius:99px;width:0}
+.ids{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.ids div{background:#f6f8fb;border-radius:12px;padding:10px 12px}
+.ids b{display:block;font-size:14px;word-break:break-all}
+.ids span{color:var(--mu);font-size:12px}
+.ok{color:var(--ok);font-weight:650}
+.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 18px}
+.filters select{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.count{color:var(--mu);font-size:14px}
+.grp{margin:0 0 18px}
+.grp h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin:18px 4px 8px;font-weight:680}
+.sheet{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.camp{display:grid;grid-template-columns:1fr auto;gap:4px 12px;width:100%;text-align:left;padding:14px 16px;border-top:1px solid #f0f2f5}
+.sheet .camp:first-child{border-top:0}
+.camp:hover{background:#f8fafc}
+.camp .nm{font-weight:620}
+.camp .sub{color:var(--mu);font-size:13px}
+.st{font-size:13px;font-weight:680;color:var(--ac)}
+.st.wait{color:var(--warn)}
+.st.bad{color:var(--warn)}
+.camp .bar{grid-column:1/-1;margin-top:6px}
+.back{color:var(--ac);font-weight:650;font-size:14px;text-decoration:none}
+.hist{margin-top:36px;color:var(--mu)}
+.hist summary{cursor:pointer;font-size:14px}
+.hist button{display:block;width:100%;text-align:left;padding:10px 0;border-top:1px solid var(--line);color:var(--tx);font-size:15px}
+.bub{margin:10px 0;max-width:40em}
+.bub.me{margin-left:auto;background:#1d4ed8;color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;width:fit-content}
+.bub.bot{color:#243040}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#12141a;color:#fff;border-radius:999px;padding:10px 16px;font-size:14px;opacity:0;pointer-events:none;transition:.2s}
+.toast.on{opacity:1}
+.empty{color:var(--mu);padding:8px 0 24px}
+@media(max-width:640px){h1{font-size:34px}.app{padding:18px 14px 48px}header{gap:12px;margin-bottom:28px}.ids{grid-template-columns:1fr}}
+</style></head><body class="trace-on">
+<div class="app">
+<header>
+  <a class="logo" href="#/">@mops</a>
+  <nav aria-label="Primary"><a href="#/" id="navHome">Home</a><a href="#campaigns" id="navCamps">My campaigns</a></nav>
+  <a class="eng" href="/engine">Engine room</a>
+  <button type="button" class="ghost" id="traceToggle">Behind the scenes</button>
+  <button type="button" class="who" id="switchUser">Signed in</button>
+</header>
+<div class="split">
+<main id="main"></main>
+<aside id="behind" aria-label="Behind the scenes"><h2>Behind the scenes</h2><p class="sub">Each line is a call this action just made. Open it for the request, the response, and the rows written. BAN, the campaign object, Salesforce, and the warehouse appear when those steps actually run.</p><div id="trace"><p class="sub" id="traceEmpty">No calls yet. Send a brief and the services show up here with their timestamps.</p></div></aside>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const _fetch=window.fetch.bind(window);const LOG_KEY='mopsLog';const LOG_ID='mopsLogId';let mopsLog='';let mopsLogId='';try{mopsLog=localStorage.getItem(LOG_KEY)||'';mopsLogId=localStorage.getItem(LOG_ID)||''}catch(e){}
+let fetchChain=Promise.resolve();
+function saveLog(v){if(!v)return;mopsLog=v;const cut=v.lastIndexOf('.');mopsLogId=cut>0?v.slice(cut+1):'';try{localStorage.setItem(LOG_KEY,v);if(mopsLogId)localStorage.setItem(LOG_ID,mopsLogId)}catch(e){}}
+function noteId(res){const id=res.headers.get('x-mops-log-id');if(id){mopsLogId=id;try{localStorage.setItem(LOG_ID,id)}catch(e){}}}
+function pullMeta(text){try{const j=JSON.parse(text);if(j&&Array.isArray(j.trace)&&j.trace.length)window.dispatchEvent(new CustomEvent('mops-trace',{detail:j.trace}));if(j&&j.mopsLog){saveLog(j.mopsLog);delete j.mopsLog;return JSON.stringify(j)}}catch(e){}return text}
+function snapHeaders(headers,full){if(full){if(mopsLog)headers.set('x-mops-log',mopsLog);else headers.set('x-mops-log','0');return}if(mopsLogId)headers.set('x-mops-log-id',mopsLogId);else if(mopsLog)headers.set('x-mops-log',mopsLog);else headers.set('x-mops-log','0')}
+async function apiFetch(path,input,opts,full){const headers=new Headers(opts&&opts.headers||{});const method=(opts&&opts.method)||'GET';const rawBody=opts&&opts.body!=null?String(opts.body):'';
+ snapHeaders(headers,full);
+ const big=full&&mopsLog&&(mopsLog.length>10000||rawBody.length+mopsLog.length>12000);
+ if(big||(mopsLog&&mopsLog.length>10000&&!mopsLogId&&!full)){const res=await _fetch('/api/carry',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({method,path,body:rawBody,contentType:headers.get('content-type')||'',log:mopsLog||'0'})});
+  let pack;try{pack=await res.json()}catch(e){pack=null}
+  if(!pack||(pack.status==null&&pack.body==null)){const text=pack?JSON.stringify(pack):'{"error":"Something went wrong. Please retry."}';return new Response(text,{status:res.status||500,headers:{'content-type':'application/json'}})}
+  if(pack.log)saveLog(pack.log);const bytes=pack.binary?Uint8Array.from(atob(pack.body||''),c=>c.charCodeAt(0)):pullMeta(pack.body||'');
+  const out=new Response(bytes,{status:pack.status||500,headers:{'content-type':'application/json','x-mops-log-id':(pack.headers&&(pack.headers['x-mops-log-id']||pack.headers['X-Mops-Log-Id']))||mopsLogId||''}});noteId(out);return out}
+ const res=await _fetch(input,Object.assign({},opts,{headers}));if(res.status===409&&res.headers.get('x-mops-log-stale')&&!full)return apiFetch(path,input,opts,true);const next=res.headers.get('x-mops-log');if(next)saveLog(next);noteId(res);
+ if((res.headers.get('content-type')||'').includes('json')){const clone=res.clone();const text=pullMeta(await clone.text());return new Response(text,{status:res.status,headers:res.headers})}
+ return res}
+window.fetch=function(input,opts){const u=typeof input==='string'?input:(input&&input.url)||'';let path=u;try{if(/^https?:/i.test(u)){const x=new URL(u);if(x.origin!==location.origin)return _fetch(input,opts);path=x.pathname+x.search}}catch(e){}
+ if(!path.startsWith('/api/'))return _fetch(input,opts);const job=fetchChain.then(()=>apiFetch(path,input,opts));fetchChain=job.then(()=>{},()=>{});return job};
+document.documentElement.classList.add('trace-on');document.body.classList.add('trace-on');
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SYM={USD:'$',EUR:'€',GBP:'£',INR:'₹',SGD:'S$',AUD:'A$',JPY:'¥',CAD:'C$'};
+const money=(n,cur)=> (SYM[cur]||((cur&&cur!=='USD')?cur+' ':'$'))+Math.round(+n||0).toLocaleString('en-US');
+let S,D,TH={},PF=null,PFALL=null,BR=null,LC=[],DONE=null,MINE=null,busy=window.__busy=false,showCovered=false,editing=null,FILT={region:'all',program:'all',quarter:'all'},delegated=false,answer='';
+let ME={id:'srisha',name:'Srisha R.',role:'marketer',regions:['Americas','EMEA','APJ']};
+const STAGES=['Budget','Setup','Invite','Engagement','Leads','SFDC sync','Opps','Attribution','Report'];
+function route(){const h=location.hash.replace(/^#/,'').replace(/^\//,'');if(h==='campaigns'||h==='quarter')return{view:'campaigns'};if(h.startsWith('c/'))return{view:'card',id:h.slice(2)};if(h.startsWith('t/'))return{view:'thread',id:h.slice(2)};if(h.startsWith('LC-'))return{view:'lc',id:h};return{view:'home'}}
+function toast(t){const x=$('toast');x.textContent=t;x.classList.add('on');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('on'),2400)}
+function handledCount(){let n=0;for(const t of Object.values(TH))for(const m of t.messages||[])if(m.who==='@mops')for(const a of m.artifacts||[])if(!a.error&&a.kind!=='Recommendation')n+=a.kind==='Autopilot'?(a.data?.auto||0):1;return n}
+function coveredLines(){const o=[];for(const t of Object.values(TH))for(const m of t.messages||[])if(m.who==='@mops')for(const a of m.artifacts||[])if(!a.error&&a.title)o.push(String(a.title).replace(/^[A-Z]+-\d+:\s*/,''));return [...new Set(o)].slice(0,5)}
+function didLine(){const n=handledCount();const b=BR;let s=n?`I handled ${n} thing${n===1?'':'s'} today.`:'I checked the book this morning.';
+ if(b&&b.name&&!['approved','live'].includes(String(b.status||''))&&b.gap>0)s+=` I drafted ${b.name} because ${b.geo} ${b.program} is ${money(b.gap)} behind its goal.`;
+ else if(DONE&&DONE.fields)s+=` ${DONE.fields.campaign_name} is covered.`;
+ return s}
+function statusOf(c){if(c.needsApproval)return{t:'Waiting on you',c:'wait'};if(c.pace==='behind')return{t:'Behind',c:'bad'};if(c.status==='Live'||c.stage==='Run')return{t:'Running',c:''};if(c.stage==='Report')return{t:'Wrapped up',c:''};return{t:'On track',c:''}}
+function pctOf(c){let i=STAGES.indexOf(c.stage||'');if(c.status==='Live'||c.stage==='Run')i=6;if(i<0)i=3;return Math.round((i+1)/STAGES.length*100)}
+function visible(lc){if(!lc||lc.error||!lc.id||lc.id==='LC-DEMO')return false;if(lc.childIds&&lc.childIds.length)return false;if(lc.budget&&lc.budget.status==='rejected')return false;if(!['intake','budget','sow','codes','setup','launch'].includes(lc.step))return false;if(DONE&&DONE.id===lc.id)return false;const f=lc.fields||{};const mine=f.openedBy===ME.id||f.owner===ME.name;const pending=!!(lc.budget&&lc.budget.status==='pending_approval');const over=!!(lc.budget&&lc.budget.usd>150000);const sowNeeds=lc.step==='sow'&&over&&!(lc.sow&&lc.sow.signedBy);if(ME.role==='approver')return pending||sowNeeds||mine;return mine}
+function needsCards(){return LC.filter(visible).map(lc=>({kind:'lc',lc}))}
+function askBox(){return `<form class="ask" id="askForm"><label class="sr" for="ask" style="position:absolute;left:-999px">Ask @mops</label><textarea id="ask" rows="1" placeholder="Singapore CISO roundtable, Feb, $40K, agency X"></textarea><button class="send" id="send" type="submit">Send</button></form>
+<div class="starts"><button type="button" data-q="Singapore CISO roundtable, Feb, $40K, agency X">Singapore CISO roundtable, Feb, $40K</button><button type="button" data-q="Which campaigns are behind?">Which campaigns are behind?</button><button type="button" data-q="What did you cover for me?">What did you cover for me?</button></div>${answer?`<p class="note">${esc(answer)}</p>`:''}`}
+function fieldControl(x,choices){const val=x.value==null?'':String(x.value);
+ if(['country','program','campaign_type','quarter'].includes(x.key)){let opts=(choices&&choices[x.key])||[];if(val&&!opts.includes(val))opts=[val,...opts];
+  return `<label class="field">${esc(x.label)}<select data-bit="${esc(x.key)}">${val?'':`<option value="" selected></option>`}${opts.map(o=>`<option value="${esc(o)}"${o===val?' selected':''}>${esc(o)}</option>`).join('')}</select>${x.source?`<span>${esc(x.source)}</span>`:''}</label>`}
+ return `<label class="field">${esc(x.label)}<input data-bit="${esc(x.key)}" type="${x.type==='date'?'date':'text'}" value="${esc(val)}">${x.source?`<span>${esc(x.source)}</span>`:''}</label>`}
+function guessAnswer(lc,key){const f=lc.fields||{},ag=(lc.jobs&&lc.jobs.sow&&lc.jobs.sow.agency)||{};
+ if(key==='agency_confirm')return f.vendor||ag.name||'';
+ if(key==='venue')return f.venue||(f.city?f.city+' — to confirm':'');
+ if(key==='cost_center')return f.cost_center||'CC-4408';
+ if(key==='client_pm')return f.client_pm||f.owner||ME.name||'';
+ if(key==='agency_pm')return f.agency_pm||(ag.pm?ag.pm+' <'+(ag.email||'')+'>':'');
+ return ''}
+function sowBlock(lc){if(lc.step!=='sow'||!lc.jobs||!lc.jobs.sow)return '';const sow=lc.jobs.sow,ag=sow.agency||{},req=sow.request||lc.sowRequest||{};
+ const qs=(sow.questions||[]).map(q=>`<label class="field">${esc(q.label)}<input data-ans="${esc(q.key)}" value="${esc((sow.answers||{})[q.key]||guessAnswer(lc,q.key))}"></label>`).join('');
+ const diff=(sow.diff||[]).filter(d=>d.extracted).map(d=>`<li><b>${esc(d.field)}</b> ${esc(d.extracted)} <span>${d.match?'matches the budget':'check against '+esc(d.approved||'the budget')}</span></li>`).join('');
+ const over=!!(lc.budget&&lc.budget.usd>150000);
+ return `<p>SOW request <b>${esc(req.status||'queued')}</b> to ${esc(ag.email||req.to||'the roster agency')} · ${esc(ag.legal||ag.name||'')}. ${esc(req.note||'Queued in the demo mail catcher. This was not sent through a company mail system.')}</p><label class="field">Agency SOW (PDF, DOCX, or text)<input type="file" data-sow="${esc(lc.id)}" accept=".pdf,.docx,.txt,application/pdf"></label>${sow.extractNote?`<p>${esc(sow.extractNote)}</p>`:''}${diff?`<ul class="bits">${diff}</ul>`:''}${qs}<p class="meta">${over?'Over $150,000. Chris M. has to sign this.':'At or under $150,000. You can sign this.'}${sow.signedBy?' Signed by '+esc(sow.signedBy)+'.':''}</p>`}
+function codesBlock(lc){if(!lc.codes)return '';const c=lc.codes;const box=(key,label)=>`<label class="field">${label}<input data-id="${key}" value="${esc(c[key]||'')}"></label>`;
+ return `<div class="ids">${box('ban_id','BAN')}${box('cc_id','Cost center')}<label class="field">Campaign code<input data-code-input value="${esc(c.campaign_code||'')}"></label>${box('sfdc_campaign_id','SFDC campaign id')}${box('event_id','Event id')}</div><button class="edit" type="button" data-save-code="${esc(lc.id)}">Save ids</button>`}
+function uploadBlock(lc){if(lc.step!=='codes'&&lc.step!=='setup')return '';const up=lc.jobs&&lc.jobs.upload;const rep=up&&up.report;const targets=[''].concat((up&&up.targets)||['FirstName','LastName','Email','Company','Title','Phone','Country','CampaignId','Status','LeadSource','OwnerId']).concat(['Consent','FullName']);
+ let map='';if(up&&up.mapping){const confirmed=!!(up.confirmed||(lc.setup&&lc.setup.mapping&&lc.setup.mapping.confirmed));
+  map=`<div class="map"><p><b>${rep?rep.input:0}</b> rows in the file · <b>${rep?rep.ready:0}</b> ready for Salesforce · ${rep?rep.duplicates:0} duplicate emails · ${rep?rep.invalid:0} quarantined · ${rep?rep.consentHeld:0} held for consent · ${rep?rep.formula:0} formulas · ${rep?(rep.injection||0):0} injection</p>${(up.preview||[]).map(p=>`<p class="meta">${esc(p.name)} · ${esc(p.email)} · owner ${esc(p.owner)} (${esc(p.ownerWhy)})</p>`).join('')}${(rep&&rep.rows||[]).slice(0,8).map(r=>`<p class="meta">${esc(r.issue)} ${esc(r.email||'')}</p>`).join('')}${rep&&rep.rows&&rep.rows.length>8?`<p class="meta">The error report lists all ${rep.rows.length} rows.</p>`:''}${up.mapping.map(m=>`<label class="field">${esc(m.column||('Column '+(m.index+1)))}<select data-map-col="${esc(m.column)}" data-map-index="${m.index}">${targets.map(t=>`<option value="${esc(t)}"${(m.target||'')===t?' selected':''}>${esc(t||'Ignore')}</option>`).join('')}</select><span>${esc(m.method||'')}</span></label>`).join('')}<button class="approve" type="button" data-confirm="${esc(lc.id)}">Confirm mapping</button><p><a href="/api/engine/lifecycle/${esc(lc.id)}/upload-errors.csv">Download the error report</a>${confirmed?` · <a href="/api/engine/lifecycle/${esc(lc.id)}/upload.csv">Download the SFDC-ready CSV</a>`:''}</p></div>`}
+ return `<label class="field">Target list (CSV or XLSX)<input type="file" data-list="${esc(lc.id)}" accept=".csv,.xlsx,text/csv"></label>${map}`}
+function cardLc(lc){const f=lc.fields||{},b=lc.budget||{},cur=f.currency||b.currency||'USD';
+ const bud=lc.jobs&&lc.jobs.budget||{};const items=bud.items||[];const choices=bud.choices||{};
+ const ok=!!bud.ok;const errs=bud.errors||[];
+ const over=!!(b.usd>150000||/Over \$150/.test(b.route||''));
+ const pending=b.status==='pending_approval';const approved=b.status==='approved';
+ const when=[f.city,f.start_date,b.total?money(b.total,cur):'',b.usd?('about '+money(b.usd,'USD')):''].filter(Boolean).join(' · ');
+ const fields=(lc.step==='intake'||lc.step==='budget')?items.map(x=>fieldControl(x,choices)).join(''):'';
+ const prompt=lc.prompt?`<p>${esc(lc.prompt)}</p>`:'';
+ const links=(lc.childIds||[]).map(id=>`<a href="#${esc(id)}">${esc(id)}</a>`).join(' · ');
+ let label='Submit',hide=false;
+ if(lc.step==='sow')label=(lc.sow&&lc.sow.signedBy)?'Continue':(over&&ME.role!=='approver')?'Save answers':'Sign and continue';
+ else if(lc.step==='codes'||lc.step==='setup'||lc.step==='launch')hide=true;
+ else if(ME.role==='approver'&&pending)label='Approve';
+ else if(pending)hide=true;
+ else if(approved)label='Continue';
+ else {label='Submit';hide=!ok}
+ const reject=ME.role==='approver'&&pending&&(lc.step==='budget'||lc.step==='intake')?`<button class="reject" type="button" data-reject="${esc(lc.id)}">Reject</button>`:'';
+ const btn=(lc.step==='codes'||lc.step==='setup'||lc.step==='launch')?'':`<button class="approve" type="button" data-approve="${esc(lc.id)}" ${hide?'hidden':''}>${label}</button>`;
+ const happen=lc.step==='sow'?(over?'Sign records the approver on the SOW, then codes mints the BAN, the campaign code, and the in-process SFDC id.':'Sign records your name on the SOW and continues to the campaign code.'):lc.step==='codes'?'Build page writes the segment, the registration link, and the invite. Confirming the file writes the column map, holds rows without consent, assigns an owner, and builds the SFDC upload file.':lc.step==='setup'||lc.step==='launch'?'Launch marks the campaign live and writes the warehouse fact rows. The Salesforce id stays the one minted in this demo.':pending&&ME.role==='approver'?'Approve writes your name on the budget and an audit row, then Maria can continue to the SOW. Nothing is spent.':over?'Submit writes the budget and routes it to Chris M. because it is over $150,000. Nothing is spent.':'Submit writes the budget. It is inside $150,000, so policy approves it and the SOW request is queued.';
+ const setupLine=lc.setup&&lc.setup.registrationUrl?`<p class="meta">Registration ${esc(lc.setup.registrationUrl)}. ${esc(lc.setup.email&&lc.setup.email.subject||'')}</p>`:'';
+ const more=(lc.step==='codes'?`<button class="edit" type="button" data-setup="${esc(lc.id)}">Build page</button>`:'')+((lc.step==='setup'||lc.step==='launch')?`<button class="approve" type="button" data-launch="${esc(lc.id)}">Launch</button>`:'');
+ return `<article class="card" data-lc="${esc(lc.id)}" data-step="${esc(lc.step)}"><h2><a href="#${esc(lc.id)}">${esc(f.campaign_name||'New campaign')}</a></h2><p class="meta">${esc(when)}</p>${prompt}${links?`<p class="meta">Linked cities ${links}</p>`:''}<p class="next">${esc(happen)}</p><p>${lc.step==='sow'?'Check the agency SOW against the budget, then sign.':lc.step==='codes'||lc.step==='setup'||lc.step==='launch'?'The ids are issued. Edit them if you need to, then upload the list.':ok?'Check every field. Submit updates as you edit.':'Fill the open fields. Submit stays hidden until they are valid.'} ${over?'Over $150,000 needs Chris M.':'Inside the $150,000 rule.'}</p><p class="err">${esc(errs[0]||'')}</p>${fields}${sowBlock(lc)}${codesBlock(lc)}${setupLine}${uploadBlock(lc)}<div class="row">${btn}${more}${reject}</div></article>`}
+function cardDone(r){const f=r.fields||{},c=r.codes||{},chk=r.sow&&r.sow.selfCheck;
+ return `<article class="card"><p class="ok">Covered for you</p><h2>${esc(f.campaign_name||'Campaign')}</h2><p>The SOW request is queued in the demo mail catcher. The ids are on the request.${r.step==='run'||r.step==='report'?' It is live.':''}</p><div class="bar"><i style="width:${r.step==='run'||r.step==='report'?'100':'72'}%"></i></div><div class="ids"><div><b>${esc(c.ban_id||'—')}</b><span>BAN / cost center ${esc(c.cc_id||'')}</span></div><div><b>${esc(c.campaign_code||'—')}</b><span>Campaign code</span></div><div><b>${esc(c.sfdc_campaign_id||'—')}</b><span>SFDC campaign</span></div><div><b>${esc(c.event_id||'—')}</b><span>Event</span></div></div>${chk?`<p>${esc(chk.caught)}. ${esc(chk.fix)}.</p>`:''}<a class="back" href="${r.campaign&&r.campaign.id?'#c/'+esc(r.campaign.id):'#campaigns'}">See it in my campaigns</a></article>`}
+function home(){const cards=needsCards();
+ const n=cards.length;const pending=n?n+' pending '+(n===1?'action':'actions'):'Nothing waiting on you';
+ let h=`<h1>Hey, ${esc((ME.name||'there').split(' ')[0])}.</h1><p class="pending">${esc(pending)}</p><p class="did">${esc(ME.role)} · ${esc((ME.regions||[]).join(', '))}. ${esc(didLine())}</p>${askBox()}<div class="sec" id="actions">`;
+ if(DONE)h+=cardDone(DONE);
+ if(cards.length)h+=cards.map(c=>cardLc(c.lc)).join('');
+ else if(!DONE){const lines=coveredLines();if(lines.length)h+=`<article class="card"><h2>Already handled</h2><ul class="bits">${lines.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></article>`}
+ if(showCovered){const lines=coveredLines();h+=`<article class="card"><h2>Here's what I handled.</h2>${lines.length?`<ul class="bits">${lines.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:'<p>Nothing has landed in the book yet.</p>'}</article>`}
+ const threads=(S?.threads||[]).slice(0,8);
+ h+=`<details class="hist"><summary>Earlier asks</summary>${threads.map(t=>`<button type="button" data-thread="${esc(t.id)}">${esc(t.title)}</button>`).join('')||'<p>None yet.</p>'}</details></div>`;
+ return h}
+function campaigns(){const groups=PF?.groups||{};const order=['ABM','Digital','Events','Partner','Lead gen'];const regs=['all','APJ','EMEA','Americas'];const progs=['all',...order];
+ let n=0,body='';
+ for(const geo of ['APJ','EMEA','Americas']){let block='';
+  for(const name of order){const rows=(groups[name]||[]).filter(c=>(c.geo||'')===geo);if(!rows.length)continue;n+=rows.length;
+   block+=`<h3>${esc(geo)} · ${esc(name)}</h3><div class="sheet">${rows.map(c=>{const st=statusOf(c);return `<button class="camp" type="button" data-camp="${esc(c.id)}"><span class="nm">${esc(c.name)}<div class="sub">${esc(c.country||c.region||'')}</div></span><span class="st ${st.c}">${esc(st.t)}</span><span class="bar"><i style="width:${pctOf(c)}%"></i></span></button>`}).join('')}</div>`}
+  body+=block}
+ if(!n)body=`<p class="empty">Nothing in this slice.</p>`;
+ return `<h1>My campaigns</h1><div class="filters"><select id="fRegion">${regs.map(v=>`<option value="${v}" ${FILT.region===v?'selected':''}>${v==='all'?'All regions':v}</option>`).join('')}</select><select id="fProgram">${progs.map(v=>`<option value="${v}" ${FILT.program===v?'selected':''}>${v==='all'?'All programs':v}</option>`).join('')}</select><span class="count">${n} campaign${n===1?'':'s'}</span></div>${body}`}
+function cardView(id){const c=(D?.campaigns||[]).find(x=>x.id===id);if(!c)return `<p class="empty">That campaign is not in the book.</p><a class="back" href="#campaigns">My campaigns</a>`;const st=statusOf(c);
+ return `<p><a class="back" href="#campaigns">My campaigns</a></p><article class="card"><h2>${esc(c.name)}</h2><p class="meta">${esc(c.geo||'')} · ${esc(c.program||c.channel||'')} · ${esc(st.t)}</p><div class="bar"><i style="width:${pctOf(c)}%"></i></div><p class="ok">Covered for you</p><p>${esc(c.nextAction||'Running inside the rules.')}</p><div class="ids"><div><b>${esc(c.code||'—')}</b><span>Campaign code</span></div><div><b>${esc(c.sfdcId||'—')}</b><span>SFDC campaign</span></div><div><b>${money(c.spend||0)}</b><span>of ${money(c.budget||0)} budget</span></div><div><b>${money(c.pipeline||0)}</b><span>pipeline of ${money(c.goal||0)}</span></div></div></article>`}
+function threadView(id){const t=TH[id];if(!t)return `<p class="empty">That ask is not here.</p><a class="back" href="#/">Home</a>`;
+ const msgs=(t.messages||[]).slice(-12).map(m=>`<div class="bub ${m.who==='@mops'?'bot':'me'}">${esc(m.text||'')}</div>`).join('');
+ return `<p><a class="back" href="#/">Home</a></p><h1>${esc(t.title)}</h1>${msgs||'<p class="empty">No messages yet.</p>'}`}
+function lcView(id){const lc=LC.find(x=>x.id===id)||(DONE&&DONE.id===id?DONE:null);if(!lc||lc.error)return `<p class="empty">That request is not on your desk.</p><a class="back" href="#/">Home</a>`;if(lc.childIds&&lc.childIds.length){const kids=lc.childIds.map(cid=>{const k=LC.find(x=>x.id===cid);const city=k&&k.fields&&k.fields.city||cid;const amt=k&&k.fields?money(k.fields.budget,k.fields.currency):'';return `<a class="back" href="#${esc(cid)}">${esc(city)} ${esc(amt)}</a>`}).join(' ');return `<article class="card"><h2>${esc((lc.fields||{}).campaign_name||'Linked requests')}</h2><p>Each city is its own request.</p><p>${kids}</p></article>`}if(DONE&&DONE.id===id&&!['intake','budget','sow','codes','setup','launch'].includes(lc.step))return cardDone(DONE);if(['intake','budget','sow','codes','setup','launch'].includes(lc.step))return cardLc(lc);if(lc.codes)return cardDone(lc);return `<article class="card"><h2>${esc(lc.fields?.campaign_name||id)}</h2><p>${esc((lc.did||[])[0]||'In progress.')}</p></article>`}
+function render(){const r=route();$('navHome').classList.toggle('on',r.view==='home');$('navCamps').classList.toggle('on',r.view!=='home'&&r.view!=='thread');
+ $('main').innerHTML=r.view==='home'?home():r.view==='campaigns'?campaigns():r.view==='card'?cardView(r.id):r.view==='thread'?threadView(r.id):lcView(r.id);
+ bind()}
+function bind(){const form=$('askForm');if(form){form.onsubmit=ev=>{ev.preventDefault();ask($('ask').value)};[...document.querySelectorAll('.starts button')].forEach(b=>b.onclick=()=>ask(b.dataset.q))}
+ document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveLc(b.dataset.approve,b.textContent==='Approve'?'approve':''));
+ document.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>approveLc(b.dataset.reject,'reject'));
+ document.querySelectorAll('[data-sow]').forEach(el=>el.onchange=()=>uploadSow(el.dataset.sow,el.files[0]));
+ document.querySelectorAll('[data-list]').forEach(el=>el.onchange=()=>uploadList(el.dataset.list,el.files[0]));
+ document.querySelectorAll('[data-save-code]').forEach(b=>b.onclick=()=>saveIds(b.dataset.saveCode));
+ document.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>confirmUpload(b.dataset.confirm));
+ document.querySelectorAll('[data-setup]').forEach(b=>b.onclick=()=>buildPage(b.dataset.setup));
+ document.querySelectorAll('[data-launch]').forEach(b=>b.onclick=()=>launchLc(b.dataset.launch));
+ document.querySelectorAll('[data-camp]').forEach(b=>b.onclick=()=>go('c/'+b.dataset.camp));
+ document.querySelectorAll('[data-thread]').forEach(b=>b.onclick=()=>go('t/'+b.dataset.thread));
+ document.querySelectorAll('[data-lc]').forEach(root=>{root.querySelectorAll('[data-bit]').forEach(el=>{const fn=()=>{paintAction(root.dataset.lc);scheduleDraft(root.dataset.lc)};el.addEventListener('input',fn);el.addEventListener('change',fn)});paintAction(root.dataset.lc)});
+ const fr=$('fRegion'),fp=$('fProgram');if(fr)fr.onchange=()=>setFilt('region',fr.value);if(fp)fp.onchange=()=>setFilt('program',fp.value)}
+async function setFilt(k,v){FILT[k]=v;await loadPortfolio();render()}
+async function loadPortfolio(){const q=new URLSearchParams(FILT);try{PF=await(await fetch('/api/portfolio?'+q)).json()}catch(_){PF=PF}try{PFALL=await(await fetch('/api/portfolio?region=all&program=all&quarter=all')).json()}catch(_){PFALL=PFALL}}
+async function loadThreads(){if(!S||!S.threads||!S.threads.length)return;const ts=await Promise.all(S.threads.map(t=>fetch('/api/thread/'+t.id).then(r=>r.json()).catch(()=>null)));ts.filter(Boolean).forEach(t=>{if(t.id)TH[t.id]=t})}
+async function go(id){const hash=id==='home'||id==='/'?'#/':'#'+id;if(location.hash!==hash)history.replaceState(null,'',hash);if(String(id).startsWith('t/')){const tid=String(id).slice(2);if(!TH[tid]){try{const t=await(await fetch('/api/thread/'+encodeURIComponent(tid))).json();if(t&&t.id)TH[t.id]=t}catch(_){}}}if(String(id).startsWith('LC-')){try{const row=await(await fetch('/api/engine/lifecycle/'+encodeURIComponent(id))).json();if(row&&row.childIds){const kids=await Promise.all(row.childIds.map(cid=>fetch('/api/engine/lifecycle/'+encodeURIComponent(cid)).then(r=>r.json()).catch(()=>null)));kids.filter(k=>k&&k.id).forEach(k=>{const i=LC.findIndex(x=>x.id===k.id);if(i>=0)LC[i]=k;else LC.push(k)})}const i=LC.findIndex(x=>x.id===id);if(row&&row.id){if(i>=0)LC[i]=row;else LC.push(row)}}catch(_){}}render();scrollTo(0,0)}
+function paintTrace(steps){const box=$('trace');if(!box||!steps)return;const empty=$('traceEmpty');if(empty&&steps.length)empty.remove();for(const s of steps){const key=(s.at||'')+'|'+(s.service||'')+'|'+(s.name||'');if(box.querySelector(`[data-k="${CSS.escape(key)}"]`))continue;const el=document.createElement('details');el.className='step';el.dataset.k=key;const st=s.status==='route'?'routestep':s.status==='error'?'badstep':'okstep';
+  el.innerHTML=`<summary><span class="svc">${esc(s.service)}</span> ${esc(s.name)} <span class="ms ${st}">${esc(s.status)} · ${esc(s.ms)}ms</span></summary><div class="ms">${esc(s.at||'')}</div><pre>${esc(JSON.stringify({request:s.request,response:s.response,rows:s.rows},null,2))}</pre>`;box.appendChild(el);box.scrollTop=box.scrollHeight}}
+window.addEventListener('mops-trace',e=>paintTrace(e.detail));
+async function loadTrace(){try{const j=await(await fetch('/api/engine/trace')).json();paintTrace(j.steps||[])}catch(e){}}
+$('traceToggle').onclick=()=>{document.body.classList.toggle('trace-on');$('traceToggle').textContent=document.body.classList.contains('trace-on')?'Behind the scenes':'Show backend'};
+$('switchUser').onclick=async()=>{try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/'};
+async function load(){if(!delegated){delegated=true;try{await fetch('/api/delegate',{method:'POST'})}catch(_){}}
+ try{
+ try{const sesRes=await fetch('/api/session');const ses=await sesRes.json();if(sesRes.status===401){location.href='/';return}if(ses.user)ME=ses.user}catch(_){}
+ const who=$('switchUser');if(who)who.textContent='Signed in as '+String(ME.name||'you').split(' ')[0]+'. Switch';
+ S=await(await fetch('/api/state')).json();if(!S||S.error||!S.threads){toast((S&&S.error?S.error:'Could not load the desk.')+' Please retry.');S={threads:[]}}
+ D=await(await fetch('/api/data')).json();if(!D||D.error)D={campaigns:[]}
+ try{BR=await(await fetch('/api/briefing')).json()}catch(_){}
+ await loadPortfolio();
+ try{const list=await(await fetch('/api/engine/lifecycle?full=1')).json();LC=(list.rows||[]).filter(x=>x&&x.id&&x.id!=='LC-DEMO');if(MINE&&!LC.some(x=>x.id===MINE)){const mine=await fetch('/api/engine/lifecycle/'+encodeURIComponent(MINE)).then(r=>r.json()).catch(()=>null);if(mine&&mine.id)LC.unshift(mine)}}catch(_){LC=LC}
+ loadTrace()
+ }catch(e){toast('Could not load the desk. Please retry.');if(!S)S={threads:[]};if(!D)D={campaigns:[]}}
+ const a=document.activeElement;if(busy)return;if(a&&(a.id==='ask'||(a.closest&&a.closest('[data-lc]'))))return;render()}
+function readBits(id){const root=document.querySelector(`[data-lc="${id}"]`);const o={};if(!root)return o;root.querySelectorAll('[data-bit]').forEach(el=>{o[el.dataset.bit]=String(el.value||'').trim()});return o}
+function readAnswers(id){const root=document.querySelector(`[data-lc="${id}"]`);const o={};if(!root)return o;root.querySelectorAll('[data-ans]').forEach(el=>{if(String(el.value).trim())o[el.dataset.ans]=el.value.trim()});return o}
+function remember(r){if(!r||!r.id)return;const i=LC.findIndex(x=>x.id===r.id);if(i>=0)LC[i]=r;else LC.unshift(r)}
+function quarterOfClient(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return'';const [y,m]=date.split('-').map(Number);const fy=(m>=8?y+1:y)%100;const q=Math.floor(((m-8+12)%12)/3)+1;return 'FY'+String(fy).padStart(2,'0')+'Q'+q}
+function localErrors(root){const v={};root.querySelectorAll('[data-bit]').forEach(el=>{v[el.dataset.bit]=String(el.value||'').trim()});const errors=[];
+ for(const [k,label] of [['campaign_name','Campaign name'],['product','Product / architecture'],['audience','Goal or target accounts'],['country','Country'],['city','City'],['start_date','Start date'],['vendor','Agency'],['campaign_type','Campaign type'],['budget','Amount'],['currency','Currency'],['quarter','Quarter'],['program','Program'],['owner','Owner']])if(!v[k])errors.push(label+' is required.');
+ const expect=quarterOfClient(v.start_date);if(expect&&v.quarter&&v.quarter!==expect)errors.push('Quarter should be '+expect+' for a start date of '+v.start_date+'.');
+ if(v.start_date&&v.end_date&&v.end_date<v.start_date)errors.push('End date is before the start date.');
+ const amt=Number(String(v.budget||'').replace(/[, ]/g,'').replace(/[^\d.]/g,''));if(v.budget&&!(amt>0))errors.push('Amount has to be a number greater than zero.');
+ return errors}
+function paintAction(id){const root=document.querySelector(`[data-lc="${id}"]`);const lc=LC.find(x=>x.id===id);if(!root||!lc||(lc.step!=='budget'&&lc.step!=='intake'))return;const errors=localErrors(root);const err=root.querySelector('.err');if(err)err.textContent=errors[0]||'';const btn=root.querySelector('[data-approve]');const rej=root.querySelector('[data-reject]');const pending=lc.budget&&lc.budget.status==='pending_approval';const approved=lc.budget&&lc.budget.status==='approved';let label='';if(ME.role==='approver'&&pending)label='Approve';else if(pending)label='';else if(approved)label='Continue';else label='Submit';if(btn){btn.hidden=!label||!!errors.length;btn.disabled=!label||!!errors.length;if(label)btn.textContent=label}if(rej){rej.hidden=!!errors.length;rej.disabled=!!errors.length}}
+async function postLc(id,action,patch){const res=await fetch('/api/engine/lifecycle/'+encodeURIComponent(id),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,patch:patch||{}})});let r;try{r=await res.json()}catch{r={error:'That did not go through. Please retry.'}}if(!res.ok&&!r.error)r.error='That did not go through. Please retry.';return r}
+const draftWait={};
+function scheduleDraft(id){clearTimeout(draftWait[id]);draftWait[id]=setTimeout(()=>saveDraft(id),350)}
+async function saveDraft(id){const root=document.querySelector(`[data-lc="${id}"]`);const lc=LC.find(x=>x.id===id);if(!root||!lc||(lc.step!=='budget'&&lc.step!=='intake'))return;if(localErrors(root).length)return;const r=await postLc(id,'save-budget',{fields:readBits(id)});if(r&&r.id&&!r.error)remember(r)}
+async function flushDrafts(except){const ids=[...document.querySelectorAll('[data-lc]')].map(el=>el.dataset.lc).filter(id=>id&&id!==except);await Promise.all(ids.map(async id=>{clearTimeout(draftWait[id]);await saveDraft(id)}))}
+async function approveLc(id,decision){if(busy)return;const lc=LC.find(x=>x.id===id);if(!lc)return;busy=window.__busy=true;clearTimeout(draftWait[id]);const btn=document.querySelector(decision==='reject'?`[data-reject="${id}"]`:`[data-approve="${id}"]`);const verb=btn?btn.textContent:'';if(btn){btn.disabled=true;btn.textContent='Working…'}
+ try{await flushDrafts(id)}catch(e){}
+ try{let r=lc;
+  if(lc.step==='intake'||lc.step==='budget'){r=await postLc(id,'save-budget',{fields:readBits(id)});remember(r);if(r.error){toast(r.error);busy=window.__busy=false;render();return}
+   if(decision==='reject'){r=await postLc(id,'reject-budget',{});remember(r);toast(r.error||'Rejected.');busy=window.__busy=false;render();return}
+   if(decision==='approve'&&r.budget&&r.budget.status==='pending_approval'){r=await postLc(id,'approve-budget',{});remember(r);toast(r.error||'Approved.');busy=window.__busy=false;render();return}
+   if(decision==='approve'){toast(r.budget&&r.budget.status==='approved'?'Already approved.':(r.error||'Submit it before it can be approved.'));busy=window.__busy=false;render();return}
+   if(!r.budget||r.budget.status==='draft'){r=await postLc(id,'submit-budget',{});remember(r);if(r.error){toast(r.error);busy=window.__busy=false;render();return}
+    if(r.budget&&r.budget.status==='pending_approval'){toast('Submitted to Chris M.');busy=window.__busy=false;render();return}
+    if(r.budget&&r.budget.status==='approved'&&r.step==='budget'){r=await postLc(id,'continue',{});remember(r);toast(r.error||'Approved by policy. The SOW request is queued.');busy=window.__busy=false;render();return}}
+   else if(r.budget&&r.budget.status==='approved'&&r.step==='budget'){r=await postLc(id,'continue',{});remember(r);toast(r.error||'The SOW request is queued in the demo mail catcher.');busy=window.__busy=false;render();return}}
+  else if(lc.step==='sow'){r=await postLc(id,'save-sow',{answers:readAnswers(id)});remember(r);if(r.error){toast(r.error);busy=window.__busy=false;render();return}
+   if(verb==='Save answers'){toast('Saved. Chris M. has to sign this.');busy=window.__busy=false;render();return}
+   if(!(r.sow&&r.sow.signedBy)){r=await postLc(id,'sign-sow',{});remember(r);if(r.error){toast(r.error);busy=window.__busy=false;render();return}}
+   r=await postLc(id,'continue',{});remember(r);toast(r.error||(r.step==='codes'?'Signed. The campaign code is on the card.':'Saved.'));}
+ }catch(err){toast(err.message||String(err))}
+ busy=window.__busy=false;render()}
+const FILES={};
+function fileB64(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=rej;fr.readAsDataURL(file)})}
+async function uploadSow(id,file){if(!file)return;busy=window.__busy=true;try{const b64=await fileB64(file);const r=await postLc(id,'ingest-sow',{name:file.name,base64:b64});remember(r);toast(r.error||(r.sow&&r.sow.extractNote)||'Read the agency SOW. Compare it with the approved budget before anyone signs.');}catch(err){toast(err.message||String(err))}busy=window.__busy=false;render()}
+async function uploadList(id,file){if(!file)return;busy=window.__busy=true;try{const b64=await fileB64(file);FILES[id]={name:file.name,b64};const r=await postLc(id,'preview-upload',{name:file.name,base64:b64});remember(r);const rep=r.jobs&&r.jobs.upload&&r.jobs.upload.report;toast(r.error||(rep?`${rep.input} in, ${rep.ready} ready, ${rep.invalid} quarantined, ${rep.consentHeld||0} held for consent. Confirm the columns.`:'Mapped. Confirm the columns.'));}catch(err){toast(err.message||String(err))}busy=window.__busy=false;render()}
+async function confirmUpload(id){const file=FILES[id];const root=document.querySelector(`[data-lc="${id}"]`);const overrides=[];if(root)root.querySelectorAll('[data-map-index]').forEach(el=>overrides.push({column:el.dataset.mapCol,index:+el.dataset.mapIndex,target:el.value||null}));const patch={overrides};if(file){patch.name=file.name;patch.base64=file.b64}busy=window.__busy=true;try{const r=await postLc(id,'confirm-upload',patch);remember(r);toast(r.error||'Filed. Download the SFDC-ready CSV and the error report.');}catch(err){toast(err.message||String(err))}busy=window.__busy=false;render()}
+async function saveIds(id){const root=document.querySelector(`[data-lc="${id}"]`);if(!root)return;const codeEl=root.querySelector('[data-code-input]');const ids={};root.querySelectorAll('[data-id]').forEach(el=>{ids[el.dataset.id]=el.value.trim()});busy=window.__busy=true;try{const r=await postLc(id,'save-code',{code:codeEl?codeEl.value.trim():'',ids});remember(r);toast(r.error||'Ids saved.');}catch(err){toast(err.message||String(err))}busy=window.__busy=false;render()}
+async function buildPage(id){if(busy)return;busy=window.__busy=true;try{const r=await postLc(id,'continue',{});remember(r);toast(r.error||'Registration page, invite, and form id are ready.');}catch(err){toast(err.message||String(err))}busy=window.__busy=false;render()}
+async function launchLc(id){if(busy)return;busy=window.__busy=true;try{const r=await postLc(id,'launch',{});remember(r);if(r&&(r.step==='run'||r.step==='report'))DONE=r;toast(r.error||'Live. The warehouse write is in the trace.');}catch(err){toast(err.message||String(err))}busy=window.__busy=false;render()}
+function looksLikeCampaign(q){return /(\$|€|£|₹)|(\b(sgd|aud|inr|eur|usd|gbp|jpy|lakh|crore)\b)|\b(roundtable|dinner|summit|event|webinar|campaign|abm)\b/.test(q)&&!/\b(which|what|why|how)\b|\bbehind\b|\bcover\b/.test(q)}
+async function ask(text){text=String(text||'').trim();if(!text||busy)return;const q=text.toLowerCase();answer='';showCovered=false;
+ if(/behind/.test(q)){const book=PFALL||PF;const n=(book?.groups?Object.values(book.groups).flat():[]).filter(c=>c.pace==='behind').length;answer=n?`${n} campaign${n===1?' is':'s are'} behind. The fix is drafted on the card below.`:'Nothing is behind.';if(route().view!=='home')await go('home');else render();const el=$('actions');if(el)el.scrollIntoView({behavior:'smooth'});return}
+ if(/cover|handled|did you|did @mops/.test(q)){await loadThreads();showCovered=true;if(route().view!=='home')await go('home');else render();return}
+ if(!looksLikeCampaign(q)){busy=window.__busy=true;try{const res=await(await fetch('/api/post',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({threadId:'T-K5',who:ME.name||'me',text:text.startsWith('@')?text:'@mops '+text})})).json();const last=(res.messages||[]).filter(m=>m.who==='@mops').at(-1);answer=last?.text||'Done.';}catch(err){answer=err.message}busy=window.__busy=false;if(route().view!=='home')await go('home');else render();return}
+ busy=window.__busy=true;if($('send')){$('send').disabled=true;$('send').textContent='Working…'}
+ try{const res=await fetch('/api/engine/lifecycle/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text})});let r;try{r=await res.json()}catch{r={error:'Could not start that request. Please retry.'}}
+  if(!res.ok&&!r.error)r.error='Could not start that request. Please retry.';if(r.error&&!r.id)throw new Error(r.error);MINE=r.id;remember(r);if(r.childIds&&r.childIds.length){const kids=await Promise.all(r.childIds.map(cid=>fetch('/api/engine/lifecycle/'+encodeURIComponent(cid)).then(x=>x.json()).catch(()=>null)));kids.filter(k=>k&&k.id).forEach(remember)}answer=r.missing&&r.missing.length?`I still need ${r.missing.map(m=>m.label).join(', ')}.`:(r.childIds&&r.childIds.length?`Drafted ${r.childIds.length} linked requests.`:'Drafted. Check the fields, then submit.');
+ }catch(err){toast((err.message||String(err))+' Please retry.')}
+ busy=window.__busy=false;if(route().view!=='home')await go('home');else render();const el=$('actions');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
+window.onhashchange=()=>{const r=route();if(r.view==='lc')go(r.id);else render()};
+load().then(()=>{const r=route();if(r.view==='lc')return go(r.id);if($('ask'))$('ask').focus()});
+setInterval(()=>{if(!busy)load()},30000);
+</script></body></html>

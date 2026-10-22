@@ -1,0 +1,17 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+.env.*
+data.json
+backend/data/
+backend/runs/
+shots/
+*.db
+*.db-wal
+*.db-shm
+*.duckdb
+*.duckdb.wal
+*.log
+.DS_Store
+.vercel
