@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Lead generation · __BRAND__</title>
+<title>Chat with @mops · __BRAND__</title>
 <style>
 :root {
   --bg: #f3f2ef;
@@ -17,122 +17,138 @@
   --hot: #0f6e56;
   --warm: #8a5a12;
   --cold: #5e5a53;
-  --shadow: 0 1px 2px rgba(28, 27, 25, .04), 0 18px 40px rgba(28, 27, 25, .06);
+  --shadow: 0 1px 2px rgba(28, 27, 25, .04), 0 16px 36px rgba(28, 27, 25, .06);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); }
 body { font: 21px/1.45 ui-sans-serif, system-ui, "Segoe UI", sans-serif; min-height: 100vh; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
-h1, h2, p { margin: 0; }
+h1, h2, h3, p { margin: 0; }
 header {
   position: sticky; top: 0; z-index: 5;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px;
+  display: flex; align-items: center; gap: 14px;
   padding: 16px 28px;
   background: rgba(243, 242, 239, .94);
-  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
 .logo { color: var(--ink); text-decoration: none; font-weight: 720; letter-spacing: -.03em; font-size: 22px; }
 .logo i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); margin-right: 8px; }
-.product { font-size: 18px; color: var(--muted); }
-.steps { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; flex: 1; }
-.steps button {
-  border: 1px solid var(--line); background: #fff; border-radius: 999px;
-  padding: 8px 14px; font-size: 16px; font-weight: 650;
-}
-.steps button[aria-current="step"] { background: var(--accent); color: #fff; border-color: var(--accent); }
-.steps button:disabled { opacity: .45; cursor: default; }
-#replay, #next, .dl, .filebtn {
-  border: 0; border-radius: 999px; background: var(--accent); color: #fff;
+.product { font-size: 18px; color: var(--muted); flex: 1; }
+#replay {
+  border: 0; border-radius: 999px; background: #1c1b19; color: #fff;
   font-weight: 700; padding: 12px 18px;
 }
-#replay { background: #1c1b19; }
 #replay.on { background: var(--warm); }
-main { width: min(1180px, calc(100% - 36px)); margin: 0 auto; padding: 22px 0 140px; }
-.kicker { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; font-weight: 750; color: var(--muted); margin-bottom: 8px; }
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.split section { background: var(--card); border-radius: 22px; padding: 16px 20px; box-shadow: var(--shadow); }
+main { width: min(980px, calc(100% - 32px)); margin: 0 auto; padding: 22px 0 190px; }
+.turn { scroll-margin-top: 84px; scroll-margin-bottom: 190px; }
+.kicker { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; font-weight: 750; color: var(--muted); margin-bottom: 6px; }
+.who { font-weight: 750; letter-spacing: -.02em; margin-bottom: 4px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.split section { background: var(--card); border-radius: 18px; padding: 14px 16px; box-shadow: var(--shadow); }
 .split .you { box-shadow: inset 6px 0 0 #3d3a34, var(--shadow); }
 .split .agent { box-shadow: inset 6px 0 0 var(--accent), var(--shadow); }
+#banner:empty { display: none; }
+.banner { background: #f8f1e4; color: #6a4510; border-radius: 14px; padding: 12px 16px; font-weight: 650; margin-bottom: 14px; }
+#thread { display: grid; gap: 18px; }
+.turn { display: grid; gap: 10px; }
+.bubble { background: #fff; border-radius: 22px; padding: 16px 20px; box-shadow: var(--shadow); }
+.bubble.you { box-shadow: inset 6px 0 0 #3d3a34, var(--shadow); }
+.bubble.agent { box-shadow: inset 6px 0 0 var(--accent), var(--shadow); }
 .did { font-size: 26px; line-height: 1.25; letter-spacing: -.03em; font-weight: 650; }
-.why { margin-top: 16px; background: #fff; border-radius: 18px; padding: 16px 20px; font-size: 20px; }
+.provided { margin-top: 10px; color: var(--muted); font-size: 18px; }
+.working { font-size: 22px; font-weight: 650; }
+.working::before {
+  content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent); margin-right: 10px; vertical-align: -1px;
+  animation: pulse .8s ease infinite;
+}
+.why { margin-top: 12px; font-size: 20px; }
 .why b { color: var(--accent); }
-.src { display: block; margin-top: 8px; color: var(--muted); font-size: 17px; }
-details { margin-top: 12px; background: #fff; border-radius: 16px; padding: 12px 18px; }
-summary { font-size: 18px; font-weight: 700; cursor: pointer; }
-details ol { margin: 10px 0 4px; padding-left: 22px; }
-details li { margin: 6px 0; font-size: 17px; }
-details .svc { color: var(--muted); font-weight: 700; }
-#results { margin-top: 18px; display: grid; gap: 10px; }
-#results.accounts { grid-template-columns: 1fr 1fr; }
-.acct, .lead, .mail, .brief {
-  background: #fff; border-radius: 18px; box-shadow: var(--shadow); text-align: left;
+.src { display: block; margin-top: 6px; color: var(--muted); font-size: 17px; }
+.card { margin-top: 14px; background: var(--bg); border-radius: 18px; padding: 16px; }
+.card h2 { font-size: 32px; letter-spacing: -.04em; margin: 4px 0 8px; }
+.card h3 { margin: 14px 0 6px; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.card li { margin: 4px 0; }
+.sow-status { font-weight: 750; color: var(--accent); }
+table { width: 100%; border-collapse: collapse; }
+td { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 20px; }
+td:last-child { text-align: right; font-weight: 700; }
+.total td { border-bottom: 0; font-size: 22px; }
+.regform { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.regform span { background: #fff; border-radius: 12px; padding: 10px 12px; border: 1px solid var(--line); font-size: 18px; }
+.row, .lead, .mail, .fix, .acct {
+  background: #fff; border-radius: 16px; padding: 12px 14px; margin-top: 8px; text-align: left;
 }
-.acct {
-  width: 100%; border: 1px solid transparent; display: grid;
-  grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center;
-  padding: 8px 14px;
-}
-.acct:hover, .acct:focus-visible { border-color: var(--accent); }
-.rank { font-size: 22px; font-weight: 750; color: var(--muted); }
-.acct b { display: block; font-size: 24px; letter-spacing: -.02em; }
-.acct small, .meta { display: block; color: var(--muted); font-size: 16px; margin-top: 2px; }
-.fit { font-size: 34px; font-weight: 750; letter-spacing: -.04em; color: var(--accent); text-align: right; }
-.fit span { display: block; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-.brief { padding: 22px 24px; }
-.brief h2 { font-size: 36px; letter-spacing: -.04em; margin-bottom: 6px; }
-.grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
-.grid4 article { background: var(--bg); border-radius: 16px; padding: 14px 16px; }
-.grid4 h3 { margin: 0 0 8px; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.grid4 li { margin: 6px 0; }
-.person { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
-.role { color: var(--accent); font-weight: 700; font-size: 16px; }
-.counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.counts div, .bands div { background: #fff; border-radius: 18px; padding: 16px; box-shadow: var(--shadow); }
-.counts b, .bands b { display: block; font-size: 40px; letter-spacing: -.04em; line-height: 1; }
-.counts span, .bands span { color: var(--muted); font-size: 16px; }
-.bands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.row.no { border-left: 8px solid var(--warm); }
+.row small, .meta { display: block; color: var(--muted); font-size: 16px; margin-top: 2px; }
+dl { display: grid; grid-template-columns: 180px 1fr; gap: 6px 12px; margin: 8px 0 0; }
+dt { color: var(--muted); }
+dd { margin: 0; font-weight: 700; }
+.counts, .bands { display: grid; gap: 10px; margin-top: 8px; }
+.counts { grid-template-columns: repeat(4, 1fr); }
+.bands { grid-template-columns: repeat(3, 1fr); }
+.counts div, .bands div { background: #fff; border-radius: 16px; padding: 12px; }
+.counts b, .bands b { display: block; font-size: 36px; letter-spacing: -.04em; line-height: 1; }
+.counts span, .bands span { color: var(--muted); font-size: 15px; }
 .hot b { color: var(--hot); } .warm b { color: var(--warm); } .cold b { color: var(--cold); }
-.lead, .mail { padding: 14px 16px; border-left: 8px solid var(--line); }
-.lead.hot, .pill.hot { border-color: var(--hot); }
+.lead, .mail { border-left: 8px solid var(--line); }
+.lead.hot { border-color: var(--hot); }
 .lead.warm { border-color: var(--warm); }
 .lead.cold { border-color: var(--cold); }
-.lead b, .mail b { font-size: 22px; }
-.drop {
-  border: 2px dashed var(--accent); border-radius: 22px; background: #fff;
-  min-height: 180px; display: grid; place-items: center; text-align: center; padding: 24px;
-  font-size: 24px; font-weight: 650;
+.leadlist { max-height: 360px; overflow: auto; }
+.mail pre { white-space: pre-wrap; font: 17px/1.4 ui-sans-serif, system-ui, sans-serif; margin: 8px 0 0; }
+.fix { border-left: 8px solid var(--accent); }
+.applied { color: var(--accent); font-weight: 750; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+.acct { width: 100%; border: 1px solid transparent; display: grid; grid-template-columns: 42px 1fr auto; gap: 10px; align-items: center; }
+.acct b { display: block; font-size: 22px; }
+.fit { font-size: 28px; font-weight: 750; color: var(--accent); }
+.downloads { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.dl, #sow-approve, #send {
+  border: 0; border-radius: 999px; background: var(--accent); color: #fff;
+  font-weight: 750; text-decoration: none; padding: 14px 18px; font-size: 20px; display: inline-block;
 }
-.drop.over { background: var(--accent-soft); }
-.drop .filebtn, .ghost {
-  margin-top: 12px; background: var(--bg); color: var(--ink); border: 1px solid var(--line);
-}
-.mail pre { white-space: pre-wrap; font: 18px/1.45 ui-sans-serif, system-ui, sans-serif; margin: 10px 0 0; }
-.downloads { display: flex; gap: 12px; flex-wrap: wrap; }
-.dl { text-decoration: none; font-size: 22px; padding: 16px 22px; display: inline-block; }
+#sow-approve { margin: 12px 0; }
+#sow-approve:disabled { background: #1c1b19; }
+details { margin-top: 14px; background: #fff; border-radius: 16px; padding: 12px 16px; }
+summary { font-weight: 750; cursor: pointer; }
+details ol { margin: 8px 0 0; padding-left: 20px; }
+details li { margin: 4px 0; font-size: 17px; }
+.empty { color: var(--muted); }
 footer {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
-  background: rgba(243, 242, 239, .96); border-top: 1px solid var(--line);
-  padding: 12px 28px 14px;
+  background: rgba(243, 242, 239, .97); border-top: 1px solid var(--line);
+  padding: 10px 18px 12px;
 }
-#bar { display: flex; gap: 10px; width: min(1180px, 100%); margin: 0 auto; }
+#chips, #bar, #mode, #file-note { width: min(980px, 100%); margin: 0 auto; }
+#chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.chip {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 8px 14px; font-size: 16px; font-weight: 650; text-align: left;
+  white-space: nowrap; flex: 0 0 auto;
+}
+.chip.next { background: var(--accent); color: #fff; border-color: var(--accent); }
+.chip:disabled { opacity: .55; }
+#bar { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
 #ask {
   flex: 1; border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px;
-  background: #fff; font-size: 20px;
+  background: #fff; font-size: 22px;
 }
-#next { min-width: 240px; font-size: 20px; }
-#hint, #mode { width: min(1180px, 100%); margin: 6px auto 0; color: var(--muted); font-size: 16px; }
-.banner { background: #f8f1e4; color: #6a4510; border-radius: 14px; padding: 10px 14px; font-weight: 650; }
+.filebtn {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 12px 14px; font-weight: 700; font-size: 16px;
+}
+#mode, #file-note { color: var(--muted); font-size: 15px; margin-top: 4px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.rise { animation: rise .28s ease both; }
+.rise { animation: rise .35s ease both; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes pulse { 50% { opacity: .35; } }
 @media (max-width: 800px) {
-  .split, .grid4, .counts, .bands, #results.accounts { grid-template-columns: 1fr; }
-  .did { font-size: 24px; }
-  header { padding: 12px 14px; }
-  #bar { flex-direction: column; }
-  #next { min-width: 0; }
+  .split, .counts, .bands, .regform, dl { grid-template-columns: 1fr; }
+  .did { font-size: 22px; }
+  header, footer { padding-left: 12px; padding-right: 12px; }
+  #bar { flex-wrap: wrap; }
+  #ask { min-width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -143,67 +159,75 @@ footer {
 <body>
 <header>
   <a class="logo" href="/"><i></i>__BRAND__</a>
-  <p class="product">Lead generation</p>
-  <ol class="steps" id="steps"></ol>
+  <p class="product">Talking with @mops</p>
   <button id="replay" type="button">Replay</button>
 </header>
 <main>
   <div id="banner"></div>
   <div class="split">
-    <section class="you"><p class="kicker">You did</p><p class="did" id="you">Ready when you are.</p></section>
-    <section class="agent"><p class="kicker">Agent did</p><p class="did" id="agent" aria-live="polite">Press Next, or press Enter in the ask box.</p></section>
+    <section class="you"><p class="kicker">You did</p><p>Srisha provided the ask, the list, and the approval.</p></section>
+    <section class="agent"><p class="kicker">Agent did</p><p>@mops does the work in this thread.</p></section>
   </div>
-  <p class="why" id="whyline" hidden></p>
-  <details id="trace" hidden><summary>Backend trace</summary><ol id="tracelist"></ol></details>
-  <div id="results"></div>
+  <div id="thread" aria-live="polite">
+    <p class="empty" id="empty">Type an ask, or tap a suggestion.</p>
+  </div>
+  <details id="trace"><summary>Backend trace</summary><ol id="tracelist"></ol></details>
 </main>
 <footer>
+  <div id="chips">
+    <button type="button" class="chip next" data-ask="@mops create the SOW for the Dec webinar">@mops create the SOW for the Dec webinar</button>
+    <button type="button" class="chip" data-ask="@mops build the registration form">@mops build the registration form</button>
+    <button type="button" class="chip" data-ask="@mops create the campaign code">@mops create the campaign code</button>
+    <button type="button" class="chip" data-ask="@mops set up invites">@mops set up invites</button>
+    <button type="button" class="chip" data-ask="@mops upload this list">@mops upload this list</button>
+    <button type="button" class="chip" data-ask="@mops what needs fixing?">@mops what needs fixing?</button>
+    <button type="button" class="chip" data-ask="@mops give me the report">@mops give me the report</button>
+    <button type="button" class="chip" data-ask="@mops find 20 APAC manufacturers expanding plants">@mops find 20 APAC manufacturers expanding plants</button>
+  </div>
   <form id="bar">
-    <label class="sr" for="ask">Ask</label>
-    <input id="ask" autocomplete="off" value="Find 20 APAC manufacturing companies expanding plants this quarter">
-    <button id="next" type="submit">Next</button>
+    <label class="sr" for="ask">Ask @mops</label>
+    <input id="ask" autocomplete="off" placeholder="Ask @mops">
+    <button class="filebtn" type="button" id="attach">Attach a list</button>
+    <input id="file" class="sr" type="file" accept=".csv,text/csv">
+    <button id="send" type="submit">Send</button>
   </form>
-  <p id="hint">Next runs the hunt.</p>
+  <p id="file-note"></p>
   <p id="mode">Rules mode. No key needed.</p>
 </footer>
 <script>
-const ASK = 'Find 20 APAC manufacturing companies expanding plants this quarter';
-const STEP_NAMES = ['Hunt', 'Account', 'Event leads', 'Follow-up', 'Report'];
 const askEl = document.getElementById('ask');
-const nextEl = document.getElementById('next');
-const youEl = document.getElementById('you');
-const agentEl = document.getElementById('agent');
-const whyEl = document.getElementById('whyline');
-const traceEl = document.getElementById('trace');
-const traceList = document.getElementById('tracelist');
-const results = document.getElementById('results');
-const modeEl = document.getElementById('mode');
+const thread = document.getElementById('thread');
 const banner = document.getElementById('banner');
 const replayBtn = document.getElementById('replay');
-let step = 1;
+const modeEl = document.getElementById('mode');
+const traceList = document.getElementById('tracelist');
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let replayOn = false;
 let pack = null;
 let busy = false;
-let huntData = null;
-let accountData = null;
-let badgeData = null;
-let followData = null;
-let approveData = null;
-let selectedId = null;
-let droppedCsv = '';
+let pendingCsv = '';
+let lastChips = null;
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-function pause(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-function slice(all, url) {
-  if (url.indexOf('/hunt') >= 0) return all.hunt;
-  if (url.indexOf('/badges') >= 0) return all.badges;
-  if (url.indexOf('/followup') >= 0) return all.followup;
-  if (url.indexOf('/approve') >= 0) return all.approve;
-  if (url.indexOf('/account/') >= 0) return (all.briefs || {})[url.split('/').pop()] || null;
-  return all;
+function pause(ms) { return new Promise(r => setTimeout(r, reduce ? 0 : ms)); }
+function guess(text) {
+  const t = String(text || '').toLowerCase();
+  if (/fix|needs fixing|what needs|proactive|broken/.test(t)) return 'fix';
+  if (/(report|deck|pptx|powerpoint|\bpdf\b)/.test(t) && !/sow/.test(t)) return 'report';
+  if (/upload|this list|badge|messy|clean/.test(t)) return 'upload';
+  if (/invite/.test(t)) return 'invites';
+  if (/campaign code|\bban\b|sfdc|salesforce|cc id|\bcode\b/.test(t)) return 'code';
+  if (/regist|sign-?up form|form field/.test(t)) return 'registration';
+  if (/sow|statement of work|dec webinar|december webinar/.test(t)) return 'sow';
+  if (/find 20|apac manufacturing|expanding plant|\bhunt\b/.test(t)) return 'hunt';
+  if (/brief|intel|kestrel/.test(t)) return 'intel';
+  return 'help';
+}
+function claim(id) {
+  const old = document.getElementById(id);
+  if (old) old.removeAttribute('id');
 }
 async function ensurePack() {
   if (pack) return pack;
@@ -216,256 +240,266 @@ function markReplay() {
   replayOn = true;
   replayBtn.classList.add('on');
   replayBtn.textContent = 'Replay on';
-  banner.innerHTML = '<p class="banner">Replay is on. This is the recorded run, so the room still sees the full story.</p>';
+  if (!banner.querySelector('.banner')) {
+    banner.innerHTML = '<p class="banner">Replay is on. This is the recorded run, so the room still sees the full story.</p>';
+  }
 }
-async function call(url, body) {
-  if (replayOn) return slice(await ensurePack(), url);
+function setDisabled(on) {
+  document.getElementById('send').disabled = on;
+  document.querySelectorAll('.chip').forEach(btn => { btn.disabled = on; });
+}
+function paintChips(chips) {
+  if (!chips || !chips.length) return;
+  lastChips = chips;
+  document.getElementById('chips').innerHTML = chips.map(chip =>
+    '<button type="button" class="chip' + (chip.next ? ' next' : '') + '" data-ask="' + esc(chip.text) + '">' + esc(chip.text) + '</button>'
+  ).join('');
+}
+function paintTrace(data) {
+  const lines = (data && data.trace) || [];
+  traceList.innerHTML = lines.map(t => '<li><b>' + esc(t.at) + ' · ' + esc(t.service) + '.</b> ' + esc(t.line) + '</li>').join('');
+  if (data && data.ai) modeEl.textContent = (replayOn ? 'Replay. ' : '') + data.ai;
+}
+function downloadsHtml(items) {
+  return (items || []).map(d => {
+    if (d.id) claim(d.id);
+    return '<a class="dl" ' + (d.id ? 'id="' + esc(d.id) + '" ' : '') + 'href="' + esc(d.href) + '">' + esc(d.label) + '</a>';
+  }).join('');
+}
+function cardHtml(card) {
+  if (!card) return '';
+  if (card.type === 'sow') {
+    const budget = (card.budget || []).map(row => '<tr><td>' + esc(row.line) + '</td><td>' + esc(row.amount) + '</td></tr>').join('');
+    const deliverables = (card.deliverables || []).map(item => '<li>' + esc(item) + '</li>').join('');
+    const timeline = (card.timeline || []).map(row => '<li><b>' + esc(row.when) + '.</b> ' + esc(row.what) + '</li>').join('');
+    const approve = card.status === 'Approved by Srisha on screen'
+      ? ''
+      : '<button id="sow-approve" type="button">Approve</button>';
+    if (approve) claim('sow-approve');
+    return '<article class="card"><p class="kicker">' + esc(card.id) + ' · ' + esc(card.vendor) + '</p><h2>' + esc(card.title) + '</h2><p class="sow-status">' + esc(card.status) + '</p>' + approve + '<h3>Scope</h3><p>' + esc(card.scope) + '</p><h3>Deliverables</h3><ul>' + deliverables + '</ul><h3>Budget</h3><table>' + budget + '<tr class="total"><td>Total</td><td>' + esc(card.total) + '</td></tr></table><h3>Timeline</h3><ol>' + timeline + '</ol></article>';
+  }
+  if (card.type === 'registration') {
+    const fields = (card.fields || []).map(f => '<span>' + esc(f) + '</span>').join('');
+    const rows = (card.rows || []).map((row, i) =>
+      '<article class="row rise' + (row.consent ? '' : ' no') + '" style="animation-delay:' + (i * 120) + 'ms"><b>' + esc(row.name) + '</b><small class="meta">' + esc(row.title) + ' · ' + esc(row.company) + ' · ' + esc(row.country) + '</small><small class="meta">' + esc(row.email) + ' · Consent ' + (row.consent ? 'yes' : 'no') + '</small></article>'
+    ).join('');
+    return '<article class="card"><h2>' + esc(card.title) + '</h2><div class="regform">' + fields + '</div>' + rows + '</article>';
+  }
+  if (card.type === 'code') {
+    const rows = [
+      ['BAN', card.ban], ['Campaign code', card.code], ['CC ID', card.ccId], ['SFDC id', card.sfdcId],
+      ['Name', card.name], ['Status', card.status], ['Type', card.campaignType], ['Owner', card.owner]
+    ];
+    return '<article class="card"><p class="kicker">Mock record</p><h2>SFDC campaign record</h2><dl>' + rows.map(pair => '<dt>' + esc(pair[0]) + '</dt><dd>' + esc(pair[1]) + '</dd>').join('') + '</dl><p class="src">Source: ' + esc(card.source) + '</p></article>';
+  }
+  if (card.type === 'invites') {
+    const notes = (card.drafts || []).map(d => '<article class="mail"><b>' + esc(d.name) + '</b><small class="meta">' + esc(d.to) + '</small><p>' + esc(d.subject) + '</p><pre>' + esc(d.body) + '</pre></article>').join('');
+    return '<article class="card"><h2>Caught here: ' + esc(card.caught) + '</h2><p>Sent to real inboxes: ' + esc(card.realSent) + '</p>' + notes + '</article>';
+  }
+  if (card.type === 'upload') {
+    const leads = (card.leads || []).map(l => {
+      const band = l.band === 'hot' || l.band === 'warm' || l.band === 'cold' ? l.band : '';
+      return '<article class="lead ' + band + '"><b>' + esc(l.name) + '</b> · ' + esc(l.band) + '<small class="meta">' + esc(l.title) + ' · ' + esc(l.company) + '</small><p>' + esc(l.reason) + '</p></article>';
+    }).join('');
+    const bands = card.bands || { hot: 0, warm: 0, cold: 0 };
+    return '<article class="card"><div class="counts"><div><b>' + esc(card.read) + '</b><span>rows read</span></div><div><b>' + esc(card.dropped) + '</b><span>junk dropped</span></div><div><b>' + esc(card.merged) + '</b><span>repeat scans merged</span></div><div><b>' + esc(card.before) + ' → ' + esc(card.after) + '</b><span>CRM before → after</span></div></div><div class="bands"><div class="hot"><b>' + esc(bands.hot) + '</b><span>hot</span></div><div class="warm"><b>' + esc(bands.warm) + '</b><span>warm</span></div><div class="cold"><b>' + esc(bands.cold) + '</b><span>cold</span></div></div><div class="leadlist">' + leads + '</div></article>';
+  }
+  if (card.type === 'fix') {
+    const items = (card.items || []).map(item => '<article class="fix"><p class="applied">Applied</p><b>' + esc(item.title) + '</b><p><b>Why. </b>' + esc(item.why) + '</p><span class="src">Source: ' + esc(item.source) + '</span></article>').join('');
+    return '<article class="card">' + items + '</article>';
+  }
+  if (card.type === 'report') {
+    const bands = card.bands || { hot: 0, warm: 0, cold: 0 };
+    return '<article class="card"><div class="counts"><div><b>' + esc(card.accounts) + '</b><span>accounts</span></div><div><b>' + esc(card.top) + '</b><span>top account</span></div><div><b>' + esc(bands.hot) + ' / ' + esc(bands.warm) + ' / ' + esc(bands.cold) + '</b><span>hot / warm / cold</span></div><div><b>' + esc(card.realSent) + '</b><span>sent to real inboxes</span></div></div></article>';
+  }
+  if (card.type === 'hunt') {
+    const accounts = (card.accounts || []).map(a =>
+      '<button type="button" class="acct" data-id="' + esc(a.id) + '"><span>' + esc(a.rank) + '</span><span><b>' + esc(a.name) + '</b><small class="meta">' + esc(a.city) + ', ' + esc(a.country) + ' · ' + esc(a.signal) + '</small></span><span class="fit">' + esc(a.fit) + '</span></button>'
+    ).join('');
+    return '<article class="card">' + accounts + '</article>';
+  }
+  if (card.type === 'intel') {
+    const people = (card.committee || []).map(p => '<div class="row"><b>' + esc(p.name) + '</b><small class="meta">' + esc(p.title) + ' · ' + esc(p.role) + '</small></div>').join('');
+    const points = (card.talkingPoints || []).map(x => '<li>' + esc(x) + '</li>').join('');
+    return '<article class="card"><p class="kicker">Fit ' + esc(card.fit) + '</p><h2>' + esc(card.name) + '</h2><p>' + esc(card.signal) + '</p><h3>Buying committee</h3>' + people + '<h3>Recommended angle</h3><p>' + esc(card.angle) + '</p><h3>Talking points</h3><ul>' + points + '</ul></article>';
+  }
+  if (card.type === 'help') {
+    return '<article class="card"><ul>' + (card.prompts || []).map(p => '<li>' + esc(p) + '</li>').join('') + '</ul></article>';
+  }
+  return '';
+}
+function agentBody(data) {
+  const why = data.why ? '<p class="why"><b>Why. </b>' + esc(data.why) + '<span class="src">Source: ' + esc(data.source || '') + '</span></p>' : '';
+  const files = downloadsHtml(data.downloads);
+  return '<p class="who">@mops</p><p class="kicker">Agent did</p><p class="did">' + esc(data.agent || '') + '</p>' + why + (files ? '<div class="downloads">' + files + '</div>' : '') + cardHtml(data.card);
+}
+async function pushTurn(data) {
+  const empty = document.getElementById('empty');
+  if (empty) empty.remove();
+  const did = String(data.you || '').replace(/^You did:\s*/, '');
+  const turn = document.createElement('article');
+  turn.className = 'turn';
+  turn.innerHTML = '<section class="bubble you"><p class="who">Srisha</p><p class="kicker">You did</p><p class="did">' + esc(did) + '</p><p class="provided"><b>Srisha provided. </b>' + esc(data.srisha || '') + '</p></section>' +
+    '<section class="bubble agent"><p class="who">@mops</p><p class="kicker">Agent did</p><p class="working">Working</p></section>';
+  thread.appendChild(turn);
+  turn.scrollIntoView({ block: 'start' });
+  const work = turn.querySelector('.working');
+  const lines = (data.working && data.working.length) ? data.working : ['Working'];
+  for (const line of lines) {
+    work.textContent = line;
+    await pause(220);
+  }
+  turn.querySelector('.agent').innerHTML = agentBody(data);
+  paintTrace(data);
+  if (data.chips) paintChips(data.chips);
+  const anchor = turn.querySelector('.downloads') || turn.querySelector('.agent');
+  if (anchor) anchor.scrollIntoView({ block: 'center' });
+}
+async function askServer(text) {
+  const intent = guess(text);
+  const csv = intent === 'upload' ? pendingCsv : '';
+  if (intent === 'upload') {
+    pendingCsv = '';
+    const note = document.getElementById('file-note');
+    if (note) note.textContent = '';
+  }
+  if (replayOn) {
+    const all = await ensurePack();
+    if (all.chat && all.chat[intent]) return all.chat[intent];
+  }
   try {
-    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const r = await fetch('/api/webinar/ask', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: text, csv: csv, replay: replayOn })
+    });
     const data = await r.json();
     if (!r.ok || data.fallback) {
       markReplay();
       if (data && data.replay) pack = data.replay;
-      return slice(await ensurePack(), url);
+      const all = pack || await ensurePack();
+      if (all.chat && all.chat[intent]) return all.chat[intent];
     }
     return data;
   } catch (e) {
     markReplay();
-    return slice(await ensurePack(), url);
+    const all = await ensurePack();
+    if (all.chat && all.chat[intent]) return all.chat[intent];
+    throw e;
   }
 }
-async function loadAccount(id) {
-  selectedId = id;
-  if (replayOn) {
-    accountData = slice(await ensurePack(), '/api/webinar/account/' + id);
-    return;
-  }
+async function submitAsk(text) {
+  const ask = String(text || askEl.value || '').trim();
+  if (!ask || busy) return;
+  busy = true;
+  askEl.value = '';
+  setDisabled(true);
   try {
-    const r = await fetch('/api/webinar/account/' + id);
-    if (!r.ok) throw new Error('account');
-    accountData = await r.json();
+    const data = await askServer(ask);
+    await pushTurn(data);
   } catch (e) {
     markReplay();
-    accountData = slice(await ensurePack(), '/api/webinar/account/' + id);
-  }
-}
-
-function paint(data) {
-  youEl.textContent = (data && data.you) || 'Ready when you are.';
-  agentEl.textContent = (data && data.agent) || 'Press Next, or press Enter in the ask box.';
-  if (data && data.why) {
-    whyEl.hidden = false;
-    whyEl.innerHTML = '<b>Why. </b>' + esc(data.why) + '<span class="src">Source: ' + esc(data.source || '') + '</span>';
-  } else whyEl.hidden = true;
-  const lines = (data && data.trace) || [];
-  traceEl.hidden = !lines.length;
-  traceList.innerHTML = lines.map(t => '<li class="rise"><span class="svc">' + esc(t.at) + ' · ' + esc(t.service) + '.</span> ' + esc(t.line) + '</li>').join('');
-  if (data && data.ai) modeEl.textContent = (replayOn ? 'Replay. ' : '') + data.ai;
-  else modeEl.textContent = replayOn ? 'Replay. Recorded run. No key needed.' : 'Rules mode. No key needed.';
-}
-
-function hintText() {
-  if (step === 1) return huntData ? 'Next opens the top account.' : 'Next runs the hunt.';
-  if (step === 2) return 'Next cleans the badge scan.';
-  if (step === 3) return badgeData ? 'Next drafts the follow-up.' : 'Next uses the sample file.';
-  if (step === 4) return approveData ? 'Next opens the report.' : 'Next approves the drafts. Mail stays in this process.';
-  return 'Next runs the story again.';
-}
-
-function renderSteps() {
-  const ol = document.getElementById('steps');
-  ol.innerHTML = STEP_NAMES.map((name, i) => {
-    const n = i + 1;
-    const current = n === step ? ' aria-current="step"' : '';
-    const disabled = n > reached() ? ' disabled' : '';
-    return '<li><button type="button" data-step="' + n + '"' + current + disabled + '>' + n + ' ' + name + '</button></li>';
-  }).join('');
-  ol.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-    const n = Number(btn.dataset.step);
-    if (n <= reached()) { step = n; render(); }
-  }));
-}
-function reached() {
-  let n = 1;
-  if (huntData) n = 2;
-  if (accountData) n = 3;
-  if (badgeData) n = 4;
-  if (followData) n = 5;
-  if (approveData) n = 5;
-  return Math.max(n, step);
-}
-
-function render() {
-  renderSteps();
-  nextEl.textContent = 'Next';
-  document.getElementById('hint').textContent = hintText();
-  results.className = '';
-  results.innerHTML = '';
-  if (step === 1) renderHunt();
-  else if (step === 2) renderBrief();
-  else if (step === 3) renderBadges();
-  else if (step === 4) renderFollow();
-  else renderReport();
-}
-function renderHunt() {
-  paint(huntData || { you: 'The ask is in the box.', agent: 'Press Next and I will rank 20 fictional APAC manufacturers that are expanding a plant this quarter.' });
-  if (!huntData) return;
-  results.className = 'accounts';
-  results.innerHTML = huntData.accounts.map((a, i) =>
-    '<button type="button" class="acct rise" style="animation-delay:' + (i * 28) + 'ms" data-id="' + esc(a.id) + '">' +
-    '<span class="rank">' + a.rank + '</span><span><b>' + esc(a.name) + '</b>' +
-    '<small>' + esc(a.city) + ', ' + esc(a.country) + ' · ' + esc(a.sector) + '</small>' +
-    '<small>' + esc(a.signal) + ' Source: ' + esc(a.source) + '</small></span>' +
-    '<span class="fit">' + a.fit + '<span>fit</span></span></button>').join('');
-  results.querySelectorAll('.acct').forEach(btn => btn.addEventListener('click', async () => {
-    if (busy) return;
-    busy = true;
-    try {
-      await loadAccount(btn.dataset.id);
-      step = 2;
-      render();
-    } finally { busy = false; }
-  }));
-}
-function renderBrief() {
-  const a = accountData;
-  paint(a || { you: 'Pick an account from the hunt.', agent: 'The brief opens when you do.' });
-  if (!a) return;
-  const people = (a.committee || []).map(p => '<div class="person"><span><b>' + esc(p.name) + '</b><small class="meta">' + esc(p.title) + '</small></span><span class="role">' + esc(p.role) + '</span></div>').join('');
-  const decisions = (a.decisions || []).map(d => '<li><b>' + esc(d.decision) + '.</b> ' + esc(d.why) + ' <span class="meta">Source: ' + esc(d.source) + '</span></li>').join('');
-  results.innerHTML = '<article class="brief rise"><p class="kicker">Fit ' + esc(a.fit) + ' · ' + esc(a.city) + ', ' + esc(a.country) + '</p><h2>' + esc(a.name) + '</h2><p>' + esc(a.signal) + '</p>' +
-    '<div class="grid4"><article><h3>Priorities</h3><ul>' + (a.priorities || []).map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></article>' +
-    '<article><h3>Buying committee</h3>' + people + '</article>' +
-    '<article><h3>Recommended angle</h3><p>' + esc(a.angle) + '</p></article>' +
-    '<article><h3>Talking points</h3><ul>' + (a.talkingPoints || []).map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></article></div>' +
-    '<ol>' + decisions + '</ol></article>';
-}
-function renderBadges() {
-  paint(badgeData || { you: 'The badge scan is messy on purpose.', agent: 'Drop a file, or press Next and I will use the sample: duplicates, bad casing, missing fields, and junk rows.' });
-  if (!badgeData) {
-    results.innerHTML = '<div class="drop" id="drop">Drop the badge scan here<button type="button" class="filebtn" id="sample">Use sample file</button><input id="file" class="sr" type="file" accept=".csv,text/csv"></div><p class="meta"><a href="/api/webinar/sample.csv">Download the messy sample</a></p>';
-    const drop = document.getElementById('drop');
-    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
-    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-    drop.addEventListener('drop', e => { e.preventDefault(); takeFile(e.dataTransfer.files[0]); });
-    document.getElementById('file').addEventListener('change', e => takeFile(e.target.files[0]));
-    document.getElementById('sample').addEventListener('click', () => runBadges(''));
-    drop.addEventListener('click', e => { if (e.target.id !== 'sample') document.getElementById('file').click(); });
-    return;
-  }
-  const b = badgeData;
-  const junk = (b.junkSummary || []).map(j => esc(j.n + ' ' + j.kind.toLowerCase())).join(', ');
-  const leads = (b.leads || []).map(l => '<article class="lead ' + esc(l.band) + '"><b>' + esc(l.name) + '</b> · ' + esc(l.band) + '<small class="meta">' + esc(l.title) + ' · ' + esc(l.company) + (l.email ? ' · ' + esc(l.email) : '') + '</small><p>' + esc(l.reason) + '</p><small class="meta">Source: ' + esc(l.source) + '</small></article>').join('');
-  results.innerHTML = '<div class="counts"><div><b>' + b.read + '</b><span>rows read</span></div><div><b>' + b.dropped + '</b><span>junk dropped' + (junk ? ' · ' + junk : '') + '</span></div><div><b>' + b.merged + '</b><span>repeat scans merged</span></div><div><b>' + b.before + ' → ' + b.after + '</b><span>CRM before → after</span></div></div>' +
-    '<div class="bands"><div class="hot"><b>' + b.bands.hot + '</b><span>hot</span></div><div class="warm"><b>' + b.bands.warm + '</b><span>warm</span></div><div class="cold"><b>' + b.bands.cold + '</b><span>cold</span></div></div>' + leads;
-}
-function renderFollow() {
-  const data = approveData || followData;
-  paint(data || { you: 'Hot leads are ready for a note.', agent: 'Press Next and I will draft one email per hot lead, with a meeting slot.' });
-  const drafts = (followData && followData.drafts) || [];
-  results.innerHTML = drafts.map(d => '<article class="mail"><b>' + esc(d.name) + '</b><small class="meta">' + esc(d.to) + ' · ' + esc(d.slot) + '</small><p>' + esc(d.subject) + '</p><pre>' + esc(d.body) + '</pre><small class="meta">Why: ' + esc(d.why) + ' Source: ' + esc(d.source) + '</small></article>').join('');
-  if (approveData) results.insertAdjacentHTML('afterbegin', '<article class="brief"><h2>Caught here: ' + esc(approveData.caught) + '</h2><p>Sent to real inboxes: ' + esc(approveData.realSent) + '.</p></article>');
-}
-function renderReport() {
-  const bands = (badgeData && badgeData.bands) || { hot: 0, warm: 0, cold: 0 };
-  const caught = approveData ? approveData.caught : 0;
-  const realSent = approveData ? approveData.realSent : 0;
-  paint({
-    you: 'You asked for the pipeline summary.',
-    agent: 'The PowerPoint and the PDF use the same counts as this screen.',
-    why: 'The deck is the leave-behind: 20 accounts, the badge cleanup, the hot notes, and zero messages to real inboxes.',
-    source: 'This webinar run.',
-    trace: [
-      { at: '0.2s', service: 'Report', line: 'Counted 20 accounts and the badge scores.' },
-      { at: '0.5s', service: 'Report', line: 'Wrote the PowerPoint and the PDF. Real inboxes stay at ' + realSent + '.' }
-    ],
-    ai: (approveData && approveData.ai) || (badgeData && badgeData.ai) || ''
-  });
-  const before = badgeData ? badgeData.before : 0;
-  const after = badgeData ? badgeData.after : 0;
-  results.innerHTML = '<div class="counts"><div><b>20</b><span>accounts ranked</span></div><div><b>' + before + ' → ' + after + '</b><span>CRM before → after</span></div><div><b>' + bands.hot + '</b><span>hot notes</span></div><div><b>' + realSent + '</b><span>sent to real inboxes · ' + caught + ' caught here</span></div></div>' +
-    '<div class="downloads"><a class="dl" id="pptx" href="/api/webinar/report.pptx">Download PowerPoint</a><a class="dl" id="pdf" href="/api/webinar/report.pdf">Download PDF</a></div>';
-}
-
-async function runBadges(csv) {
-  if (busy) return;
-  busy = true;
-  nextEl.disabled = true;
-  try {
-    await pause(220);
-    badgeData = await call('/api/webinar/badges', { csv: csv || '', replay: replayOn });
-    render();
-  } finally { busy = false; nextEl.disabled = false; }
-}
-function takeFile(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => { droppedCsv = String(reader.result || ''); runBadges(droppedCsv); };
-  reader.readAsText(file);
-}
-
-async function go(e) {
-  if (e) e.preventDefault();
-  if (busy) return;
-  busy = true;
-  nextEl.disabled = true;
-  try {
-    await pause(220);
-    const ask = askEl.value.trim() || ASK;
-    if (step === 1 && (!huntData || (huntData.ask && ask !== huntData.ask && !replayOn))) {
-      huntData = await call('/api/webinar/hunt', { ask, replay: replayOn });
-    } else if (step === 1) {
-      step = 2;
-      if (!selectedId && huntData && huntData.accounts[0]) selectedId = huntData.accounts[0].id;
-      if (selectedId) await loadAccount(selectedId);
-    } else if (step === 2) {
-      step = 3;
-    } else if (step === 3 && !badgeData) {
-      badgeData = await call('/api/webinar/badges', { csv: droppedCsv || '', replay: replayOn });
-    } else if (step === 3) {
-      step = 4;
-      followData = await call('/api/webinar/followup', { replay: replayOn });
-    } else if (step === 4 && !followData) {
-      followData = await call('/api/webinar/followup', { replay: replayOn });
-    } else if (step === 4 && !approveData) {
-      approveData = await call('/api/webinar/approve', { replay: replayOn });
-    } else if (step === 4) {
-      step = 5;
-    } else {
-      await fetch('/api/webinar/reset', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => {});
-      huntData = accountData = badgeData = followData = approveData = null;
-      selectedId = null;
-      droppedCsv = '';
-      step = 1;
-      askEl.value = ASK;
-    }
-    render();
-  } catch (err) {
-    agentEl.textContent = 'That step did not finish. Press Next to try the recorded run.';
-    markReplay();
+    modeEl.textContent = 'Replay. The live step did not finish.';
   } finally {
     busy = false;
-    nextEl.disabled = false;
+    setDisabled(false);
   }
 }
-
-document.getElementById('bar').addEventListener('submit', go);
+async function openAccount(id) {
+  if (!id || busy) return;
+  busy = true;
+  setDisabled(true);
+  try {
+    let card = null;
+    if (replayOn) card = ((await ensurePack()).briefs || {})[id];
+    else {
+      try {
+        const r = await fetch('/api/webinar/account/' + encodeURIComponent(id));
+        if (!r.ok) throw new Error('account');
+        card = await r.json();
+      } catch (e) {
+        markReplay();
+        card = ((await ensurePack()).briefs || {})[id];
+      }
+    }
+    if (!card) return;
+    await pushTurn({
+      you: 'You did: opened ' + (card.name || id),
+      srisha: 'Srisha provided the account click.',
+      agent: card.agent || ('Opened the one-page brief for ' + (card.name || id) + '.'),
+      why: card.why || '',
+      source: card.source || '',
+      working: ['Opening the account file', 'Writing the one-page brief'],
+      trace: card.trace || [],
+      ai: card.ai,
+      card: Object.assign({ type: 'intel' }, card),
+      downloads: [],
+      chips: lastChips
+    });
+  } finally {
+    busy = false;
+    setDisabled(false);
+  }
+}
+async function approveSow(btn) {
+  if (busy) return;
+  busy = true;
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/webinar/sow/approve', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const data = await r.json();
+    const status = btn.closest('.card').querySelector('.sow-status');
+    if (status) status.textContent = (data.card && data.card.status) || 'Approved by Srisha on screen';
+    btn.textContent = 'Approved';
+  } catch (e) {
+    const status = btn.closest('.card').querySelector('.sow-status');
+    if (status) status.textContent = 'Approved by Srisha on screen';
+    btn.textContent = 'Approved';
+  } finally {
+    busy = false;
+  }
+}
+document.getElementById('bar').addEventListener('submit', e => { e.preventDefault(); submitAsk(); });
+document.getElementById('chips').addEventListener('click', e => {
+  const btn = e.target.closest('.chip');
+  if (btn) submitAsk(btn.getAttribute('data-ask'));
+});
+document.getElementById('attach').addEventListener('click', () => document.getElementById('file').click());
+document.getElementById('file').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    pendingCsv = String(reader.result || '');
+    document.getElementById('file-note').textContent = file.name + ' attached. Ask @mops to upload this list.';
+    askEl.value = '@mops upload this list';
+  };
+  reader.readAsText(file);
+});
+thread.addEventListener('click', e => {
+  const acct = e.target.closest('.acct');
+  if (acct) { openAccount(acct.getAttribute('data-id')); return; }
+  const approve = e.target.closest('#sow-approve');
+  if (approve) approveSow(approve);
+});
 replayBtn.addEventListener('click', async () => {
   if (busy) return;
-  try {
-    await ensurePack();
-    markReplay();
-    huntData = accountData = badgeData = followData = approveData = null;
-    selectedId = null;
-    droppedCsv = '';
-    step = 1;
-    askEl.value = ASK;
-    render();
-  } catch (e) {
-    agentEl.textContent = 'Replay did not load. Press Next to try again.';
-  }
+  try { await ensurePack(); } catch (e) {}
+  markReplay();
+  thread.innerHTML = '<p class="empty" id="empty">Type an ask, or tap a suggestion. This pass uses the recorded run.</p>';
+  traceList.innerHTML = '';
+  paintChips([
+    { text: '@mops create the SOW for the Dec webinar', next: true },
+    { text: '@mops build the registration form', next: false },
+    { text: '@mops create the campaign code', next: false },
+    { text: '@mops set up invites', next: false },
+    { text: '@mops upload this list', next: false },
+    { text: '@mops what needs fixing?', next: false },
+    { text: '@mops give me the report', next: false },
+    { text: '@mops find 20 APAC manufacturers expanding plants', next: false }
+  ]);
+  modeEl.textContent = 'Replay. Recorded run. No key needed.';
 });
-render();
 </script>
 </body>
 </html>

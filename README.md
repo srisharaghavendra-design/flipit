@@ -60,11 +60,15 @@ Every account, person, and campaign in the demo is fictional.
 
 ## Webinar demo
 
-Open `/webinar`, or use the Webinar demo button on the home page. It is a five-step lead-generation story for a live session: hunt, account brief, badge-scan cleanup, follow-up approval, and a pipeline deck.
+Open `/webinar`, or use the Webinar demo button on the home page. The screen is a chat with @mops. Type an ask, or tap a suggestion under the box. Each reply shows a short working state, then the artifact.
 
-It runs with no API key. The answers are deterministic. If `MOPS_API_KEY` is set, the screen says so and still uses the same recorded rules, so a live room cannot stall on a model call. Replay plays that recorded run if you press Replay, or if a request fails.
+The stage asks are the December statement of work (DOCX and PDF, with an on-screen Approve), the registration page and sample registrations, the campaign code and a mock campaign record, invite drafts that stay in the in-process catcher, a messy list that is cleaned, deduped, scored, and synced to the built-in CRM, a short list of fixes with a plain-language why and a source, and the pipeline report as PowerPoint and PDF.
 
-The sample badge file has duplicates, bad casing, missing fields, and junk rows. Cleaned leads sync to the webinar CRM. Approved notes stay in the in-process catcher. The deck downloads as PowerPoint and PDF. Every company on the list is fictional.
+Free-typed wording still lands on the same steps. The hunt and the account brief are still there if you ask for the 20 APAC manufacturers. Replay plays the recorded run if you press Replay, or if a request fails.
+
+It runs with no API key. The answers are deterministic. If `MOPS_API_KEY` is set, the screen says so and still uses the same recorded rules, so a live room cannot stall on a model call.
+
+The sample badge file has duplicates, bad casing, missing fields, and junk rows. Every company, registration, and campaign code is fictional. Notes stay in the catcher. Nothing is handed to a real inbox.
 
 ```bash
 BRAND_NAME=Harborline npm start

@@ -17,6 +17,7 @@ delete process.env.DEMO_PASSCODE;
 delete process.env.MOPS_API_KEY;
 
 const engine = require('../../webinar/engine');
+const chat = require('../../webinar/chat');
 const { handleRequest } = require('../../server');
 const root = path.join(__dirname, '..', '..');
 
@@ -166,8 +167,110 @@ test('approved notes stay in the catcher', () => {
   }
 });
 
+test('typed asks route to the stage steps and the files are real', () => {
+  chat.reset();
+  engine.reset();
+  const cases = [
+    ['@mops create the SOW for the Dec webinar', 'sow'],
+    ['please write a statement of work', 'sow'],
+    ['december webinar scope', 'sow'],
+    ['pdf of the sow', 'sow'],
+    ['@mops build the registration form', 'registration'],
+    ['signup form fields', 'registration'],
+    ['@mops create the campaign code', 'code'],
+    ['need a BAN and an SFDC record', 'code'],
+    ['@mops set up invites', 'invites'],
+    ['draft the invite emails', 'invites'],
+    ['@mops upload this list', 'upload'],
+    ['clean this messy badge file', 'upload'],
+    ['@mops what needs fixing?', 'fix'],
+    ['what needs fixing', 'fix'],
+    ['@mops give me the report', 'report'],
+    ['send the pptx deck', 'report'],
+    [engine.ASK, 'hunt'],
+    ['brief on kestrel', 'intel']
+  ];
+  cases.forEach(([text, intent]) => assert.equal(chat.intent(text), intent, text));
+
+  const sow = chat.ask('@mops create the SOW for the Dec webinar');
+  assert.equal(sow.intent, 'sow');
+  assert.match(sow.you, /^You did:/);
+  assert.ok(sow.srisha);
+  assert.ok(sow.working.length >= 2);
+  assert.equal(sow.approve, true);
+  assert.equal(sow.card.id, 'SOW-DEC-APAC-01');
+  assert.equal(sow.card.total, '$48,000');
+  const docx = chat.sowDocx();
+  const sowPdf = chat.sowPdf();
+  assert.equal(docx.slice(0, 2).toString(), 'PK');
+  assert.match(docx.toString('utf8'), /December APAC/);
+  assert.equal(sowPdf.slice(0, 5).toString(), '%PDF-');
+  assert.match(sowPdf.toString('latin1'), /December APAC/);
+  const approved = chat.approveSow();
+  assert.equal(approved.card.status, 'Approved by Srisha on screen');
+  assert.match(chat.sowDocx().toString('utf8'), /Approved by Srisha on screen/);
+
+  const reg = chat.ask('build the registration data');
+  assert.ok(reg.card.fields.includes('Work email'));
+  assert.ok(reg.card.fields.includes('Consent'));
+  assert.equal(reg.card.rows.filter(row => row.consent).length, 4);
+  assert.equal(reg.card.rows.some(row => row.consent === false && row.name === 'Guest Badge'), true);
+
+  const code = chat.ask('make the campaign code');
+  assert.equal(code.card.ban, 'BAN-FY26Q4-APAC-1204');
+  assert.equal(code.card.code, 'FY26Q4-APJ-EVT-1204');
+  assert.equal(code.card.ccId, 'CC-DEC-APAC-01');
+  assert.equal(code.card.sfdcId, '7010000000DECWA');
+  assert.equal(code.card.owner, 'Srisha R.');
+
+  const mail = require('../mail');
+  const before = mail.db.prepare('select count(*) n from messages').get().n;
+  const recordedInvites = chat.ask('@mops set up invites', '', { replay: true });
+  assert.equal(recordedInvites.card.realSent, 0);
+  assert.equal(recordedInvites.card.caught, 4);
+  assert.equal(mail.db.prepare('select count(*) n from messages').get().n, before);
+  const invites = chat.ask('@mops set up invites');
+  assert.equal(invites.card.realSent, 0);
+  assert.equal(invites.card.caught, 4);
+  assert.ok(invites.card.drafts.every(row => row.stored === true && row.deliveredToProvider === 0));
+  assert.match(invites.card.drafts[0].body, /demo catcher/);
+  assert.match(invites.card.drafts[0].subject, /December APAC plant webinar/);
+  assert.equal(mail.db.prepare('select count(*) n from messages').get().n, before + 4);
+  const again = chat.ask('draft the invite emails');
+  assert.equal(again.card.caught, 0);
+  assert.equal(again.card.realSent, 0);
+  assert.equal(mail.db.prepare('select count(*) n from messages').get().n, before + 4);
+
+  const upload = chat.ask('@mops upload this list');
+  assert.equal(upload.card.read, 25);
+  assert.equal(upload.card.dropped, 5);
+  assert.equal(upload.card.merged, 5);
+  assert.equal(upload.card.before, 0);
+  assert.equal(upload.card.after, 15);
+  assert.deepEqual(upload.card.bands, { hot: 9, warm: 5, cold: 1 });
+
+  const fixes = chat.ask('@mops what needs fixing?');
+  assert.equal(fixes.card.items.length, 4);
+  fixes.card.items.forEach(item => {
+    assert.equal(item.applied, true);
+    assert.ok(item.why);
+    assert.ok(item.source);
+  });
+
+  const report = chat.ask('@mops give me the report');
+  assert.equal(report.card.top, 'Kestrel Forge');
+  assert.equal(report.card.realSent, 0);
+  assert.ok(report.downloads.some(d => d.href === '/api/webinar/report.pptx'));
+  assert.ok(report.downloads.some(d => d.href === '/api/webinar/report.pdf'));
+
+  const banned = new RegExp(['cis', 'co'].join(''), 'i');
+  assert.equal(banned.test(JSON.stringify(sow) + JSON.stringify(code) + JSON.stringify(invites) + JSON.stringify(fixes) + docx.toString('utf8') + sowPdf.toString('latin1')), false);
+  chat.reset();
+  engine.reset();
+});
+
 test('the webinar route, the home button, and the downloads', async () => {
-  const files = ['webinar/engine.js', 'webinar/sample-badges.csv', 'webinar/replay.json', 'ui/webinar.html'];
+  const files = ['webinar/engine.js', 'webinar/chat.js', 'webinar/sample-badges.csv', 'webinar/replay.json', 'ui/webinar.html'];
   const banned = new RegExp(['cis', 'co'].join(''), 'i');
   for (const file of files) assert.equal(banned.test(fs.readFileSync(path.join(root, file), 'utf8')), false, file);
   const homeSrc = fs.readFileSync(path.join(root, 'ui/home.html'), 'utf8');
@@ -188,9 +291,12 @@ test('the webinar route, the home button, and the downloads', async () => {
   const html = page.body.toString('utf8');
   assert.match(html, /You did/);
   assert.match(html, /Agent did/);
+  assert.match(html, /Srisha provided/);
   assert.match(html, /Replay/);
-  assert.match(html, />Next</);
+  assert.match(html, /id="ask"/);
+  assert.match(html, /create the SOW/);
   assert.match(html, /Backend trace/);
+  assert.doesNotMatch(html, />Next</);
   assert.doesNotMatch(html, /passcode/i);
   assert.doesNotMatch(html, /__BRAND__/);
 
@@ -226,12 +332,25 @@ test('the webinar route, the home button, and the downloads', async () => {
   const replay = json(await request('GET', '/api/webinar/replay', { headers: { cookie } }));
   assert.deepEqual(replay.hunt.accounts.map(a => a.name), hunt.accounts.map(a => a.name));
   assert.equal(replay.badges.bands.hot, hunt && badges.bands.hot);
+  assert.equal(replay.chat.sow.intent, 'sow');
+  assert.equal(replay.chat.invites.card.realSent, 0);
+  const asked = json(await request('POST', '/api/webinar/ask', { headers: H, body: JSON.stringify({ text: 'write a statement of work for the december webinar' }) }));
+  assert.equal(asked.intent, 'sow');
+  assert.match(asked.you, /You did/);
+  const sowDoc = await request('GET', '/api/webinar/sow.docx', { headers: { cookie } });
+  const sowPdf = await request('GET', '/api/webinar/sow.pdf', { headers: { cookie } });
+  assert.equal(sowDoc.body.slice(0, 2).toString(), 'PK');
+  assert.match(sowDoc.body.toString('utf8'), /December APAC/);
+  assert.equal(sowPdf.body.slice(0, 5).toString(), '%PDF-');
+  assert.match(sowPdf.body.toString('latin1'), /December APAC/);
+  const sowOk = json(await request('POST', '/api/webinar/sow/approve', { headers: H, body: '{}' }));
+  assert.equal(sowOk.card.status, 'Approved by Srisha on screen');
   const sample = await request('GET', '/api/webinar/sample.csv', { headers: { cookie } });
   assert.match(sample.body.toString('utf8'), /PRIYA SHARMA/);
   assert.match(sample.body.toString('utf8'), /Badge printer/);
 });
 
-test('the screen can be clicked through all five steps', async () => {
+test('the screen can be driven from the chat', async () => {
   const { chromium } = require('playwright');
   const port = 8891;
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'mops-webinar-ui-'));
@@ -262,30 +381,38 @@ test('the screen can be clicked through all five steps', async () => {
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({ acceptDownloads: true });
     const page = await context.newPage();
-    page.setDefaultTimeout(20000);
+    page.setDefaultTimeout(30000);
     await page.goto(base + '/');
     await page.locator('button[value="maria"]').click();
     await page.goto(base + '/webinar');
-    await page.locator('#next').waitFor();
-    assert.match(await page.locator('#you').innerText(), /ask is in the box|Ready/);
-    await page.locator('#next').click();
-    await page.locator('.acct', { hasText: 'Kestrel Forge' }).waitFor();
-    assert.equal(await page.locator('.acct').count(), 20);
-    await page.locator('.acct', { hasText: 'Kestrel Forge' }).click();
-    await page.getByRole('heading', { name: 'Buying committee' }).waitFor();
-    assert.match(await page.locator('#agent').innerText(), /one-page brief/);
-    await page.locator('#next').click();
-    await page.locator('#sample').waitFor();
-    await page.locator('#next').click();
-    await page.locator('.counts').getByText('CRM before').waitFor();
-    assert.match(await page.locator('#results').innerText(), /25/);
-    assert.match(await page.locator('#results').innerText(), /0 → 15/);
-    await page.locator('#next').click();
-    await page.locator('.mail', { hasText: 'Priya Sharma' }).waitFor();
-    assert.match(await page.locator('.mail').first().innerText(), /SGT/);
-    await page.locator('#next').click();
+    await page.locator('#ask').waitFor();
+    await page.locator('#chips .chip', { hasText: 'create the SOW' }).click();
+    await page.locator('#sow-docx').waitFor();
+    const docxDown = page.waitForEvent('download');
+    await page.locator('#sow-docx').click();
+    const docxFile = await (await docxDown).path();
+    const docx = fs.readFileSync(docxFile);
+    assert.equal(docx.slice(0, 2).toString(), 'PK');
+    assert.match(docx.toString('utf8'), /December APAC/);
+    await page.locator('#sow-approve').click();
+    await page.getByText('Approved by Srisha on screen').waitFor();
+    await page.locator('#chips .chip', { hasText: 'registration form' }).click();
+    await page.locator('.regform').getByText('Work email', { exact: true }).waitFor();
+    await page.locator('.row', { hasText: 'Guest Badge' }).waitFor();
+    await page.locator('#chips .chip', { hasText: 'campaign code' }).click();
+    await page.locator('dd', { hasText: 'BAN-FY26Q4-APAC-1204' }).waitFor();
+    await page.locator('#chips .chip', { hasText: 'set up invites' }).click();
     await page.getByText('Sent to real inboxes: 0').waitFor();
-    await page.locator('#next').click();
+    await page.locator('#chips .chip', { hasText: 'upload this list' }).click();
+    await page.locator('.counts').waitFor();
+    assert.match(await page.locator('.counts').innerText(), /25/);
+    assert.match(await page.locator('.counts').innerText(), /0 → 15/);
+    await page.locator('#chips .chip', { hasText: 'what needs fixing' }).click();
+    await page.locator('.fix').first().waitFor();
+    assert.match(await page.locator('.fix').first().innerText(), /Why/);
+    assert.match(await page.locator('.fix').first().innerText(), /Source/);
+    assert.equal(await page.locator('.fix').count(), 4);
+    await page.locator('#chips .chip', { hasText: 'give me the report' }).click();
     await page.locator('#pptx').waitFor();
     const pptxDown = page.waitForEvent('download');
     await page.locator('#pptx').click();
@@ -301,8 +428,7 @@ test('the screen can be clicked through all five steps', async () => {
     await page.locator('#replay').click();
     await page.locator('.banner').waitFor();
     assert.match(await page.locator('.banner').innerText(), /recorded run/);
-    await page.locator('#next').click();
-    await page.locator('.acct', { hasText: 'Kestrel Forge' }).waitFor();
+    await page.locator('#chips .chip', { hasText: 'create the SOW' }).waitFor();
   } finally {
     if (browser) await browser.close();
     child.kill('SIGTERM');

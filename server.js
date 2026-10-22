@@ -11,6 +11,7 @@ fs.statSync(path.join(__dirname,'ui/home.html'));
 fs.statSync(path.join(__dirname,'ui/webinar.html'));
 fs.statSync(path.join(__dirname,'webinar/sample-badges.csv'));
 fs.statSync(path.join(__dirname,'webinar/replay.json'));
+fs.statSync(path.join(__dirname,'webinar/chat.js'));
 fs.statSync(path.join(__dirname,'ui/engine.html'));
 fs.statSync(path.join(__dirname,'ui/data.html'));
 fs.statSync(path.join(__dirname,'ui/chart.min.js'));

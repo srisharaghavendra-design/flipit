@@ -682,6 +682,14 @@ function safeReplay() {
   }
 }
 
+function withChat(pack) {
+  try {
+    const chat = require('./chat');
+    if (pack && typeof pack === 'object' && !pack.error) pack.chat = chat.recorded();
+  } catch (e) {}
+  return pack;
+}
+
 async function http(req, res) {
   const u = new URL(req.url, 'http://x');
   const p = u.pathname;
@@ -691,8 +699,20 @@ async function http(req, res) {
       res.end(sampleText());
       return;
     }
-    if (req.method === 'GET' && p === '/api/webinar/replay') return sendJson(res, safeReplay());
+    if (req.method === 'GET' && p === '/api/webinar/replay') return sendJson(res, withChat(safeReplay()));
     if (req.method === 'GET' && p === '/api/webinar/summary') return sendJson(res, summary());
+    if (req.method === 'GET' && p === '/api/webinar/sow.docx') {
+      const buf = require('./chat').sowDocx();
+      res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'content-disposition': 'attachment; filename="december-apac-sow.docx"', 'cache-control': 'no-store' });
+      res.end(buf);
+      return;
+    }
+    if (req.method === 'GET' && p === '/api/webinar/sow.pdf') {
+      const buf = require('./chat').sowPdf();
+      res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="december-apac-sow.pdf"', 'cache-control': 'no-store' });
+      res.end(buf);
+      return;
+    }
     if (req.method === 'GET' && p === '/api/webinar/report.pdf') {
       const buf = pdf();
       res.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="apac-plant-pipeline.pdf"', 'cache-control': 'no-store' });
@@ -711,7 +731,10 @@ async function http(req, res) {
       if (!card) return sendJson(res, { error: 'No account with that id.' }, 404);
       return sendJson(res, { ...aiNote(), ...card });
     }
-    if (req.method === 'POST' && p === '/api/webinar/reset') return sendJson(res, reset());
+    if (req.method === 'POST' && p === '/api/webinar/reset') {
+      try { require('./chat').reset(); } catch (e) {}
+      return sendJson(res, reset());
+    }
     if (req.method !== 'POST') return sendJson(res, { error: 'Not found.' }, 404);
     const raw = await readBody(req);
     let body = {};
@@ -733,10 +756,15 @@ async function http(req, res) {
       if (useReplay) return sendJson(res, safeReplay().approve);
       return sendJson(res, approve());
     }
+    if (p === '/api/webinar/ask') {
+      const chat = require('./chat');
+      return sendJson(res, chat.ask(body.text, body.csv, { replay: useReplay }));
+    }
+    if (p === '/api/webinar/sow/approve') return sendJson(res, require('./chat').approveSow());
     return sendJson(res, { error: 'Not found.' }, 404);
   } catch (e) {
     console.error('webinar', e && e.message || e);
-    const pack = safeReplay();
+    const pack = withChat(safeReplay());
     if (!res.headersSent) sendJson(res, { fallback: true, mode: 'replay', error: 'Live step failed. Showing the recorded run.', replay: pack });
   }
 }
