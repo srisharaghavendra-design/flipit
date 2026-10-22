@@ -58,6 +58,14 @@ On Vercel Hobby the workspace file lives on the instance disk and does not survi
 
 Every account, person, and campaign in the demo is fictional.
 
+## Webinar demo
+
+Open `/webinar`, or use the Webinar demo button on the home page. It is a five-step lead-generation story for a live session: hunt, account brief, badge-scan cleanup, follow-up approval, and a pipeline deck.
+
+It runs with no API key. The answers are deterministic. If `MOPS_API_KEY` is set, the screen says so and still uses the same recorded rules, so a live room cannot stall on a model call. Replay plays that recorded run if you press Replay, or if a request fails.
+
+The sample badge file has duplicates, bad casing, missing fields, and junk rows. Cleaned leads sync to the webinar CRM. Approved notes stay in the in-process catcher. The deck downloads as PowerPoint and PDF. Every company on the list is fictional.
+
 ```bash
 BRAND_NAME=Harborline npm start
 ```

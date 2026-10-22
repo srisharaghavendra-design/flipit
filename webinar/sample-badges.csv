@@ -1,0 +1,26 @@
+Full Name,EMAIL,company,Job Title,Country,Badge ID,Phone,Notes
+PRIYA SHARMA, Priya.Sharma@kestrelforge.example , KESTREL FORGE, VP Manufacturing, vietnam, B-1001, +84 90 111, booth scan
+priya sharma,priya.sharma@kestrelforge.example,kestrel forge,vp manufacturing,VN,B-1001,,second scan
+Priya Sharma,PRIYA.SHARMA@KESTRELFORGE.EXAMPLE,Kestrel Forge,VP Manufacturing,Vietnam,B-1001-DUP,8490111,third scan
+James Okonkwo,james.okonkwo@paperbarkalloys.example,paperbark alloys,Plant Director,australia,B-1002,+61 400 222,
+JAMES OKONKWO,james.okonkwo@paperbarkalloys.example,Paperbark Alloys,plant director,AU,B-1002b,,repeat
+Anika Rao,anika.rao@saffroncircuit.example,Saffron Circuit Works,Head of Operations,India,B-1003,,
+Kenji Sato,kenji.sato@redcedarrobotics.example,redcedar robotics,Director of Engineering,japan,B-1004,+81 90,
+Mei Lin Tan,mei.tan@tideglass.example,Tideglass Components,Procurement Manager,Singapore,B-1005,,
+Somchai Wattana,somchai.w@monsoonbearing.example,Monsoon Bearing Co.,Maintenance Lead,Thailand,B-1006,,
+Dewi Hartono,dewi.h@amberline.example,Amberline Castings,Engineer,Indonesia,B-1007,,
+,,,,,,,
+TEST SCAN,test@test.com,TEST COMPANY,n/a,,BADGE,,printer test
+Badge printer,,,,,,,
+walk-in visitor,visitor@gmail.com,,,WALK,,no company
+Lila Chen,lila.chen@lanternmill.example,Lanternmill Precision,,Malaysia,B-1008,,missing title
+Lila Chen,lila.chen@lanternmill.example,lanternmill precision,Operations Manager,MY,B-1008,,filled title
+Noah Park,noah.park@harborlinesteel.example,Harborline Steel,CFO,South Korea,B-1009,,
+Arun Desai,,Driftwood Motors,VP Plants,Philippines,B-1010,,missing email
+Arun Desai,arun.desai@driftwoodmotors.example,driftwood motors,VP Plants,PH,B-1010b,,email on the second scan
+Hana Ito,hana.ito@pearlshift.example,Pearlshift Automation,Intern,Japan,B-1011,,
+Wei Zhang,wei.zhang@silkroadsensors.example,Silkroad Sensors,Supply Chain Analyst,China,B-1012,,
+Olivia Grant,olivia.grant@unknownwidgets.example,Unknown Widgets,Marketing Coordinator,USA,B-1013,,
+"  ",not-an-email,???, , ,junk-row,,
+Tomas Reed,tomas.reed@bluegum.example,Bluegum Extrusions,General Manager,Australia,B-1014,,
+Siti Aminah,siti.a@marigoldwire.example,Marigold Wire,Buyer,Indonesia,B-1015,,

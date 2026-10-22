@@ -193,6 +193,7 @@ li.just .tick { animation: pop .45s ease; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 #ops-link { color: var(--muted); font-size: 14px; text-decoration: none; white-space: nowrap; }
+#webinar-link { color: var(--accent); background: var(--accent-soft); font-size: 14px; font-weight: 650; text-decoration: none; white-space: nowrap; border-radius: 999px; padding: 6px 12px; }
 @media (max-width: 800px) {
   #ops-link { display: none !important; }
   h1 { font-size: 34px; }
@@ -215,6 +216,7 @@ li.just .tick { animation: pop .45s ease; }
     <span id="bump" hidden></span>
   </div>
   <div class="tools">
+    <a id="webinar-link" href="/webinar">Webinar demo</a>
     <a id="ops-link" href="/platform/ops">Watch it work</a>
     <div id="schedule" role="group" aria-label="Report schedule">
       <button type="button" data-period="weekly" aria-pressed="true">Weekly</button>

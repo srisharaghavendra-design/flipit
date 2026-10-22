@@ -8,8 +8,8 @@
   "scripts": {
     "start": "node server.js",
     "demo": "node backend/demo.js",
-    "test": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js backend/test/preview.test.js backend/test/instances.test.js backend/test/reports.test.js backend/test/platform.test.js backend/test/browser.test.js backend/test/preview-gate.test.js backend/test/inbound.test.js backend/test/tenant.test.js",
-    "test:backend": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js backend/test/preview.test.js backend/test/instances.test.js backend/test/reports.test.js backend/test/platform.test.js backend/test/browser.test.js backend/test/preview-gate.test.js backend/test/inbound.test.js backend/test/tenant.test.js",
+    "test": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js backend/test/preview.test.js backend/test/instances.test.js backend/test/reports.test.js backend/test/platform.test.js backend/test/browser.test.js backend/test/preview-gate.test.js backend/test/inbound.test.js backend/test/tenant.test.js backend/test/webinar.test.js",
+    "test:backend": "node --test --test-concurrency=1 backend/test/backend.test.js backend/test/proactive.test.js backend/test/round4.test.js backend/test/guard.test.js backend/test/loadsize.test.js backend/test/vercel-handler.test.js backend/test/preview.test.js backend/test/instances.test.js backend/test/reports.test.js backend/test/platform.test.js backend/test/browser.test.js backend/test/preview-gate.test.js backend/test/inbound.test.js backend/test/tenant.test.js backend/test/webinar.test.js",
     "stop": "sh backend/stop.sh",
     "demo:run": "node backend/demo.js --run"
   },

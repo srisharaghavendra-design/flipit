@@ -8,6 +8,9 @@ const DATA_DIR=process.env.MOPS_DATA_DIR||__dirname;fs.mkdirSync(DATA_DIR,{recur
 // Literal paths so the Vercel file tracer ships the UI, seed, and fixtures with this server.
 fs.statSync(path.join(__dirname,'ui/index.html'));
 fs.statSync(path.join(__dirname,'ui/home.html'));
+fs.statSync(path.join(__dirname,'ui/webinar.html'));
+fs.statSync(path.join(__dirname,'webinar/sample-badges.csv'));
+fs.statSync(path.join(__dirname,'webinar/replay.json'));
 fs.statSync(path.join(__dirname,'ui/engine.html'));
 fs.statSync(path.join(__dirname,'ui/data.html'));
 fs.statSync(path.join(__dirname,'ui/chart.min.js'));
@@ -217,6 +220,8 @@ async function handleInner(req,res){pinWorkspace(req,res);const HUB=require('./b
   if(dir===false)return;
   return sandbox.run(dir,()=>{bindJson(dir);return require('./platform').handle(req,res,u)});
  }
+ if(p==='/webinar'||p==='/webinar/')return servePage(res,path.join(__dirname,'ui','webinar.html'),req);
+ if(p.startsWith('/api/webinar'))return require('./webinar/engine').http(req,res);
  if(p==='/')return servePage(res,path.join(__dirname,'ui','home.html'),req);
  if(p==='/classic'||p==='/classic/')return servePage(res,path.join(__dirname,'ui','index.html'),req);
  if(p==='/engine'||p==='/engine/')return servePage(res,path.join(__dirname,'ui','engine.html'),req);
